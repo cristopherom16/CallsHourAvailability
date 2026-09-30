@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hour Availability & Consolidated Call Volume Analysis</title>
+    <style>
+        :root {
+            --primary-color: #1F4E78;
+            --primary-dark: #002060;
+            --accent-color: #C65911;
+            --accent-light: #FCE4D6;
+            --bg-light: #F8F9FA;
+            --border-color: #D9D9D9;
+            --success-color: #2e7d32;
+            --warning-color: #f57c00;
+            --danger-color: #d32f2f;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-light);
+            margin: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background: #ffffff;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            color: #ffffff;
+            background-color: var(--primary-dark);
+            margin: -25px -25px 20px -25px;
+            padding: 20px;
+            border-radius: 10px 10px 0 0;
+            text-align: center;
+            font-size: 1.6rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        h2.section-title {
+            color: var(--primary-dark);
+            font-size: 1.2rem;
+            border-bottom: 2px solid var(--primary-color);
+            padding-bottom: 6px;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+        }
+
+        /* Controls Panel / Slicers */
+        .controls-panel {
+            background-color: #F1F4F8;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .controls-title {
+            font-weight: bold;
+            color: var(--primary-color);
+            font-size: 0.9rem;
+            text-transform: uppercase;
+        }
+
+        .slicer-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .btn-slicer {
+            background-color: #ffffff;
+            border: 1px solid var(--primary-color);
+            color: var(--primary-color);
+            padding: 8px 14px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+
+        .btn-slicer:hover {
+            background-color: #E2E9F3;
+        }
+
+        .btn-slicer.active {
+            background-color: var(--primary-color);
+            color: #ffffff;
+            box-shadow: 0 2px 5px rgba(31,78,120,0.3);
+        }
+
+        .btn-slicer.all-btn {
+            border-color: #555;
+            color: #333;
+        }
+
+        .btn-slicer.all-btn.active {
+            background-color: #333;
+            color: #fff;
+        }
+
+        .hour-select {
+            padding: 8px 12px;
+            border-radius: 6px;
+            border: 1px solid var(--primary-color);
+            background-color: #ffffff;
+            color: var(--primary-dark);
+            font-weight: bold;
+            font-size: 0.9rem;
+            cursor: pointer;
+            outline: none;
+        }
+
+        /* Dynamic SVG Chart */
+        .chart-container {
+            background: #ffffff;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 25px;
+            text-align: center;
+        }
+
+        .chart-title {
+            font-weight: bold;
+            color: var(--primary-dark);
+            margin-bottom: 10px;
+            font-size: 1rem;
+        }
+
+        /* Tables */
+        .table-responsive {
+            max-height: 500px;
+            overflow-y: auto;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            margin-bottom: 25px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.88rem;
+            text-align: center;
+        }
+
+        thead th {
+            position: sticky;
+            top: 0;
+            background-color: var(--primary-color);
+            color: #ffffff;
+            padding: 12px 8px;
+            font-weight: 600;
+            border: 1px solid #163856;
+            z-index: 10;
+        }
+
+        thead th.col-total {
+            background-color: var(--accent-color);
+            border-color: #A0440A;
+        }
+
+        thead th.col-details {
+            background-color: #315B7D;
+        }
+
+        tfoot tr td {
+            font-weight: bold;
+            background-color: #E2E9F3;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+        }
+
+        tbody tr:nth-child(even) {
+            background-color: #F9FBFD;
+        }
+
+        tbody tr:hover {
+            background-color: #EBF2FA;
+        }
+
+        td {
+            padding: 9px 6px;
+            border: 1px solid var(--border-color);
+        }
+
+        td.time-col {
+            font-weight: bold;
+            background-color: #F1F4F8;
+            color: var(--primary-dark);
+            position: sticky;
+            left: 0;
+            z-index: 5;
+        }
+
+        td.total-col {
+            background-color: var(--accent-light);
+            color: var(--accent-color);
+            font-weight: bold;
+            font-size: 0.95rem;
+        }
+
+        td.details-col {
+            text-align: left;
+            font-size: 0.82rem;
+            color: #333;
+            max-width: 550px;
+        }
+
+        .count-badge {
+            display: inline-block;
+            background-color: #E2E9F3;
+            color: var(--primary-dark);
+            font-weight: bold;
+            padding: 2px 8px;
+            border-radius: 12px;
+        }
+
+        .zero-count { color: #ccc; }
+        .none-text { color: #999; font-style: italic; }
+
+        /* Recommendation Cards */
+        .recommendation-card {
+            background-color: #F0F4F8;
+            border-left: 5px solid var(--primary-color);
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .recommendation-card h3 {
+            margin: 0 0 8px 0;
+            color: var(--primary-dark);
+            font-size: 1.05rem;
+        }
+
+        .recommendation-card p {
+            margin: 0;
+            font-size: 0.9rem;
+            line-height: 1.4;
+        }
+
+        .status-ok { color: var(--success-color); font-weight: bold; }
+        .status-deficit { color: var(--danger-color); font-weight: bold; }
+        .status-tight { color: var(--warning-color); font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Hour Availability & Call Volume Analysis</h1>
+
+    <!-- Controls Panel -->
+    <div class="controls-panel">
+        <div class="control-group">
+            <span class="controls-title">Filter by Department</span>
+            <div class="slicer-buttons" id="slicerContainer">
+                <button class="btn-slicer all-btn active" data-dept="ALL">All Departments (93 Agents)</button>
+                <button class="btn-slicer" data-dept="OBS - Phones">OBS - Phones (21)</button>
+                <button class="btn-slicer" data-dept="OBS - Cases">OBS - Cases (10)</button>
+                <button class="btn-slicer" data-dept="INS">INS (21)</button>
+                <button class="btn-slicer" data-dept="ELD">ELD (30)</button>
+                <button class="btn-slicer" data-dept="LL+">LL+ (8)</button>
+                <button class="btn-slicer" data-dept="TFX">TFX (3)</button>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <span class="controls-title">Select Chart Hour</span>
+            <select id="hourSelect" class="hour-select"></select>
+        </div>
+    </div>
+
+    <!-- Dynamic SVG Chart -->
+    <div class="chart-container">
+        <div class="chart-title" id="chartTitle">Department Distribution: Total Headcount vs. Away Agents</div>
+        <svg id="dynamicChart" width="850" height="220" style="margin: 0 auto; display: block;"></svg>
+    </div>
+
+    <!-- Table 1: Agent Schedule & Away Status -->
+    <h2 class="section-title">1. Schedule & Away Agents Roster</h2>
+    <div class="table-responsive">
+        <table id="scheduleTable">
+            <thead>
+                <tr>
+                    <th>Time Interval</th>
+                    <th class="dept-col" data-dept="OBS - Phones">OBS - Phones</th>
+                    <th class="dept-col" data-dept="OBS - Cases">OBS - Cases</th>
+                    <th class="dept-col" data-dept="INS">INS</th>
+                    <th class="dept-col" data-dept="ELD">ELD</th>
+                    <th class="dept-col" data-dept="LL+">LL+</th>
+                    <th class="dept-col" data-dept="TFX">TFX</th>
+                    <th class="col-total">Total Away Agents</th>
+                    <th class="col-details">List of Away Agents & Activity</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+            <tfoot>
+                <tr>
+                    <td>TOTAL AGENTS ROSTER</td>
+                    <td class="dept-foot" data-dept="OBS - Phones">21</td>
+                    <td class="dept-foot" data-dept="OBS - Cases">10</td>
+                    <td class="dept-foot" data-dept="INS">21</td>
+                    <td class="dept-foot" data-dept="ELD">30</td>
+                    <td class="dept-foot" data-dept="LL+">8</td>
+                    <td class="dept-foot" data-dept="TFX">3</td>
+                    <td id="footTotal" style="background-color: var(--accent-color); color: white;">93</td>
+                    <td id="footNote" style="text-align: left; font-style: italic;">Total Roster Headcount = 93 Agents</td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+
+    <!-- Table 2: Updated Title -->
+    <h2 class="section-title">2. Consolidated Call Volume Metrics</h2>
+    <div class="table-responsive">
+        <table>
+            <thead>
+                <tr>
+                    <th>Time Slot</th>
+                    <th>Avg Answered</th>
+                    <th>Avg Abandoned Queue</th>
+                    <th>Avg Abandoned CSAT</th>
+                    <th>Avg Abandoned Hold</th>
+                    <th>Avg Total Volume</th>
+                    <th>Max Historical Volume</th>
+                </tr>
+            </thead>
+            <tbody id="volumeTableBody"></tbody>
+        </table>
+    </div>
+
+    <!-- Table 3: Capacity & Staffing Gap Analysis -->
+    <h2 class="section-title">3. Capacity & Staffing Requirements (Volume vs. Phone Availability)</h2>
+    <div class="table-responsive">
+        <table>
+            <thead>
+                <tr>
+                    <th>Time Slot</th>
+                    <th>Avg Call Volume</th>
+                    <th>Available Phone Agents</th>
+                    <th>Required Phone Agents</th>
+                    <th>Gap / Net Coverage</th>
+                    <th>Recommended Staffing Action</th>
+                </tr>
+            </thead>
+            <tbody id="comparisonTableBody"></tbody>
+        </table>
+    </div>
+
+    <!-- Recommendations Section -->
+    <h2 class="section-title">4. Operational Recommendations & Staffing Insights</h2>
+    <div id="recommendationsContainer">
+        <div class="recommendation-card">
+            <h3>Peak-Hour Shift & Meal Staggering (9:00 AM – 2:00 PM)</h3>
+            <p>During the primary peak hours, overall consolidated call volume reaches <b>170 to 203 calls/hour</b>. However, simultaneous agent breaks reduce the available <i>OBS - Phones</i> team down to 12–14 agents, creating a shortage of <b>3 to 5 agents</b>. Re-staggering lunch breaks into smaller batches across 11:00 AM – 3:00 PM will immediately close this coverage gap.</p>
+        </div>
+        <div class="recommendation-card">
+            <h3>Cross-Queue Reinforcement (Flex Staffing)</h3>
+            <p>During maximum historical spikes (where volume reaches 300+ calls/hour), <i>OBS - Phones</i> alone cannot sustain service levels. We recommend establishing cross-skilling protocols so that <b>4 to 5 agents</b> from non-phone teams (such as <i>OBS - Cases</i> or <i>ELD</i>) automatically assist during high-volume spikes.</p>
+        </div>
+        <div class="recommendation-card">
+            <h3>Evening Capacity Realignment (6:00 PM – 11:00 PM)</h3>
+            <p>After 6:00 PM, call volume plummets to under 28 calls/hour and drops to zero by 7:00 PM. Evening staffing can be scaled down safely, allowing resources to be reallocated toward the busy morning surge (8:00 AM – 12:00 PM).</p>
+        </div>
+    </div>
+</div>
+
+<script>
+    function generateHourlySlots() {
+        const slots = [];
+        for (let h = 0; h < 24; h++) {
+            const suffix = h >= 12 ? 'PM' : 'AM';
+            let h12 = h % 12;
+            if (h12 === 0) h12 = 12;
+            slots.push({ time12: `${h12}:00 ${suffix}`, h24: h });
+        }
+        return slots;
+    }
+
+    const deptRosterCounts = {
+        'OBS - Phones': 21,
+        'OBS - Cases': 10,
+        'INS': 21,
+        'ELD': 30,
+        'LL+': 8,
+        'TFX': 3
+    };
+
+    // Roster Away Pattern
+    const hourlyDataPattern = {
+        0: {"OBS - Phones": [], "OBS - Cases": [], "INS": [], "ELD": [], "LL+": [], "TFX": []},
+        1: {"OBS - Phones": [], "OBS - Cases": [], "INS": [], "ELD": [], "LL+": [], "TFX": []},
+        2: {"OBS - Phones": [], "OBS - Cases": [], "INS": [], "ELD": [], "LL+": [], "TFX": []},
+        3: {"OBS - Phones": [], "OBS - Cases": [], "INS": [], "ELD": [], "LL+": [], "TFX": []},
+        4: {"OBS - Phones": [], "OBS - Cases": [], "INS": [], "ELD": [], "LL+": [], "TFX": []},
+        5: {"OBS - Phones": [], "OBS - Cases": [], "INS": [], "ELD": [], "LL+": [], "TFX": []},
+        6: {"OBS - Phones": [], "OBS - Cases": [], "INS": [], "ELD": [], "LL+": [], "TFX": []},
+        7: {"OBS - Phones": [], "OBS - Cases": [], "INS": [], "ELD": [], "LL+": [], "TFX": []},
+        8: {
+            "OBS - Phones": [{"name": "Lelburn Gordon", "act": "Break 1"}, {"name": "Dean Spencer", "act": "Break 1"}],
+            "OBS - Cases": [{"name": "Emely Hernandez", "act": "Break 1"}],
+            "INS": [{"name": "Keyren Fuertes", "act": "Break 1"}, {"name": "Otto de la Cruz", "act": "Break 1"}, {"name": "Eunice Sir", "act": "Break 1"}, {"name": "Gustavo Lopez", "act": "Break 1"}],
+            "ELD": [{"name": "Edgar Castillo", "act": "Break 1"}, {"name": "Sonia Jimenez", "act": "Break 1"}],
+            "LL+": [{"name": "Julio Cortez", "act": "Break 1"}, {"name": "Alex Coyote", "act": "Break 1"}],
+            "TFX": []
+        },
+        9: {
+            "OBS - Phones": [{"name": "Shanique Kelly", "act": "Break 1"}, {"name": "Alberto Arana", "act": "Break 1"}, {"name": "Stephanie Temple", "act": "Break 1"}, {"name": "Kellyneth Estrada", "act": "Break 1"}, {"name": "Alexander Santamaria", "act": "Break 1"}, {"name": "Kevin Durango", "act": "Break 1"}, {"name": "Alexander Jaramillo", "act": "Break 1"}],
+            "OBS - Cases": [{"name": "Lucia Herrera", "act": "Break 1"}, {"name": "Fernando Garcia", "act": "Break 1"}, {"name": "Alejandra Manco", "act": "Break 1"}],
+            "INS": [{"name": "Freddy Monterroso", "act": "Break 1"}, {"name": "Ana Melendez", "act": "Break 1"}, {"name": "Monica Prado", "act": "Break 1"}, {"name": "Joseth Huerta", "act": "Break 1"}, {"name": "Acsa Esquivel", "act": "Break 1"}, {"name": "Luis Leon", "act": "Break 1"}],
+            "ELD": [{"name": "Sergio Chiguil", "act": "Break 1"}, {"name": "Sharon Olivares", "act": "Break 1"}, {"name": "Kevin Acabal", "act": "Break 1"}, {"name": "Kenford Morris", "act": "Break 1"}, {"name": "Luis Gonzalez", "act": "Break 1"}, {"name": "Jesus Rios", "act": "Break 1"}, {"name": "Marie Perez", "act": "Break 1"}],
+            "LL+": [{"name": "Luis Escobar", "act": "Break 1"}, {"name": "Andy Pineda", "act": "Break 1"}],
+            "TFX": [{"name": "Fernando Daniel Ramirez", "act": "Break 1"}]
+        },
+        10: {
+            "OBS - Phones": [{"name": "Daneil Facey", "act": "Lunch"}, {"name": "Vashaun Thompson", "act": "Break 1"}, {"name": "Bruno Rodriguez", "act": "Break 1"}, {"name": "Israel Arias", "act": "Break 1"}, {"name": "Andrea Gonzalez", "act": "Break 1"}],
+            "OBS - Cases": [{"name": "Pablo Saquilmer", "act": "Break 1"}, {"name": "Emilia Chajon", "act": "Break 1"}, {"name": "Galilea Gutierrez", "act": "Break 1"}, {"name": "Jorge Saban", "act": "Break 1"}],
+            "INS": [{"name": "Eunice Sir", "act": "Break 2"}, {"name": "Gustavo Lopez", "act": "Break 2"}, {"name": "Dana Redwood", "act": "Break 1"}, {"name": "Marco Ovalle", "act": "Break 1"}, {"name": "Ariel Yaegui", "act": "Break 1"}, {"name": "Michelle Marquez", "act": "Break 1"}, {"name": "Kener Lee", "act": "Break 1"}, {"name": "Alondra Mendoza", "act": "Break 1"}],
+            "ELD": [{"name": "Edgar Castillo", "act": "Break 2"}, {"name": "Samantha Chinchilla", "act": "Break 1"}, {"name": "Celina Franco", "act": "Break 1"}, {"name": "Brandon Vasquez", "act": "Break 1"}, {"name": "Josue Sucuc", "act": "Break 1"}, {"name": "Froy Gonzalez", "act": "Break 1"}, {"name": "Danae Castillo", "act": "Break 1"}, {"name": "Cesar Larios", "act": "Break 1"}, {"name": "Daniel Pelayo", "act": "Break 1"}, {"name": "Sebastian Quiñonez", "act": "Break 1"}],
+            "LL+": [{"name": "Julio Cortez", "act": "Break 2"}, {"name": "Alex Coyote", "act": "Break 2"}, {"name": "Omar Gomez", "act": "Break 1"}, {"name": "Edgar Palomo", "act": "Break 1"}, {"name": "Jonathan Pirir", "act": "Break 1"}],
+            "TFX": [{"name": "Mariana Velazquez Cruz", "act": "Break 1"}]
+        },
+        11: {
+            "OBS - Phones": [{"name": "Lelburn Gordon", "act": "Lunch"}, {"name": "Dean Spencer", "act": "Lunch"}, {"name": "Zinedine Moscote", "act": "Break 1"}, {"name": "Alex Scarlett", "act": "Break 1"}, {"name": "Raul Garcia", "act": "Break 1"}, {"name": "Felix Torres", "act": "Break 1"}],
+            "OBS - Cases": [{"name": "Emely Hernandez", "act": "Lunch"}],
+            "INS": [{"name": "Keyren Fuertes", "act": "Lunch"}, {"name": "Otto de la Cruz", "act": "Lunch"}, {"name": "Freddy Monterroso", "act": "Break 2"}, {"name": "Ana Melendez", "act": "Break 2"}, {"name": "Joseth Huerta", "act": "Lunch"}, {"name": "Kathering Santos", "act": "Break 1"}, {"name": "Lynda Escobedo", "act": "Break 1"}, {"name": "Marielys Tejada", "act": "Break 1"}, {"name": "Juan Avedaño", "act": "Break 1"}],
+            "ELD": [{"name": "Sergio Chiguil", "act": "Lunch"}, {"name": "Esvin Gomez", "act": "Break 1"}, {"name": "Sharon Olivares", "act": "Break 2"}, {"name": "Iverth Monterroso", "act": "Break 1"}, {"name": "Kevin Acabal", "act": "Break 2"}, {"name": "Brandon Vasquez", "act": "Lunch"}, {"name": "Benneth Smith", "act": "Break 1"}, {"name": "Kevin Ibarra", "act": "Break 1"}, {"name": "Melanie Garcia", "act": "Break 1"}, {"name": "Jose Rodriguez", "act": "Break 1"}],
+            "LL+": [{"name": "Luis Escobar", "act": "Break 2"}, {"name": "Andy Pineda", "act": "Break 2"}, {"name": "Yossi Martinez", "act": "Break 1"}],
+            "TFX": [{"name": "Fernando Daniel Ramirez", "act": "Lunch"}]
+        },
+        12: {
+            "OBS - Phones": [{"name": "Shanique Kelly", "act": "Lunch"}, {"name": "Alberto Arana", "act": "Lunch"}, {"name": "Stephanie Temple", "act": "Lunch"}, {"name": "Alexander Santamaria", "act": "Lunch"}, {"name": "Leona Wallace", "act": "Lunch"}, {"name": "Vashaun Thompson", "act": "Lunch"}, {"name": "Israel Arias", "act": "Lunch"}, {"name": "Daneil Facey", "act": "Break 1"}, {"name": "Omar Jimenez", "act": "Break 1"}],
+            "OBS - Cases": [{"name": "Diana Orozco", "act": "Break 1"}, {"name": "Lucia Herrera", "act": "Lunch"}, {"name": "Fernando Garcia", "act": "Lunch"}, {"name": "Emilia Chajon", "act": "Break 2"}],
+            "INS": [{"name": "Otto de la Cruz", "act": "Lunch"}, {"name": "Eunice Sir", "act": "Lunch"}, {"name": "Monica Prado", "act": "Lunch"}, {"name": "Gustavo Lopez", "act": "Lunch"}, {"name": "Joseth Huerta", "act": "Lunch"}, {"name": "Dana Redwood", "act": "Lunch"}, {"name": "Ariel Yaegui", "act": "Break 2"}, {"name": "Acsa Esquivel", "act": "Break 2"}, {"name": "Luis Leon", "act": "Lunch"}, {"name": "Michelle Marquez", "act": "Lunch"}, {"name": "Kener Lee", "act": "Break 2"}, {"name": "Cesar Colaj", "act": "Break 1"}],
+            "ELD": [{"name": "Edgar Castillo", "act": "Lunch"}, {"name": "Brandon Vasquez", "act": "Lunch"}, {"name": "Sonia Jimenez", "act": "Lunch"}, {"name": "Froy Gonzalez", "act": "Break 2"}, {"name": "Jesus Rios", "act": "Lunch"}, {"name": "Cesar Larios", "act": "Lunch"}, {"name": "Jorge Najera", "act": "Lunch"}, {"name": "Kevin Williams", "act": "Break 1"}, {"name": "Luis Ajche", "act": "Break 1"}, {"name": "Kia Francis", "act": "Break 1"}, {"name": "Tevin Smallwood", "act": "Break 1"}, {"name": "Shiyan Lee", "act": "Break 1"}],
+            "LL+": [{"name": "Julio Cortez", "act": "Lunch"}, {"name": "Alex Coyote", "act": "Lunch"}, {"name": "Omar Gomez", "act": "Break 2"}, {"name": "Edgar Palomo", "act": "Break 2"}, {"name": "Jonathan Pirir", "act": "Break 2"}],
+            "TFX": [{"name": "Fernando Daniel Ramirez", "act": "Lunch"}, {"name": "Maria Fernanda Saucedo", "act": "Break 1"}]
+        },
+        13: {
+            "OBS - Phones": [{"name": "Lelburn Gordon", "act": "Break 2"}, {"name": "Kellyneth Estrada", "act": "Lunch"}, {"name": "Bruno Rodriguez", "act": "Lunch"}, {"name": "Kevin Durango", "act": "Lunch"}, {"name": "Andrea Gonzalez", "act": "Lunch"}, {"name": "Alexander Jaramillo", "act": "Lunch"}, {"name": "Raul Garcia", "act": "Lunch"}, {"name": "Felix Torres", "act": "Lunch"}, {"name": "Michelle Salmon", "act": "Break 1"}],
+            "OBS - Cases": [{"name": "Pablo Saquilmer", "act": "Lunch"}, {"name": "Lucia Herrera", "act": "Lunch"}, {"name": "Alejandra Manco", "act": "Lunch"}, {"name": "Jorge Saban", "act": "Break 2"}, {"name": "Rudy Herrera", "act": "Break 1"}],
+            "INS": [{"name": "Keyren Fuertes", "act": "Break 2"}, {"name": "Otto de la Cruz", "act": "Break 2"}, {"name": "Freddy Monterroso", "act": "Lunch"}, {"name": "Eunice Sir", "act": "Lunch"}, {"name": "Ana Melendez", "act": "Lunch"}, {"name": "Gustavo Lopez", "act": "Lunch"}, {"name": "Marco Ovalle", "act": "Lunch"}, {"name": "Acsa Esquivel", "act": "Lunch"}, {"name": "Luis Leon", "act": "Lunch"}, {"name": "Michelle Marquez", "act": "Lunch"}, {"name": "Alondra Mendoza", "act": "Lunch"}, {"name": "Lynda Escobedo", "act": "Lunch"}, {"name": "Marielys Tejada", "act": "Lunch"}, {"name": "Kathering Santos", "act": "Break 2"}],
+            "ELD": [{"name": "Sergio Chiguil", "act": "Break 2"}, {"name": "Samantha Chinchilla", "act": "Lunch"}, {"name": "Celina Franco", "act": "Lunch"}, {"name": "Esvin Gomez", "act": "Lunch"}, {"name": "Iverth Monterroso", "act": "Lunch"}, {"name": "Kenford Morris", "act": "Lunch"}, {"name": "Luis Gonzalez", "act": "Break 2"}, {"name": "Melanie Garcia", "act": "Break 2"}, {"name": "Marie Perez", "act": "Lunch"}, {"name": "Danae Castillo", "act": "Lunch"}, {"name": "Cesar Larios", "act": "Lunch"}, {"name": "Benneth Smith", "act": "Lunch"}, {"name": "Daniel Pelayo", "act": "Lunch"}, {"name": "Kevin Williams", "act": "Lunch"}, {"name": "Luis Ajche", "act": "Lunch"}],
+            "LL+": [{"name": "Omar Gomez", "act": "Lunch"}, {"name": "Luis Escobar", "act": "Lunch"}, {"name": "Andy Pineda", "act": "Lunch"}, {"name": "Yossi Martinez", "act": "Break 2"}],
+            "TFX": [{"name": "Fernando Daniel Ramirez", "act": "Break 2"}, {"name": "Mariana Velazquez Cruz", "act": "Lunch"}]
+        },
+        14: {
+            "OBS - Phones": [{"name": "Dean Spencer", "act": "Break 2"}, {"name": "Alberto Arana", "act": "Break 2"}, {"name": "Stephanie Temple", "act": "Break 2"}, {"name": "Leona Wallace", "act": "Break 1"}, {"name": "Zinedine Moscote", "act": "Lunch"}, {"name": "Alex Scarlett", "act": "Lunch"}, {"name": "Omar Jimenez", "act": "Lunch"}],
+            "OBS - Cases": [{"name": "Emely Hernandez", "act": "Break 2"}, {"name": "Pablo Saquilmer", "act": "Break 2"}, {"name": "Lucia Herrera", "act": "Break 2"}, {"name": "Fernando Garcia", "act": "Break 2"}, {"name": "Alejandra Manco", "act": "Lunch"}, {"name": "Galilea Gutierrez", "act": "Lunch"}],
+            "INS": [{"name": "Freddy Monterroso", "act": "Lunch"}, {"name": "Joseth Huerta", "act": "Break 2"}, {"name": "Ariel Yaegui", "act": "Lunch"}, {"name": "Acsa Esquivel", "act": "Lunch"}, {"name": "Kener Lee", "act": "Lunch"}, {"name": "Alondra Mendoza", "act": "Lunch"}, {"name": "Kathering Santos", "act": "Lunch"}, {"name": "Lynda Escobedo", "act": "Lunch"}, {"name": "Cesar Colaj", "act": "Break 2"}, {"name": "Juan Avedaño", "act": "Break 2"}],
+            "ELD": [{"name": "Sharon Olivares", "act": "Lunch"}, {"name": "Kevin Acabal", "act": "Lunch"}, {"name": "Brandon Vasquez", "act": "Break 2"}, {"name": "Josue Sucuc", "act": "Lunch"}, {"name": "Luis Gonzalez", "act": "Lunch"}, {"name": "Froy Gonzalez", "act": "Lunch"}, {"name": "Marie Perez", "act": "Lunch"}, {"name": "Danae Castillo", "act": "Lunch"}, {"name": "Daniel Pelayo", "act": "Lunch"}, {"name": "Kevin Ibarra", "act": "Lunch"}, {"name": "Sebastian Quiñonez", "act": "Lunch"}, {"name": "Jose Rodriguez", "act": "Lunch"}, {"name": "Luis Ajche", "act": "Lunch"}],
+            "LL+": [{"name": "Edgar Palomo", "act": "Lunch"}, {"name": "Jonathan Pirir", "act": "Lunch"}],
+            "TFX": [{"name": "Maria Fernanda Saucedo", "act": "Lunch"}]
+        },
+        15: {
+            "OBS - Phones": [{"name": "Kellyneth Estrada", "act": "Break 2"}, {"name": "Alexander Santamaria", "act": "Break 2"}, {"name": "Israel Arias", "act": "Break 2"}, {"name": "Bruno Rodriguez", "act": "Break 2"}, {"name": "Kevin Durango", "act": "Break 2"}, {"name": "Andrea Gonzalez", "act": "Break 2"}, {"name": "Alexander Jaramillo", "act": "Break 2"}, {"name": "Felix Torres", "act": "Break 2"}, {"name": "Omar Jimenez", "act": "Lunch"}],
+            "OBS - Cases": [{"name": "Diana Orozco", "act": "Break 2"}, {"name": "Emilia Chajon", "act": "Lunch"}, {"name": "Alejandra Manco", "act": "Break 2"}, {"name": "Jorge Saban", "act": "Lunch"}],
+            "INS": [{"name": "Dana Redwood", "act": "Break 2"}, {"name": "Marco Ovalle", "act": "Break 2"}, {"name": "Ariel Yaegui", "act": "Lunch"}, {"name": "Luis Leon", "act": "Break 2"}, {"name": "Michelle Marquez", "act": "Break 2"}, {"name": "Kener Lee", "act": "Lunch"}, {"name": "Alondra Mendoza", "act": "Break 2"}, {"name": "Kathering Santos", "act": "Lunch"}, {"name": "Cesar Colaj", "act": "Lunch"}],
+            "ELD": [{"name": "Samantha Chinchilla", "act": "Break 2"}, {"name": "Celina Franco", "act": "Break 2"}, {"name": "Esvin Gomez", "act": "Break 2"}, {"name": "Iverth Monterroso", "act": "Break 2"}, {"name": "Kevin Acabal", "act": "Lunch"}, {"name": "Sonia Jimenez", "act": "Break 2"}, {"name": "Josue Sucuc", "act": "Break 2"}, {"name": "Melanie Garcia", "act": "Lunch"}, {"name": "Cesar Larios", "act": "Break 2"}, {"name": "Benneth Smith", "act": "Break 2"}, {"name": "Sebastian Quiñonez", "act": "Break 2"}, {"name": "Shiyan Lee", "act": "Lunch"}],
+            "LL+": [{"name": "Yossi Martinez", "act": "Lunch"}],
+            "TFX": [{"name": "Maria Fernanda Saucedo", "act": "Break 2"}, {"name": "Mariana Velazquez Cruz", "act": "Break 2"}]
+        },
+        16: {
+            "OBS - Phones": [{"name": "Zinedine Moscote", "act": "Break 2"}, {"name": "Raul Garcia", "act": "Break 2"}, {"name": "Michelle Salmon", "act": "Lunch"}],
+            "OBS - Cases": [{"name": "Galilea Gutierrez", "act": "Break 2"}, {"name": "Rudy Herrera", "act": "Break 2"}],
+            "INS": [{"name": "Lynda Escobedo", "act": "Break 2"}, {"name": "Marielys Tejada", "act": "Break 2"}, {"name": "Cesar Colaj", "act": "Lunch"}, {"name": "Juan Avedaño", "act": "Lunch"}],
+            "ELD": [{"name": "Marie Perez", "act": "Break 2"}, {"name": "Danae Castillo", "act": "Break 2"}, {"name": "Daniel Pelayo", "act": "Break 2"}, {"name": "Kevin Ibarra", "act": "Break 2"}, {"name": "Jorge Najera", "act": "Break 1"}, {"name": "Kevin Williams", "act": "Break 2"}, {"name": "Kia Francis", "act": "Lunch"}, {"name": "Tevin Smallwood", "act": "Lunch"}],
+            "LL+": [],
+            "TFX": []
+        },
+        17: {
+            "OBS - Phones": [{"name": "Omar Jimenez", "act": "Break 2"}],
+            "OBS - Cases": [{"name": "Diana Orozco", "act": "Lunch"}],
+            "INS": [{"name": "Juan Avedaño", "act": "Lunch"}],
+            "ELD": [{"name": "Jose Rodriguez", "act": "Break 2"}, {"name": "Luis Ajche", "act": "Break 2"}, {"name": "Jorge Najera", "act": "Break 2"}],
+            "LL+": [],
+            "TFX": []
+        },
+        18: {"OBS - Phones": [], "OBS - Cases": [{"name": "Rudy Herrera", "act": "Lunch"}], "INS": [], "ELD": [], "LL+": [], "TFX": []},
+        19: {"OBS - Phones": [], "OBS - Cases": [], "INS": [], "ELD": [], "LL+": [], "TFX": []},
+        20: {"OBS - Phones": [], "OBS - Cases": [], "INS": [], "ELD": [], "LL+": [], "TFX": []},
+        21: {"OBS - Phones": [], "OBS - Cases": [], "INS": [], "ELD": [], "LL+": [], "TFX": []},
+        22: {"OBS - Phones": [], "OBS - Cases": [], "INS": [], "ELD": [], "LL+": [], "TFX": []},
+        23: {"OBS - Phones": [], "OBS - Cases": [], "INS": [], "ELD": [], "LL+": [], "TFX": []}
+    };
+
+    // Consolidated Volume Data across all 5 tables from the file
+    const volumeDataCombined = {
+        0: { ans: 0.0, abQ: 0.0, abCSAT: 0.0, abH: 0.0, tot: 0.0, max: 0 },
+        1: { ans: 0.0, abQ: 0.0, abCSAT: 0.0, abH: 0.0, tot: 0.0, max: 0 },
+        2: { ans: 0.0, abQ: 0.0, abCSAT: 0.0, abH: 0.0, tot: 0.0, max: 0 },
+        3: { ans: 0.0, abQ: 0.0, abCSAT: 0.0, abH: 0.0, tot: 0.0, max: 0 },
+        4: { ans: 0.0, abQ: 0.0, abCSAT: 0.0, abH: 0.0, tot: 0.0, max: 0 },
+        5: { ans: 0.0, abQ: 0.0, abCSAT: 0.0, abH: 0.0, tot: 0.0, max: 0 },
+        6: { ans: 9.0, abQ: 4.6, abCSAT: 3.3, abH: 0.0, tot: 17.2, max: 37 },
+        7: { ans: 49.3, abQ: 10.3, abCSAT: 19.4, abH: 0.4, tot: 79.9, max: 161 },
+        8: { ans: 99.6, abQ: 12.9, abCSAT: 37.4, abH: 1.3, tot: 151.7, max: 310 },
+        9: { ans: 113.9, abQ: 25.4, abCSAT: 46.1, abH: 1.4, tot: 188.4, max: 399 },
+        10: { ans: 126.1, abQ: 21.6, abCSAT: 53.1, abH: 1.1, tot: 202.9, max: 339 },
+        11: { ans: 113.9, abQ: 16.6, abCSAT: 45.7, abH: 1.3, tot: 178.6, max: 329 },
+        12: { ans: 107.1, abQ: 27.2, abCSAT: 38.5, abH: 0.8, tot: 174.4, max: 302 },
+        13: { ans: 95.4, abQ: 36.6, abCSAT: 34.6, abH: 0.9, tot: 168.6, max: 325 },
+        14: { ans: 97.1, abQ: 16.7, abCSAT: 35.1, abH: 1.1, tot: 150.6, max: 282 },
+        15: { ans: 85.5, abQ: 16.3, abCSAT: 35.1, abH: 1.0, tot: 138.9, max: 256 },
+        16: { ans: 53.9, abQ: 10.4, abCSAT: 27.6, abH: 0.6, tot: 93.4, max: 163 },
+        17: { ans: 24.8, abQ: 15.4, abCSAT: 13.1, abH: 0.1, tot: 53.6, max: 107 },
+        18: { ans: 10.5, abQ: 11.7, abCSAT: 4.6, abH: 0.0, tot: 27.1, max: 52 },
+        19: { ans: 0.0, abQ: 0.2, abCSAT: 0.0, abH: 0.0, tot: 0.2, max: 2 },
+        20: { ans: 0.0, abQ: 0.0, abCSAT: 0.0, abH: 0.0, tot: 0.0, max: 0 },
+        21: { ans: 0.0, abQ: 0.0, abCSAT: 0.0, abH: 0.0, tot: 0.0, max: 0 },
+        22: { ans: 0.0, abQ: 0.0, abCSAT: 0.0, abH: 0.0, tot: 0.0, max: 0 },
+        23: { ans: 0.0, abQ: 0.0, abCSAT: 0.0, abH: 0.0, tot: 0.0, max: 0 }
+    };
+
+    const hourlySlots = generateHourlySlots();
+    const depts = ['OBS - Phones', 'OBS - Cases', 'INS', 'ELD', 'LL+', 'TFX'];
+    let selectedDepts = new Set(['ALL']);
+    let manualSelectedHour = null;
+
+    function renderTable() {
+        const tbody = document.getElementById('tableBody');
+        tbody.innerHTML = '';
+
+        hourlySlots.forEach(slot => {
+            const tr = document.createElement('tr');
+            tr.setAttribute('data-h24', slot.h24);
+
+            const tdTime = document.createElement('td');
+            tdTime.className = 'time-col';
+            tdTime.textContent = slot.time12;
+            tr.appendChild(tdTime);
+
+            depts.forEach(dept => {
+                const td = document.createElement('td');
+                td.className = 'dept-cell';
+                td.setAttribute('data-dept', dept);
+
+                let agents = [];
+                if (hourlyDataPattern[slot.h24] && hourlyDataPattern[slot.h24][dept]) {
+                    agents = hourlyDataPattern[slot.h24][dept];
+                }
+
+                td.innerHTML = agents.length > 0 
+                    ? `<span class="count-badge">${agents.length}</span>`
+                    : `<span class="zero-count">-</span>`;
+
+                tr.appendChild(td);
+            });
+
+            const tdTotal = document.createElement('td');
+            tdTotal.className = 'total-col';
+            tdTotal.textContent = '0';
+            tr.appendChild(tdTotal);
+
+            const tdDetails = document.createElement('td');
+            tdDetails.className = 'details-col';
+            tdDetails.innerHTML = '<span class="none-text">None</span>';
+            tr.appendChild(tdDetails);
+
+            tbody.appendChild(tr);
+        });
+
+        updateTableVisibility();
+        renderVolumeTable();
+        renderComparisonTable();
+    }
+
+    function renderVolumeTable() {
+        const tbody = document.getElementById('volumeTableBody');
+        tbody.innerHTML = '';
+
+        hourlySlots.forEach(slot => {
+            const v = volumeDataCombined[slot.h24];
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td class="time-col">${slot.time12}</td>
+                <td>${v.ans.toFixed(1)}</td>
+                <td>${v.abQ.toFixed(1)}</td>
+                <td>${v.abCSAT.toFixed(1)}</td>
+                <td>${v.abH.toFixed(1)}</td>
+                <td><b>${v.tot.toFixed(1)}</b></td>
+                <td>${v.max}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function renderComparisonTable() {
+        const tbody = document.getElementById('comparisonTableBody');
+        tbody.innerHTML = '';
+
+        hourlySlots.forEach(slot => {
+            const v = volumeDataCombined[slot.h24];
+            const phoneAway = hourlyDataPattern[slot.h24]["OBS - Phones"] ? hourlyDataPattern[slot.h24]["OBS - Phones"].length : 0;
+            const phoneAvail = deptRosterCounts["OBS - Phones"] - phoneAway;
+
+            // Capacity calculation assuming AHT = 5 mins = 12 calls/hr/agent with 85% target occupancy
+            const reqAgents = v.tot > 0 ? Math.ceil((v.tot / 12) * 1.15) : 0;
+            const gap = phoneAvail - reqAgents;
+
+            let recText = "";
+            if (gap < 0) {
+                recText = `<span class="status-deficit">Deficit of ${Math.abs(gap)} Agent(s). Add Reinforcement.</span>`;
+            } else if (gap <= 2 && reqAgents > 0) {
+                recText = `<span class="status-tight">Tight Capacity. Monitor Spikes.</span>`;
+            } else {
+                recText = `<span class="status-ok">Optimal Coverage (+${gap} Avail.)</span>`;
+            }
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td class="time-col">${slot.time12}</td>
+                <td><b>${v.tot.toFixed(1)}</b></td>
+                <td>${phoneAvail} of ${deptRosterCounts["OBS - Phones"]}</td>
+                <td>${reqAgents}</td>
+                <td>${gap >= 0 ? '+' + gap : gap}</td>
+                <td>${recText}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    document.getElementById('slicerContainer').addEventListener('click', (e) => {
+        if (!e.target.classList.contains('btn-slicer')) return;
+
+        const dept = e.target.getAttribute('data-dept');
+        const allBtn = document.querySelector('.btn-slicer[data-dept="ALL"]');
+
+        if (dept === 'ALL') {
+            selectedDepts.clear();
+            selectedDepts.add('ALL');
+            document.querySelectorAll('.btn-slicer').forEach(btn => btn.classList.remove('active'));
+            allBtn.classList.add('active');
+        } else {
+            if (selectedDepts.has('ALL')) {
+                selectedDepts.delete('ALL');
+                allBtn.classList.remove('active');
+            }
+
+            if (selectedDepts.has(dept)) {
+                selectedDepts.delete(dept);
+                e.target.classList.remove('active');
+            } else {
+                selectedDepts.add(dept);
+                e.target.classList.add('active');
+            }
+
+            if (selectedDepts.size === 0) {
+                selectedDepts.add('ALL');
+                allBtn.classList.add('active');
+            }
+        }
+
+        manualSelectedHour = null;
+        updateTableVisibility();
+    });
+
+    document.getElementById('hourSelect').addEventListener('change', (e) => {
+        manualSelectedHour = parseInt(e.target.value, 10);
+        renderDynamicChart(selectedDepts.has('ALL'));
+    });
+
+    function updateTableVisibility() {
+        const isAll = selectedDepts.has('ALL');
+
+        document.querySelectorAll('th.dept-col').forEach(th => {
+            const d = th.getAttribute('data-dept');
+            th.style.display = (isAll || selectedDepts.has(d)) ? '' : 'none';
+        });
+
+        document.querySelectorAll('td.dept-foot').forEach(td => {
+            const d = td.getAttribute('data-dept');
+            td.style.display = (isAll || selectedDepts.has(d)) ? '' : 'none';
+        });
+
+        let totalHeadcount = 0;
+        if (isAll) {
+            totalHeadcount = 93;
+        } else {
+            selectedDepts.forEach(d => {
+                if (deptRosterCounts[d]) totalHeadcount += deptRosterCounts[d];
+            });
+        }
+        document.getElementById('footTotal').textContent = totalHeadcount;
+        document.getElementById('footNote').textContent = `Total Selected Roster Headcount = ${totalHeadcount} Agents`;
+
+        document.querySelectorAll('#tableBody tr').forEach(tr => {
+            const h24 = tr.getAttribute('data-h24');
+            let newRowTotal = 0;
+            const newDetails = [];
+
+            tr.querySelectorAll('td.dept-cell').forEach(td => {
+                const d = td.getAttribute('data-dept');
+                const isVisible = isAll || selectedDepts.has(d);
+
+                if (isVisible) {
+                    td.style.display = '';
+                    const badge = td.querySelector('.count-badge');
+                    if (badge) {
+                        newRowTotal += parseInt(badge.textContent, 10);
+                        if (hourlyDataPattern[h24] && hourlyDataPattern[h24][d]) {
+                            hourlyDataPattern[h24][d].forEach(ag => {
+                                newDetails.push(`<b>${ag.name}</b> (${d} - <i>${ag.act}</i>)`);
+                            });
+                        }
+                    }
+                } else {
+                    td.style.display = 'none';
+                }
+            });
+
+            tr.querySelector('td.total-col').textContent = newRowTotal;
+            const detailsCell = tr.querySelector('td.details-col');
+            detailsCell.innerHTML = newDetails.length > 0 ? newDetails.join(', ') : '<span class="none-text">None</span>';
+        });
+
+        renderDynamicChart(isAll);
+    }
+
+    function renderDynamicChart(isAll) {
+        const svg = document.getElementById('dynamicChart');
+        svg.innerHTML = '';
+
+        const activeDepts = isAll ? depts : Array.from(selectedDepts);
+
+        let peakHour = 13;
+        let maxAwayInPeak = -1;
+
+        for (let h = 0; h < 24; h++) {
+            let hourTotalAway = 0;
+            activeDepts.forEach(d => {
+                if (hourlyDataPattern[h] && hourlyDataPattern[h][d]) {
+                    hourTotalAway += hourlyDataPattern[h][d].length;
+                }
+            });
+            if (hourTotalAway > maxAwayInPeak) {
+                maxAwayInPeak = hourTotalAway;
+                peakHour = h;
+            }
+        }
+
+        const activeHour = (manualSelectedHour !== null) ? manualSelectedHour : peakHour;
+
+        const select = document.getElementById('hourSelect');
+        select.innerHTML = '';
+        hourlySlots.forEach(slot => {
+            const opt = document.createElement('option');
+            opt.value = slot.h24;
+            const isPeak = (slot.h24 === peakHour);
+            opt.textContent = `${slot.time12}${isPeak ? ' (Peak Hour)' : ''}`;
+            if (slot.h24 === activeHour) opt.selected = true;
+            select.appendChild(opt);
+        });
+
+        const activeSuffix = activeHour >= 12 ? 'PM' : 'AM';
+        let activeH12 = activeHour % 12;
+        if (activeH12 === 0) activeH12 = 12;
+        const activeHourStr = `${activeH12}:00 ${activeSuffix}`;
+        const isShowingPeak = (activeHour === peakHour);
+
+        const totalHeadcounts = activeDepts.map(d => deptRosterCounts[d]);
+        const awayCounts = activeDepts.map(d => (hourlyDataPattern[activeHour][d] ? hourlyDataPattern[activeHour][d].length : 0));
+
+        const maxVal = Math.max(...totalHeadcounts, 10);
+        const svgWidth = 850;
+        const groupWidth = svgWidth / activeDepts.length;
+        const barWidth = Math.min(25, groupWidth / 3);
+
+        const hourLabelTag = isShowingPeak ? `Peak Hour: ${activeHourStr}` : `Selected Hour: ${activeHourStr}`;
+        document.getElementById('chartTitle').textContent = isAll 
+            ? `All Departments Headcount vs. Away Agents (${hourLabelTag})` 
+            : `Filtered Department Headcount vs. Away Agents (${hourLabelTag})`;
+
+        activeDepts.forEach((d, i) => {
+            const centerX = i * groupWidth + groupWidth / 2;
+            const x1 = centerX - barWidth - 2;
+            const x2 = centerX + 2;
+
+            const hTotal = (totalHeadcounts[i] / maxVal) * 130;
+            const hAway = (awayCounts[i] / maxVal) * 130;
+
+            const yTotal = 170 - hTotal;
+            const yAway = 170 - hAway;
+
+            const rectTotal = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            rectTotal.setAttribute('x', x1);
+            rectTotal.setAttribute('y', yTotal);
+            rectTotal.setAttribute('width', barWidth);
+            rectTotal.setAttribute('height', hTotal);
+            rectTotal.setAttribute('fill', '#1F4E78');
+            rectTotal.setAttribute('rx', '3');
+            svg.appendChild(rectTotal);
+
+            const txtTotal = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            txtTotal.setAttribute('x', x1 + barWidth / 2);
+            txtTotal.setAttribute('y', yTotal - 4);
+            txtTotal.setAttribute('text-anchor', 'middle');
+            txtTotal.setAttribute('font-size', '11');
+            txtTotal.setAttribute('font-weight', 'bold');
+            txtTotal.setAttribute('fill', '#1F4E78');
+            txtTotal.textContent = totalHeadcounts[i];
+            svg.appendChild(txtTotal);
+
+            const rectAway = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            rectAway.setAttribute('x', x2);
+            rectAway.setAttribute('y', yAway);
+            rectAway.setAttribute('width', barWidth);
+            rectAway.setAttribute('height', hAway);
+            rectAway.setAttribute('fill', '#C65911');
+            rectAway.setAttribute('rx', '3');
+            svg.appendChild(rectAway);
+
+            const txtAway = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            txtAway.setAttribute('x', x2 + barWidth / 2);
+            txtAway.setAttribute('y', yAway - 4);
+            txtAway.setAttribute('text-anchor', 'middle');
+            txtAway.setAttribute('font-size', '11');
+            txtAway.setAttribute('font-weight', 'bold');
+            txtAway.setAttribute('fill', '#C65911');
+            txtAway.textContent = awayCounts[i];
+            svg.appendChild(txtAway);
+
+            const txtLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            txtLabel.setAttribute('x', centerX);
+            txtLabel.setAttribute('y', 190);
+            txtLabel.setAttribute('text-anchor', 'middle');
+            txtLabel.setAttribute('font-size', '11');
+            txtLabel.setAttribute('font-weight', 'bold');
+            txtLabel.setAttribute('fill', '#333');
+            txtLabel.textContent = d;
+            svg.appendChild(txtLabel);
+        });
+
+        const legendG = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        legendG.innerHTML = `
+            <rect x="${svgWidth - 280}" y="10" width="12" height="12" fill="#1F4E78" rx="2" />
+            <text x="${svgWidth - 262}" y="20" font-size="11" fill="#333">Total Headcount</text>
+            <rect x="${svgWidth - 160}" y="10" width="12" height="12" fill="#C65911" rx="2" />
+            <text x="${svgWidth - 142}" y="20" font-size="11" fill="#333">Away (${activeHourStr})</text>
+        `;
+        svg.appendChild(legendG);
+    }
+
+    renderTable();
+</script>
+
+</body>
+</html>

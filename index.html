@@ -4,9 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WFM Analytics & Call Volume Analysis Dashboard</title>
-    <!-- Chart.js & PapaParse -->
+    <!-- Chart.js, PapaParse & LZ-String for URL compression -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lz-string@1.5.0/libs/lz-string.min.js"></script>
     <style>
         :root {
             --primary-color: #1F4E78;
@@ -64,6 +65,7 @@
         .header-actions {
             display: flex;
             gap: 10px;
+            flex-wrap: wrap;
         }
 
         .btn {
@@ -578,6 +580,7 @@
             <small style="opacity: 0.85;">Workforce Management, Hourly Schedules & Consolidated Call Volume Analytics</small>
         </div>
         <div class="header-actions">
+            <button class="btn btn-secondary" id="btnShareLink">🔗 Share Live Link</button>
             <button class="btn btn-secondary" id="btnOpenImport">Paste Team Data Tables</button>
             <button class="btn btn-yellow" id="btnOpenMgmt">Manage Agents & Schedules</button>
         </div>
@@ -720,7 +723,7 @@
             <button class="close-btn" id="btnCloseImport">&times;</button>
         </div>
         <div class="modal-body">
-            <p style="font-size:0.85rem; color:#555; margin-top:0;">Paste data directly from Excel or TSV/CSV format for each queue. The system expects headers: <b>Hour, Answered, Abnd. in Queue, Abnd in CSAT, Abnd on Hold</b>.</p>
+            <p style="font-size:0.85rem; color:#555; margin-top:0;">Paste data directly from Excel or TSV/CSV format for each queue. Expected headers: <b>Hour, Answered, Abnd. in Queue, Abnd in CSAT, Abnd on Hold</b>.</p>
             
             <div class="tab-buttons" id="teamImportTabs">
                 <button class="tab-btn active" data-tab="tab-obs">OBS Phones</button>
@@ -734,7 +737,7 @@
             <div class="tab-content active" id="tab-obs">
                 <div class="form-group">
                     <label>OBS Phones Volume Data:</label>
-                    <textarea class="input-text team-volume-input" id="volumeText_obs" style="height: 220px; font-family: monospace; font-size:0.8rem;" placeholder="Hour&#192;Answered&#192;Abnd. in Queue&#192;Abnd in CSAT&#192;Abnd on Hold&#10;8:00 AM&#192;45&#192;10&#192;5&#192;1&#10;9:00 AM&#192;70&#192;20&#192;10&#192;2..."></textarea>
+                    <textarea class="input-text team-volume-input" id="volumeText_obs" style="height: 220px; font-family: monospace; font-size:0.8rem;" placeholder="Hour&#192;Answered&#192;Abnd. in Queue&#192;Abnd in CSAT&#192;Abnd on Hold..."></textarea>
                 </div>
             </div>
 
@@ -984,40 +987,34 @@
     };
 
     // Store separate volume data tables for each team
-    let teamVolumeData = {
-        obs: {},
-        ins: {},
-        eld: {},
-        ll: {},
-        tfx: {}
-    };
+    let teamVolumeData = { obs: {}, ins: {}, eld: {}, ll: {}, tfx: {} };
 
     // Consolidated Volume Data
     let volumeDataCombined = {
-        0: { ans: 0.0, abQ: 0.0, abCSAT: 0.0, abH: 0.0, tot: 0.0, max: 0 },
-        1: { ans: 0.0, abQ: 0.0, abCSAT: 0.0, abH: 0.0, tot: 0.0, max: 0 },
-        2: { ans: 0.0, abQ: 0.0, abCSAT: 0.0, abH: 0.0, tot: 0.0, max: 0 },
-        3: { ans: 0.0, abQ: 0.0, abCSAT: 0.0, abH: 0.0, tot: 0.0, max: 0 },
-        4: { ans: 0.0, abQ: 0.0, abCSAT: 0.0, abH: 0.0, tot: 0.0, max: 0 },
-        5: { ans: 0.0, abQ: 0.0, abCSAT: 0.0, abH: 0.0, tot: 0.0, max: 0 },
-        6: { ans: 7.5, abQ: 5.5, abCSAT: 1.5, abH: 0.0, tot: 15.0, max: 18 },
+        0: { ans: 0, abQ: 0, abCSAT: 0, abH: 0, tot: 0, max: 0 },
+        1: { ans: 0, abQ: 0, abCSAT: 0, abH: 0, tot: 0, max: 0 },
+        2: { ans: 0, abQ: 0, abCSAT: 0, abH: 0, tot: 0, max: 0 },
+        3: { ans: 0, abQ: 0, abCSAT: 0, abH: 0, tot: 0, max: 0 },
+        4: { ans: 0, abQ: 0, abCSAT: 0, abH: 0, tot: 0, max: 0 },
+        5: { ans: 0, abQ: 0, abCSAT: 0, abH: 0, tot: 0, max: 0 },
+        6: { ans: 7.5, abQ: 5.5, abCSAT: 1.5, abH: 0, tot: 15.0, max: 18 },
         7: { ans: 54.5, abQ: 22.5, abCSAT: 19.5, abH: 1.5, tot: 100.5, max: 102 },
-        8: { ans: 88.0, abQ: 60.0, abCSAT: 32.5, abH: 6.0, tot: 190.0, max: 196 },
+        8: { ans: 88.0, abQ: 60.0, abCSAT: 32.5, abH: 6, tot: 190.0, max: 196 },
         9: { ans: 139.5, abQ: 75.0, abCSAT: 34.5, abH: 0.5, tot: 253.0, max: 293 },
-        10: { ans: 135.5, abQ: 62.0, abCSAT: 36.0, abH: 1.0, tot: 236.5, max: 249 },
+        10: { ans: 135.5, abQ: 62.0, abCSAT: 36.0, abH: 1, tot: 236.5, max: 249 },
         11: { ans: 149.5, abQ: 44.5, abCSAT: 43.5, abH: 0.5, tot: 239.5, max: 266 },
         12: { ans: 123.5, abQ: 45.0, abCSAT: 35.0, abH: 1.5, tot: 207.5, max: 217 },
-        13: { ans: 97.0, abQ: 64.0, abCSAT: 37.5, abH: 2.0, tot: 203.0, max: 216 },
+        13: { ans: 97.0, abQ: 64.0, abCSAT: 37.5, abH: 2, tot: 203.0, max: 216 },
         14: { ans: 94.5, abQ: 30.0, abCSAT: 33.5, abH: 0.5, tot: 160.0, max: 168 },
         15: { ans: 96.0, abQ: 24.0, abCSAT: 24.0, abH: 0.5, tot: 145.5, max: 166 },
         16: { ans: 60.0, abQ: 42.0, abCSAT: 20.0, abH: 0.5, tot: 123.0, max: 128 },
-        17: { ans: 96.0, abQ: 7.0, abCSAT: 14.0, abH: 0.0, tot: 118.5, max: 145 },
-        18: { ans: 30.5, abQ: 2.5, abCSAT: 8.5, abH: 0.0, tot: 41.5, max: 54 },
-        19: { ans: 0.0, abQ: 0.5, abCSAT: 0.0, abH: 0.0, tot: 0.5, max: 1 },
-        20: { ans: 0.0, abQ: 0.0, abCSAT: 0.0, abH: 0.0, tot: 0.0, max: 0 },
-        21: { ans: 0.0, abQ: 0.0, abCSAT: 0.0, abH: 0.0, tot: 0.0, max: 0 },
-        22: { ans: 0.0, abQ: 0.0, abCSAT: 0.0, abH: 0.0, tot: 0.0, max: 0 },
-        23: { ans: 0.0, abQ: 0.0, abCSAT: 0.0, abH: 0.0, tot: 0.0, max: 0 }
+        17: { ans: 96.0, abQ: 7.0, abCSAT: 14.0, abH: 0, tot: 118.5, max: 145 },
+        18: { ans: 30.5, abQ: 2.5, abCSAT: 8.5, abH: 0, tot: 41.5, max: 54 },
+        19: { ans: 0, abQ: 0.5, abCSAT: 0, abH: 0, tot: 0.5, max: 1 },
+        20: { ans: 0, abQ: 0, abCSAT: 0, abH: 0, tot: 0, max: 0 },
+        21: { ans: 0, abQ: 0, abCSAT: 0, abH: 0, tot: 0, max: 0 },
+        22: { ans: 0, abQ: 0, abCSAT: 0, abH: 0, tot: 0, max: 0 },
+        23: { ans: 0, abQ: 0, abCSAT: 0, abH: 0, tot: 0, max: 0 }
     };
 
     let masterAgentsDB = [];
@@ -1089,6 +1086,7 @@
 
     document.addEventListener("DOMContentLoaded", () => {
         initMasterDBFromPattern();
+        loadStateFromURLOrStorage();
         initCharts();
         renderAll();
         setupEventListeners();
@@ -1099,6 +1097,7 @@
         renderVolumeTable();
         renderComparisonTable();
         updateCharts();
+        saveStateToLocalStorage();
     }
 
     // 1. Render Schedule Table
@@ -1392,6 +1391,9 @@
             updateCharts();
         });
 
+        // Share Link Button
+        document.getElementById('btnShareLink').addEventListener('click', generateShareableLink);
+
         // Auth Modal Handlers
         document.getElementById('btnCloseAuth').addEventListener('click', () => {
             document.getElementById('authModal').classList.remove('active');
@@ -1468,7 +1470,7 @@
         const parsed = Papa.parse(text.trim(), { delimiter: "", skipEmptyLines: true });
         const result = {};
 
-        parsed.data.forEach((row, idx) => {
+        parsed.data.forEach((row) => {
             if (row.length >= 2) {
                 let hourStr = row[0].toString().trim();
                 let ans = parseFloat(row[1]) || 0;
@@ -1476,7 +1478,6 @@
                 let abCSAT = parseFloat(row[3]) || 0;
                 let abH = parseFloat(row[4]) || 0;
 
-                // Match hour string (e.g., "8:00 AM" or "8" or "08:00")
                 let h24 = -1;
                 let match = hourStr.match(/(\d+):?(\d+)?\s*(AM|PM)?/i);
                 if (match) {
@@ -1503,21 +1504,24 @@
     }
 
     function processTeamTabsData() {
-        const obsText = document.getElementById('volumeText_obs').value;
-        const insText = document.getElementById('volumeText_ins').value;
-        const eldText = document.getElementById('volumeText_eld').value;
-        const llText = document.getElementById('volumeText_ll').value;
-        const tfxText = document.getElementById('volumeText_tfx').value;
+        const inputs = {
+            'obs': document.getElementById('volumeText_obs').value,
+            'ins': document.getElementById('volumeText_ins').value,
+            'eld': document.getElementById('volumeText_eld').value,
+            'll':  document.getElementById('volumeText_ll').value,
+            'tfx': document.getElementById('volumeText_tfx').value
+        };
 
-        teamVolumeData.obs = parsePastedTable(obsText);
-        teamVolumeData.ins = parsePastedTable(insText);
-        teamVolumeData.eld = parsePastedTable(eldText);
-        teamVolumeData.ll = parsePastedTable(llText);
-        teamVolumeData.tfx = parsePastedTable(tfxText);
+        // Update parsed tables for provided teams
+        Object.keys(inputs).forEach(key => {
+            if (inputs[key] && inputs[key].trim().length > 0) {
+                teamVolumeData[key] = parsePastedTable(inputs[key]);
+            }
+        });
 
-        // Consolidate across all 5 team tables
+        // Recalculate consolidated volume across all teams
         for (let h = 0; h < 24; h++) {
-            let sumAns = 0, sumAbQ = 0, sumAbCSAT = 0, sumAbH = 0, sumTot = 0;
+            let sumAns = 0, sumAbQ = 0, sumAbCSAT = 0, sumAbH = 0;
             let teamKeys = ['obs', 'ins', 'eld', 'll', 'tfx'];
 
             teamKeys.forEach(t => {
@@ -1527,25 +1531,87 @@
                     sumAbQ += item.abQ;
                     sumAbCSAT += item.abCSAT;
                     sumAbH += item.abH;
-                    sumTot += item.tot;
                 }
             });
 
-            if (sumTot > 0) {
-                volumeDataCombined[h] = {
-                    ans: sumAns,
-                    abQ: sumAbQ,
-                    abCSAT: sumAbCSAT,
-                    abH: sumAbH,
-                    tot: sumTot,
-                    max: Math.round(sumTot * 1.1)
-                };
-            }
+            const totalVol = sumAns + sumAbQ + sumAbCSAT + sumAbH;
+
+            volumeDataCombined[h] = {
+                ans: sumAns,
+                abQ: sumAbQ,
+                abCSAT: sumAbCSAT,
+                abH: sumAbH,
+                tot: totalVol,
+                max: Math.round(totalVol * 1.1)
+            };
         }
 
         renderAll();
         document.getElementById('importModal').classList.remove('active');
-        alert('Volume tables parsed and consolidated successfully!');
+        alert('Volume tables parsed and consolidated successfully across all teams!');
+    }
+
+    // State URL Sharing & LocalStorage Management
+    function getAppStatePayload() {
+        return {
+            teamVolumeData: teamVolumeData,
+            volumeDataCombined: volumeDataCombined,
+            masterAgentsDB: masterAgentsDB,
+            deptRosterCounts: deptRosterCounts
+        };
+    }
+
+    function saveStateToLocalStorage() {
+        try {
+            localStorage.setItem('wfm_dashboard_state', JSON.stringify(getAppStatePayload()));
+        } catch(e) {}
+    }
+
+    function generateShareableLink() {
+        const payload = JSON.stringify(getAppStatePayload());
+        const compressed = LZString.compressToEncodedURIComponent(payload);
+        const url = window.location.origin + window.location.pathname + '?state=' + compressed;
+
+        navigator.clipboard.writeText(url).then(() => {
+            alert('Shareable link copied to clipboard! Anyone opening this link will see your updated tables and charts.');
+        }).catch(() => {
+            prompt('Copy this link to share your updated dashboard:', url);
+        });
+    }
+
+    function loadStateFromURLOrStorage() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const stateParam = urlParams.get('state');
+
+        if (stateParam) {
+            try {
+                const decompressed = LZString.decompressFromEncodedURIComponent(stateParam);
+                if (decompressed) {
+                    const parsedState = JSON.parse(decompressed);
+                    applyAppState(parsedState);
+                    return;
+                }
+            } catch(e) {
+                console.error("Failed to load state from URL", e);
+            }
+        }
+
+        // Fallback to local storage if available
+        const localSaved = localStorage.getItem('wfm_dashboard_state');
+        if (localSaved) {
+            try {
+                const parsedState = JSON.parse(localSaved);
+                applyAppState(parsedState);
+            } catch(e) {}
+        }
+    }
+
+    function applyAppState(state) {
+        if (state.teamVolumeData) teamVolumeData = state.teamVolumeData;
+        if (state.volumeDataCombined) volumeDataCombined = state.volumeDataCombined;
+        if (state.masterAgentsDB) masterAgentsDB = state.masterAgentsDB;
+        if (state.deptRosterCounts) deptRosterCounts = state.deptRosterCounts;
+        syncPatternFromMasterDB();
     }
 
     // Management Modal Logic

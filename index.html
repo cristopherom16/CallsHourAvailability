@@ -133,7 +133,6 @@
             align-items: center;
         }
 
-        /* Controls Panel */
         .controls-panel {
             background-color: #F1F4F8;
             border: 1px solid var(--border-color);
@@ -211,7 +210,6 @@
             border-color: var(--primary-color);
         }
 
-        /* Dashboard Grid / Charts */
         .charts-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
@@ -241,7 +239,6 @@
             width: 100%;
         }
 
-        /* Tables */
         .table-responsive {
             max-height: 480px;
             overflow-y: auto;
@@ -330,7 +327,6 @@
         .status-deficit { color: var(--danger-color); font-weight: bold; }
         .status-tight { color: var(--warning-color); font-weight: bold; }
 
-        /* Recommendation Cards */
         .recommendation-card {
             background-color: #FFFDE7;
             border-left: 5px solid var(--accent-yellow);
@@ -351,7 +347,6 @@
             line-height: 1.4;
         }
 
-        /* Modal Component */
         .modal-overlay {
             position: fixed;
             top: 0;
@@ -423,7 +418,6 @@
             cursor: pointer;
         }
 
-        /* Tabbed Import View */
         .tab-buttons {
             display: flex;
             gap: 5px;
@@ -457,7 +451,6 @@
             display: block;
         }
 
-        /* Management Panel Styles */
         .mgmt-toolbar {
             display: flex;
             justify-content: space-between;
@@ -512,7 +505,6 @@
             font-size: 0.75rem;
         }
 
-        /* Form Grid */
         .form-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
@@ -781,43 +773,38 @@
                 <button class="tab-btn" data-tab="tab-tfx">TFX</button>
             </div>
 
-            <!-- OBS Phones Tab -->
             <div class="tab-content active" id="tab-obs">
                 <div class="form-group">
                     <label>OBS Phones Volume Data:</label>
-                    <textarea class="input-text team-volume-input" id="volumeText_obs" style="height: 200px; font-family: monospace; font-size:0.8rem;" placeholder="Hour&#192;Answered&#192;Abnd. in Queue&#192;Abnd in CSAT&#192;Abnd on Hold..."></textarea>
+                    <textarea class="input-text team-volume-input" id="volumeText_obs" style="height: 200px; font-family: monospace; font-size:0.8rem;"></textarea>
                 </div>
             </div>
 
-            <!-- INS Phones Tab -->
             <div class="tab-content" id="tab-ins">
                 <div class="form-group">
                     <label>INS Phones Volume Data:</label>
-                    <textarea class="input-text team-volume-input" id="volumeText_ins" style="height: 200px; font-family: monospace; font-size:0.8rem;" placeholder="Hour&#192;Answered&#192;Abnd. in Queue&#192;Abnd in CSAT&#192;Abnd on Hold..."></textarea>
+                    <textarea class="input-text team-volume-input" id="volumeText_ins" style="height: 200px; font-family: monospace; font-size:0.8rem;"></textarea>
                 </div>
             </div>
 
-            <!-- ELD Phones Tab -->
             <div class="tab-content" id="tab-eld">
                 <div class="form-group">
                     <label>ELD Phones Volume Data:</label>
-                    <textarea class="input-text team-volume-input" id="volumeText_eld" style="height: 200px; font-family: monospace; font-size:0.8rem;" placeholder="Hour&#192;Answered&#192;Abnd. in Queue&#192;Abnd in CSAT&#192;Abnd on Hold..."></textarea>
+                    <textarea class="input-text team-volume-input" id="volumeText_eld" style="height: 200px; font-family: monospace; font-size:0.8rem;"></textarea>
                 </div>
             </div>
 
-            <!-- LL+ Tab -->
             <div class="tab-content" id="tab-ll">
                 <div class="form-group">
                     <label>LL+ Volume Data:</label>
-                    <textarea class="input-text team-volume-input" id="volumeText_ll" style="height: 200px; font-family: monospace; font-size:0.8rem;" placeholder="Hour&#192;Answered&#192;Abnd. in Queue&#192;Abnd in CSAT&#192;Abnd on Hold..."></textarea>
+                    <textarea class="input-text team-volume-input" id="volumeText_ll" style="height: 200px; font-family: monospace; font-size:0.8rem;"></textarea>
                 </div>
             </div>
 
-            <!-- TFX Tab -->
             <div class="tab-content" id="tab-tfx">
                 <div class="form-group">
                     <label>TFX Volume Data:</label>
-                    <textarea class="input-text team-volume-input" id="volumeText_tfx" style="height: 200px; font-family: monospace; font-size:0.8rem;" placeholder="Hour&#192;Answered&#192;Abnd. in Queue&#192;Abnd in CSAT&#192;Abnd on Hold..."></textarea>
+                    <textarea class="input-text team-volume-input" id="volumeText_tfx" style="height: 200px; font-family: monospace; font-size:0.8rem;"></textarea>
                 </div>
             </div>
         </div>
@@ -871,7 +858,6 @@
                 <button class="btn btn-yellow btn-sm" id="btnAddNewAgentForm">+ Add New Agent</button>
             </div>
 
-            <!-- Agent Form -->
             <div id="agentFormCard" style="display:none; background:#f8f9fa; border:1px solid var(--border-color); padding:15px; border-radius:8px; margin-bottom:15px;">
                 <h4 id="agentFormTitle" style="margin-top:0; margin-bottom:10px; color:var(--primary-dark);">Add Agent</h4>
                 <input type="hidden" id="editAgentId" value="">
@@ -902,7 +888,6 @@
                 </div>
             </div>
 
-            <!-- Agents List Table -->
             <div class="table-responsive" style="max-height: 350px;">
                 <table class="agent-list-table">
                     <thead>
@@ -1072,7 +1057,30 @@
     let volumeDataCombined = {};
     let masterAgentsDB = [];
 
+    function saveMasterDBToStorage() {
+        try {
+            localStorage.setItem('wfm_master_agents', JSON.stringify(masterAgentsDB));
+            localStorage.setItem('wfm_volume_db', JSON.stringify(multiPeriodVolumeDB));
+        } catch(e) {}
+    }
+
     function initMasterDBFromPattern() {
+        const storedAgents = localStorage.getItem('wfm_master_agents');
+        const storedVolume = localStorage.getItem('wfm_volume_db');
+
+        if (storedVolume) {
+            try { multiPeriodVolumeDB = JSON.parse(storedVolume); } catch(e) {}
+        }
+
+        if (storedAgents) {
+            try {
+                masterAgentsDB = JSON.parse(storedAgents);
+                recountRosterFromMasterDB();
+                syncPatternFromMasterDB();
+                return;
+            } catch(e) {}
+        }
+
         masterAgentsDB = [];
         let agentMap = {};
         let idCounter = 1;
@@ -1091,6 +1099,17 @@
             }
         }
         for (let k in agentMap) masterAgentsDB.push(agentMap[k]);
+        recountRosterFromMasterDB();
+        saveMasterDBToStorage();
+    }
+
+    function recountRosterFromMasterDB() {
+        depts.forEach(d => deptRosterCounts[d] = 0);
+        masterAgentsDB.forEach(ag => {
+            if (deptRosterCounts[ag.dept] !== undefined) {
+                deptRosterCounts[ag.dept]++;
+            }
+        });
     }
 
     function syncPatternFromMasterDB() {
@@ -1188,6 +1207,7 @@
         renderComparisonTable();
         renderRecommendations();
         updateCharts();
+        saveMasterDBToStorage();
     }
 
     function renderScheduleTable() {
@@ -1497,7 +1517,6 @@
             updateCharts();
         });
 
-        // Auth Modal Handlers
         document.getElementById('btnCloseAuth').addEventListener('click', () => {
             document.getElementById('authModal').classList.remove('active');
         });
@@ -1506,7 +1525,6 @@
             if (e.key === 'Enter') verifyAuthPassword();
         });
 
-        // Import Modal Handlers
         document.getElementById('btnOpenImport').addEventListener('click', () => {
             document.getElementById('importMonthSelect').value = getActiveMonth();
             document.getElementById('importWeekSelect').value = getActiveWeek();
@@ -1520,7 +1538,6 @@
         });
         document.getElementById('btnApplyImport').addEventListener('click', processTeamTabsData);
 
-        // Import Tabs Switcher
         document.getElementById('teamImportTabs').addEventListener('click', (e) => {
             if (!e.target.classList.contains('tab-btn')) return;
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -1531,7 +1548,6 @@
             document.getElementById(targetTab).classList.add('active');
         });
 
-        // Management Modal Handlers
         document.getElementById('btnOpenMgmt').addEventListener('click', () => {
             requireAuth(() => { openManagementModal(); });
         });
@@ -1543,7 +1559,6 @@
         });
         document.getElementById('mgmtDeptSelect').addEventListener('change', renderMgmtAgentsTable);
         
-        // Agent Form Handlers
         document.getElementById('btnAddNewAgentForm').addEventListener('click', () => { openAgentForm(); });
         document.getElementById('btnCancelAgentForm').addEventListener('click', () => {
             document.getElementById('agentFormCard').style.display = 'none';
@@ -1628,7 +1643,6 @@
             }
         });
 
-        // Set active month/week to target
         document.getElementById('monthSelect').value = targetMonth;
         document.getElementById('weekSelect').value = targetWeek;
 
@@ -1691,6 +1705,7 @@
             const ag = masterAgentsDB.find(a => a.id === agentId);
             if (ag && confirm(`Are you sure you want to delete agent "${ag.name}"?`)) {
                 masterAgentsDB = masterAgentsDB.filter(a => a.id !== agentId);
+                recountRosterFromMasterDB();
                 syncPatternFromMasterDB();
                 renderAll();
                 renderMgmtAgentsTable();
@@ -1790,6 +1805,7 @@
             masterAgentsDB.push({ id: newId, name: name, dept: dept, hours: hoursObj });
         }
 
+        recountRosterFromMasterDB();
         syncPatternFromMasterDB();
         renderAll();
         renderMgmtAgentsTable();

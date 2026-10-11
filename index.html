@@ -3,70 +3,147 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hour Availability & Consolidated Call Volume Analysis</title>
+    <title>WFM Analytics & Call Volume Analysis Dashboard</title>
+    <!-- Chart.js & PapaParse -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
     <style>
         :root {
             --primary-color: #1F4E78;
             --primary-dark: #002060;
-            --accent-color: #C65911;
-            --accent-light: #FCE4D6;
-            --bg-light: #F8F9FA;
+            --accent-yellow: #E6A100;
+            --accent-yellow-light: #FFF8E1;
+            --accent-yellow-dark: #B37D00;
+            --bg-light: #F4F7FA;
+            --card-bg: #FFFFFF;
             --border-color: #D9D9D9;
             --success-color: #2e7d32;
             --warning-color: #f57c00;
             --danger-color: #d32f2f;
+            --text-main: #333333;
         }
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: var(--bg-light);
-            margin: 20px;
-            color: #333;
+            margin: 0;
+            padding: 20px;
+            color: var(--text-main);
         }
 
         .container {
             max-width: 1600px;
             margin: 0 auto;
-            background: #ffffff;
+            background: var(--card-bg);
             padding: 25px;
-            border-radius: 10px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
         }
 
-        h1 {
-            color: #ffffff;
+        .header {
             background-color: var(--primary-dark);
-            margin: -25px -25px 20px -25px;
-            padding: 20px;
-            border-radius: 10px 10px 0 0;
-            text-align: center;
-            font-size: 1.6rem;
+            color: #ffffff;
+            margin: -25px -25px 25px -25px;
+            padding: 20px 30px;
+            border-radius: 12px 12px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            border-bottom: 4px solid var(--accent-yellow);
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 1.5rem;
             text-transform: uppercase;
             letter-spacing: 0.5px;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 9px 16px;
+            border-radius: 6px;
+            border: none;
+            font-weight: 600;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-yellow {
+            background-color: var(--accent-yellow);
+            color: #000000;
+            font-weight: bold;
+        }
+
+        .btn-yellow:hover {
+            background-color: #d49400;
+        }
+
+        .btn-secondary {
+            background-color: #ffffff;
+            color: var(--primary-dark);
+            border: 1px solid #ffffff;
+        }
+
+        .btn-secondary:hover {
+            background-color: #e0e8f5;
+        }
+
+        .btn-danger {
+            background-color: var(--danger-color);
+            color: #ffffff;
+        }
+
+        .btn-danger:hover {
+            background-color: #b71c1c;
+        }
+
+        .btn-outline {
+            background-color: transparent;
+            border: 1px solid var(--primary-color);
+            color: var(--primary-color);
+        }
+
+        .btn-outline:hover {
+            background-color: var(--primary-color);
+            color: #ffffff;
         }
 
         h2.section-title {
             color: var(--primary-dark);
             font-size: 1.2rem;
-            border-bottom: 2px solid var(--primary-color);
-            padding-bottom: 6px;
-            margin-top: 30px;
-            margin-bottom: 15px;
+            border-bottom: 2px solid var(--accent-yellow);
+            padding-bottom: 8px;
+            margin-top: 35px;
+            margin-bottom: 20px;
             text-transform: uppercase;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
 
-        /* Controls Panel / Slicers */
+        /* Controls Panel */
         .controls-panel {
             background-color: #F1F4F8;
             border: 1px solid var(--border-color);
             border-radius: 8px;
-            padding: 15px;
-            margin-bottom: 20px;
+            padding: 15px 20px;
+            margin-bottom: 25px;
             display: flex;
             flex-wrap: wrap;
             gap: 20px;
             justify-content: space-between;
-            align-items: flex-start;
+            align-items: center;
         }
 
         .control-group {
@@ -78,7 +155,7 @@
         .controls-title {
             font-weight: bold;
             color: var(--primary-color);
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             text-transform: uppercase;
         }
 
@@ -92,7 +169,7 @@
             background-color: #ffffff;
             border: 1px solid var(--primary-color);
             color: var(--primary-color);
-            padding: 8px 14px;
+            padding: 7px 14px;
             border-radius: 20px;
             cursor: pointer;
             font-size: 0.85rem;
@@ -120,42 +197,57 @@
             color: #fff;
         }
 
-        .hour-select {
+        .input-select, .input-number, .input-text {
             padding: 8px 12px;
             border-radius: 6px;
-            border: 1px solid var(--primary-color);
+            border: 1px solid var(--border-color);
             background-color: #ffffff;
-            color: var(--primary-dark);
-            font-weight: bold;
             font-size: 0.9rem;
-            cursor: pointer;
             outline: none;
         }
 
-        /* Dynamic SVG Chart */
-        .chart-container {
+        .input-select:focus, .input-number:focus, .input-text:focus {
+            border-color: var(--primary-color);
+        }
+
+        /* Dashboard Grid / Charts */
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+
+        .chart-card {
             background: #ffffff;
             border: 1px solid var(--border-color);
             border-radius: 8px;
             padding: 15px;
-            margin-bottom: 25px;
-            text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
         }
 
-        .chart-title {
-            font-weight: bold;
+        .chart-card h3 {
+            margin-top: 0;
             color: var(--primary-dark);
-            margin-bottom: 10px;
             font-size: 1rem;
+            text-align: center;
+            margin-bottom: 15px;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 280px;
+            width: 100%;
         }
 
         /* Tables */
         .table-responsive {
-            max-height: 500px;
+            max-height: 480px;
             overflow-y: auto;
             border: 1px solid var(--border-color);
-            border-radius: 6px;
+            border-radius: 8px;
             margin-bottom: 25px;
+            background: #ffffff;
         }
 
         table {
@@ -177,13 +269,12 @@
         }
 
         thead th.col-total {
-            background-color: var(--accent-color);
-            border-color: #A0440A;
+            background-color: var(--accent-yellow);
+            color: #000000;
+            border-color: var(--accent-yellow-dark);
         }
-
-        thead th.col-details {
-            background-color: #315B7D;
-        }
+        
+        thead th.col-details { background-color: #315B7D; }
 
         tfoot tr td {
             font-weight: bold;
@@ -192,16 +283,11 @@
             border: 1px solid var(--border-color);
         }
 
-        tbody tr:nth-child(even) {
-            background-color: #F9FBFD;
-        }
-
-        tbody tr:hover {
-            background-color: #EBF2FA;
-        }
+        tbody tr:nth-child(even) { background-color: #F9FBFD; }
+        tbody tr:hover { background-color: #EBF2FA; }
 
         td {
-            padding: 9px 6px;
+            padding: 8px 6px;
             border: 1px solid var(--border-color);
         }
 
@@ -215,17 +301,16 @@
         }
 
         td.total-col {
-            background-color: var(--accent-light);
-            color: var(--accent-color);
+            background-color: var(--accent-yellow-light);
+            color: var(--accent-yellow-dark);
             font-weight: bold;
-            font-size: 0.95rem;
         }
 
         td.details-col {
             text-align: left;
             font-size: 0.82rem;
             color: #333;
-            max-width: 550px;
+            max-width: 500px;
         }
 
         .count-badge {
@@ -240,10 +325,14 @@
         .zero-count { color: #ccc; }
         .none-text { color: #999; font-style: italic; }
 
+        .status-ok { color: var(--success-color); font-weight: bold; }
+        .status-deficit { color: var(--danger-color); font-weight: bold; }
+        .status-tight { color: var(--warning-color); font-weight: bold; }
+
         /* Recommendation Cards */
         .recommendation-card {
-            background-color: #F0F4F8;
-            border-left: 5px solid var(--primary-color);
+            background-color: #FFFDE7;
+            border-left: 5px solid var(--accent-yellow);
             padding: 15px;
             margin-bottom: 15px;
             border-radius: 0 8px 8px 0;
@@ -252,7 +341,7 @@
         .recommendation-card h3 {
             margin: 0 0 8px 0;
             color: var(--primary-dark);
-            font-size: 1.05rem;
+            font-size: 1rem;
         }
 
         .recommendation-card p {
@@ -261,50 +350,290 @@
             line-height: 1.4;
         }
 
-        .status-ok { color: var(--success-color); font-weight: bold; }
-        .status-deficit { color: var(--danger-color); font-weight: bold; }
-        .status-tight { color: var(--warning-color); font-weight: bold; }
+        /* Modal Component */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-card {
+            background: #ffffff;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 900px;
+            max-height: 88vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+
+        .modal-header {
+            background-color: var(--primary-dark);
+            color: #ffffff;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 3px solid var(--accent-yellow);
+        }
+
+        .modal-header h3 {
+            margin: 0;
+            font-size: 1.1rem;
+        }
+
+        .modal-body {
+            padding: 20px;
+            overflow-y: auto;
+            flex-grow: 1;
+        }
+
+        .modal-footer {
+            padding: 15px 20px;
+            background: #f1f4f8;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+
+        .close-btn {
+            background: transparent;
+            border: none;
+            color: #ffffff;
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+
+        /* Tabbed Import View */
+        .tab-buttons {
+            display: flex;
+            gap: 5px;
+            border-bottom: 2px solid var(--border-color);
+            margin-bottom: 15px;
+            overflow-x: auto;
+        }
+
+        .tab-btn {
+            padding: 8px 16px;
+            border: none;
+            background: #E2E9F3;
+            color: var(--primary-dark);
+            font-weight: bold;
+            font-size: 0.85rem;
+            cursor: pointer;
+            border-radius: 6px 6px 0 0;
+            transition: all 0.2s;
+        }
+
+        .tab-btn.active {
+            background: var(--accent-yellow);
+            color: #000;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Management Panel Styles */
+        .mgmt-toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .agent-list-table {
+            width: 100%;
+            font-size: 0.85rem;
+        }
+
+        .agent-list-table th {
+            background-color: var(--primary-color);
+            color: #fff;
+            padding: 8px;
+        }
+
+        .agent-list-table td {
+            padding: 8px;
+        }
+
+        .badge-dept {
+            background: var(--accent-yellow-light);
+            color: var(--accent-yellow-dark);
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+
+        .badge-act {
+            background: #e2e9f3;
+            color: var(--primary-dark);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            margin-right: 4px;
+            display: inline-block;
+            margin-bottom: 2px;
+        }
+
+        .action-btns {
+            display: flex;
+            gap: 5px;
+            justify-content: center;
+        }
+
+        .btn-sm {
+            padding: 4px 8px;
+            font-size: 0.75rem;
+        }
+
+        /* Form Grid */
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-bottom: 15px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .form-group.full {
+            grid-column: span 2;
+        }
+
+        .form-group label {
+            font-weight: bold;
+            font-size: 0.8rem;
+            color: var(--primary-dark);
+        }
+
+        .hour-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            max-height: 120px;
+            overflow-y: auto;
+            border: 1px solid var(--border-color);
+            padding: 8px;
+            border-radius: 6px;
+            background: #fafafa;
+        }
+
+        .chip-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 0.75rem;
+            background: #fff;
+            border: 1px solid #ccc;
+            padding: 3px 6px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .chip-checkbox input {
+            cursor: pointer;
+        }
+
+        .auth-card {
+            max-width: 400px;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>Hour Availability & Call Volume Analysis</h1>
+    <div class="header">
+        <div>
+            <h1>WFM Capacity & Volume Dashboard</h1>
+            <small style="opacity: 0.85;">Workforce Management, Hourly Schedules & Consolidated Call Volume Analytics</small>
+        </div>
+        <div class="header-actions">
+            <button class="btn btn-secondary" id="btnOpenImport">Paste Team Data Tables</button>
+            <button class="btn btn-yellow" id="btnOpenMgmt">Manage Agents & Schedules</button>
+        </div>
+    </div>
 
     <!-- Controls Panel -->
     <div class="controls-panel">
         <div class="control-group">
             <span class="controls-title">Filter by Department</span>
             <div class="slicer-buttons" id="slicerContainer">
-                <button class="btn-slicer all-btn active" data-dept="ALL">All Departments (93 Agents)</button>
-                <button class="btn-slicer" data-dept="OBS - Phones">OBS - Phones (21)</button>
-                <button class="btn-slicer" data-dept="OBS - Cases">OBS - Cases (10)</button>
-                <button class="btn-slicer" data-dept="INS">INS (21)</button>
-                <button class="btn-slicer" data-dept="ELD">ELD (30)</button>
-                <button class="btn-slicer" data-dept="LL+">LL+ (8)</button>
-                <button class="btn-slicer" data-dept="TFX">TFX (3)</button>
+                <button class="btn-slicer all-btn active" data-dept="ALL">All Departments</button>
+                <button class="btn-slicer" data-dept="OBS - Phones">OBS - Phones</button>
+                <button class="btn-slicer" data-dept="OBS - Cases">OBS - Cases</button>
+                <button class="btn-slicer" data-dept="INS">INS</button>
+                <button class="btn-slicer" data-dept="ELD">ELD</button>
+                <button class="btn-slicer" data-dept="LL+">LL+</button>
+                <button class="btn-slicer" data-dept="TFX">TFX</button>
             </div>
         </div>
 
         <div class="control-group">
-            <span class="controls-title">Select Chart Hour</span>
-            <select id="hourSelect" class="hour-select"></select>
+            <span class="controls-title">Staffing Calculation Parameters</span>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <label style="font-size: 0.8rem; font-weight: bold;">AHT (min):</label>
+                <input type="number" id="ahtInput" class="input-number" value="5" min="1" max="60" style="width: 60px;">
+                <label style="font-size: 0.8rem; font-weight: bold;">Target Occupancy (%):</label>
+                <input type="number" id="occInput" class="input-number" value="85" min="50" max="100" style="width: 65px;">
+            </div>
         </div>
     </div>
 
-    <!-- Dynamic SVG Chart -->
-    <div class="chart-container">
-        <div class="chart-title" id="chartTitle">Department Distribution: Total Headcount vs. Away Agents</div>
-        <svg id="dynamicChart" width="850" height="220" style="margin: 0 auto; display: block;"></svg>
+    <!-- Visualizations -->
+    <div class="charts-grid">
+        <div class="chart-card">
+            <h3>Consolidated Call Volume vs. Available Phone Capacity</h3>
+            <div class="chart-container">
+                <canvas id="volumeCapacityChart"></canvas>
+            </div>
+        </div>
+        <div class="chart-card">
+            <h3>Department Breakdown: Headcount vs. Away Agents (Peak Hour)</h3>
+            <div class="chart-container">
+                <canvas id="deptDistributionChart"></canvas>
+            </div>
+        </div>
     </div>
 
-    <!-- Table 1: Agent Schedule & Away Status -->
-    <h2 class="section-title">1. Schedule & Away Agents Roster</h2>
+    <!-- Table 1: Schedule & Away Roster -->
+    <h2 class="section-title">
+        <span>1. Away Agents Matrix by Time Interval</span>
+    </h2>
     <div class="table-responsive">
-        <table id="scheduleTable">
+        <table>
             <thead>
                 <tr>
-                    <th>Time Interval</th>
+                    <th>Time Slot</th>
                     <th class="dept-col" data-dept="OBS - Phones">OBS - Phones</th>
                     <th class="dept-col" data-dept="OBS - Cases">OBS - Cases</th>
                     <th class="dept-col" data-dept="INS">INS</th>
@@ -312,94 +641,242 @@
                     <th class="dept-col" data-dept="LL+">LL+</th>
                     <th class="dept-col" data-dept="TFX">TFX</th>
                     <th class="col-total">Total Away Agents</th>
-                    <th class="col-details">List of Away Agents & Activity</th>
+                    <th class="col-details">Away Agents & Activity Details</th>
                 </tr>
             </thead>
-            <tbody id="tableBody"></tbody>
+            <tbody id="scheduleTableBody"></tbody>
             <tfoot>
                 <tr>
-                    <td>TOTAL AGENTS ROSTER</td>
-                    <td class="dept-foot" data-dept="OBS - Phones">21</td>
-                    <td class="dept-foot" data-dept="OBS - Cases">10</td>
-                    <td class="dept-foot" data-dept="INS">21</td>
-                    <td class="dept-foot" data-dept="ELD">30</td>
-                    <td class="dept-foot" data-dept="LL+">8</td>
-                    <td class="dept-foot" data-dept="TFX">3</td>
-                    <td id="footTotal" style="background-color: var(--accent-color); color: white;">93</td>
-                    <td id="footNote" style="text-align: left; font-style: italic;">Total Roster Headcount = 93 Agents</td>
+                    <td>TOTAL ROSTER</td>
+                    <td class="dept-foot" data-dept="OBS - Phones" id="foot-OBS - Phones">21</td>
+                    <td class="dept-foot" data-dept="OBS - Cases" id="foot-OBS - Cases">10</td>
+                    <td class="dept-foot" data-dept="INS" id="foot-INS">21</td>
+                    <td class="dept-foot" data-dept="ELD" id="foot-ELD">30</td>
+                    <td class="dept-foot" data-dept="LL+" id="foot-LL+">8</td>
+                    <td class="dept-foot" data-dept="TFX" id="foot-TFX">3</td>
+                    <td id="footTotal" style="background-color: var(--accent-yellow); color: black;">93</td>
+                    <td id="footNote" style="text-align: left; font-style: italic;">Selected Headcount Total = 93 Agents</td>
                 </tr>
             </tfoot>
         </table>
     </div>
 
-    <!-- Table 2: Updated Title -->
+    <!-- Table 2: Call Volume Metrics -->
     <h2 class="section-title">2. Consolidated Call Volume Metrics</h2>
     <div class="table-responsive">
         <table>
             <thead>
                 <tr>
                     <th>Time Slot</th>
-                    <th>Avg Answered</th>
-                    <th>Avg Abandoned Queue</th>
-                    <th>Avg Abandoned CSAT</th>
-                    <th>Avg Abandoned Hold</th>
-                    <th>Avg Total Volume</th>
-                    <th>Max Historical Volume</th>
+                    <th>Avg. Answered</th>
+                    <th>Avg. Abnd. in Queue</th>
+                    <th>Avg. Abnd. in CSAT</th>
+                    <th>Avg. Abnd. on Hold</th>
+                    <th style="background-color: var(--accent-yellow); color: #000;">Avg. Total Volume</th>
+                    <th>Max Historical</th>
                 </tr>
             </thead>
             <tbody id="volumeTableBody"></tbody>
         </table>
     </div>
 
-    <!-- Table 3: Capacity & Staffing Gap Analysis -->
-    <h2 class="section-title">3. Capacity & Staffing Requirements (Volume vs. Phone Availability)</h2>
+    <!-- Table 3: Capacity & Staffing Gap -->
+    <h2 class="section-title">3. Staffing Requirements & Coverage Gap Analysis</h2>
     <div class="table-responsive">
         <table>
             <thead>
                 <tr>
                     <th>Time Slot</th>
-                    <th>Avg Call Volume</th>
+                    <th style="background-color: var(--accent-yellow); color: #000;">Avg Call Volume</th>
                     <th>Available Phone Agents</th>
                     <th>Required Phone Agents</th>
-                    <th>Gap / Net Coverage</th>
-                    <th>Recommended Staffing Action</th>
+                    <th>Net Gap / Coverage</th>
+                    <th>Recommended Action</th>
                 </tr>
             </thead>
             <tbody id="comparisonTableBody"></tbody>
         </table>
     </div>
 
-    <!-- Recommendations Section -->
+    <!-- Section 4: Operational Recommendations -->
     <h2 class="section-title">4. Operational Recommendations & Staffing Insights</h2>
     <div id="recommendationsContainer">
         <div class="recommendation-card">
             <h3>Peak-Hour Shift & Meal Staggering (9:00 AM – 2:00 PM)</h3>
-            <p>During the primary peak hours, overall consolidated call volume reaches <b>170 to 203 calls/hour</b>. However, simultaneous agent breaks reduce the available <i>OBS - Phones</i> team down to 12–14 agents, creating a shortage of <b>3 to 5 agents</b>. Re-staggering lunch breaks into smaller batches across 11:00 AM – 3:00 PM will immediately close this coverage gap.</p>
+            <p>During the main morning surge, consolidated call volume increases significantly, reaching <b>203 to 253 calls/hour</b> between 9:00 AM and 1:00 PM. However, overlapping lunches and breaks reduce the available <i>OBS - Phones</i> team down to just <b>12–14 agents</b>, generating a coverage deficit of <b>7 to 11 agents</b> against overall demand. Staggering meal schedules into smaller shifts across 11:00 AM – 3:00 PM is essential to prevent severe queue congestion.</p>
         </div>
         <div class="recommendation-card">
-            <h3>Cross-Queue Reinforcement (Flex Staffing)</h3>
-            <p>During maximum historical spikes (where volume reaches 300+ calls/hour), <i>OBS - Phones</i> alone cannot sustain service levels. We recommend establishing cross-skilling protocols so that <b>4 to 5 agents</b> from non-phone teams (such as <i>OBS - Cases</i> or <i>ELD</i>) automatically assist during high-volume spikes.</p>
+            <h3>Cross-Queue Reinforcement & Flex Staffing</h3>
+            <p>With historical volume spiking up to <b>293 calls/hour</b> at 9:00 AM, <i>OBS - Phones</i> (21 agents total roster) cannot handle full consolidated demand alone during peak windows. We recommend triggering automated cross-skilling protocols so that <b>7 to 11 agents</b> from non-phone or lower-volume teams handle phone overflow during peak windows.</p>
         </div>
-        <div class="recommendation-card">
-            <h3>Evening Capacity Realignment (6:00 PM – 11:00 PM)</h3>
-            <p>After 6:00 PM, call volume plummets to under 28 calls/hour and drops to zero by 7:00 PM. Evening staffing can be scaled down safely, allowing resources to be reallocated toward the busy morning surge (8:00 AM – 12:00 PM).</p>
+    </div>
+</div>
+
+<!-- MODAL: Import Team Volume Tables -->
+<div class="modal-overlay" id="importModal">
+    <div class="modal-card">
+        <div class="modal-header">
+            <h3>Paste Call Volume Tables by Team</h3>
+            <button class="close-btn" id="btnCloseImport">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p style="font-size:0.85rem; color:#555; margin-top:0;">Paste data directly from Excel or TSV/CSV format for each queue. The system expects headers: <b>Hour, Answered, Abnd. in Queue, Abnd in CSAT, Abnd on Hold</b>.</p>
+            
+            <div class="tab-buttons" id="teamImportTabs">
+                <button class="tab-btn active" data-tab="tab-obs">OBS Phones</button>
+                <button class="tab-btn" data-tab="tab-ins">INS Phones</button>
+                <button class="tab-btn" data-tab="tab-eld">ELD Phones</button>
+                <button class="tab-btn" data-tab="tab-ll">LL+</button>
+                <button class="tab-btn" data-tab="tab-tfx">TFX</button>
+            </div>
+
+            <!-- OBS Phones Tab -->
+            <div class="tab-content active" id="tab-obs">
+                <div class="form-group">
+                    <label>OBS Phones Volume Data:</label>
+                    <textarea class="input-text team-volume-input" id="volumeText_obs" style="height: 220px; font-family: monospace; font-size:0.8rem;" placeholder="Hour&#192;Answered&#192;Abnd. in Queue&#192;Abnd in CSAT&#192;Abnd on Hold&#10;8:00 AM&#192;45&#192;10&#192;5&#192;1&#10;9:00 AM&#192;70&#192;20&#192;10&#192;2..."></textarea>
+                </div>
+            </div>
+
+            <!-- INS Phones Tab -->
+            <div class="tab-content" id="tab-ins">
+                <div class="form-group">
+                    <label>INS Phones Volume Data:</label>
+                    <textarea class="input-text team-volume-input" id="volumeText_ins" style="height: 220px; font-family: monospace; font-size:0.8rem;" placeholder="Hour&#192;Answered&#192;Abnd. in Queue&#192;Abnd in CSAT&#192;Abnd on Hold..."></textarea>
+                </div>
+            </div>
+
+            <!-- ELD Phones Tab -->
+            <div class="tab-content" id="tab-eld">
+                <div class="form-group">
+                    <label>ELD Phones Volume Data:</label>
+                    <textarea class="input-text team-volume-input" id="volumeText_eld" style="height: 220px; font-family: monospace; font-size:0.8rem;" placeholder="Hour&#192;Answered&#192;Abnd. in Queue&#192;Abnd in CSAT&#192;Abnd on Hold..."></textarea>
+                </div>
+            </div>
+
+            <!-- LL+ Tab -->
+            <div class="tab-content" id="tab-ll">
+                <div class="form-group">
+                    <label>LL+ Volume Data:</label>
+                    <textarea class="input-text team-volume-input" id="volumeText_ll" style="height: 220px; font-family: monospace; font-size:0.8rem;" placeholder="Hour&#192;Answered&#192;Abnd. in Queue&#192;Abnd in CSAT&#192;Abnd on Hold..."></textarea>
+                </div>
+            </div>
+
+            <!-- TFX Tab -->
+            <div class="tab-content" id="tab-tfx">
+                <div class="form-group">
+                    <label>TFX Volume Data:</label>
+                    <textarea class="input-text team-volume-input" id="volumeText_tfx" style="height: 220px; font-family: monospace; font-size:0.8rem;" placeholder="Hour&#192;Answered&#192;Abnd. in Queue&#192;Abnd in CSAT&#192;Abnd on Hold..."></textarea>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-outline" id="btnCancelImport">Cancel</button>
+            <button class="btn btn-yellow" id="btnApplyImport">Calculate & Consolidate Volume</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: Authentication -->
+<div class="modal-overlay" id="authModal">
+    <div class="modal-card auth-card">
+        <div class="modal-header">
+            <h3>Management Authentication</h3>
+            <button class="close-btn" id="btnCloseAuth">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p style="font-size:0.9rem;">Please enter the administrative password to edit or delete agent schedules:</p>
+            <div class="form-group">
+                <input type="password" id="authPasswordInput" class="input-text" placeholder="Access Password" style="text-align:center; font-size:1rem;">
+                <span id="authErrorMsg" style="color:var(--danger-color); font-size:0.8rem; display:none; margin-top:5px;">Incorrect password. Try again.</span>
+            </div>
+        </div>
+        <div class="modal-footer" style="justify-content:center;">
+            <button class="btn btn-yellow" id="btnSubmitAuth">Verify Access</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: Manage Agents & Schedules -->
+<div class="modal-overlay" id="mgmtModal">
+    <div class="modal-card" style="max-width: 950px;">
+        <div class="modal-header">
+            <h3>Agent Roster & Away Schedules Management</h3>
+            <button class="close-btn" id="btnCloseMgmt">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="mgmt-toolbar">
+                <div style="display:flex; gap:10px; align-items:center;">
+                    <label style="font-weight:bold; font-size:0.85rem;">Select Department:</label>
+                    <select id="mgmtDeptSelect" class="input-select">
+                        <option value="OBS - Phones">OBS - Phones</option>
+                        <option value="OBS - Cases">OBS - Cases</option>
+                        <option value="INS">INS</option>
+                        <option value="ELD">ELD</option>
+                        <option value="LL+">LL+</option>
+                        <option value="TFX">TFX</option>
+                    </select>
+                </div>
+                <button class="btn btn-yellow btn-sm" id="btnAddNewAgentForm">+ Add New Agent</button>
+            </div>
+
+            <!-- Agent Form -->
+            <div id="agentFormCard" style="display:none; background:#f8f9fa; border:1px solid var(--border-color); padding:15px; border-radius:8px; margin-bottom:15px;">
+                <h4 id="agentFormTitle" style="margin-top:0; margin-bottom:10px; color:var(--primary-dark);">Add Agent</h4>
+                <input type="hidden" id="editAgentId" value="">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Agent Name:</label>
+                        <input type="text" id="agentNameInput" class="input-text" placeholder="First Last">
+                    </div>
+                    <div class="form-group">
+                        <label>Department:</label>
+                        <select id="agentDeptInput" class="input-select">
+                            <option value="OBS - Phones">OBS - Phones</option>
+                            <option value="OBS - Cases">OBS - Cases</option>
+                            <option value="INS">INS</option>
+                            <option value="ELD">ELD</option>
+                            <option value="LL+">LL+</option>
+                            <option value="TFX">TFX</option>
+                        </select>
+                    </div>
+                    <div class="form-group full">
+                        <label>Select Away Hours (Break / Lunch):</label>
+                        <div class="hour-chips" id="hourChipsContainer"></div>
+                    </div>
+                </div>
+                <div style="display:flex; justify-content:flex-end; gap:8px;">
+                    <button class="btn btn-outline btn-sm" id="btnCancelAgentForm">Cancel</button>
+                    <button class="btn btn-yellow btn-sm" id="btnSaveAgent">Save Agent</button>
+                </div>
+            </div>
+
+            <!-- Agents List Table -->
+            <div class="table-responsive" style="max-height: 350px;">
+                <table class="agent-list-table">
+                    <thead>
+                        <tr>
+                            <th>Agent Name</th>
+                            <th>Department</th>
+                            <th>Away Hours & Activities</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="mgmtAgentsTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" id="btnCloseMgmtFooter">Close</button>
         </div>
     </div>
 </div>
 
 <script>
-    function generateHourlySlots() {
-        const slots = [];
-        for (let h = 0; h < 24; h++) {
-            const suffix = h >= 12 ? 'PM' : 'AM';
-            let h12 = h % 12;
-            if (h12 === 0) h12 = 12;
-            slots.push({ time12: `${h12}:00 ${suffix}`, h24: h });
-        }
-        return slots;
-    }
-
-    const deptRosterCounts = {
+    // System Data & State
+    const depts = ['OBS - Phones', 'OBS - Cases', 'INS', 'ELD', 'LL+', 'TFX'];
+    
+    let deptRosterCounts = {
         'OBS - Phones': 21,
         'OBS - Cases': 10,
         'INS': 21,
@@ -408,8 +885,8 @@
         'TFX': 3
     };
 
-    // Roster Away Pattern
-    const hourlyDataPattern = {
+    // Initial Away Pattern
+    let hourlyDataPattern = {
         0: {"OBS - Phones": [], "OBS - Cases": [], "INS": [], "ELD": [], "LL+": [], "TFX": []},
         1: {"OBS - Phones": [], "OBS - Cases": [], "INS": [], "ELD": [], "LL+": [], "TFX": []},
         2: {"OBS - Phones": [], "OBS - Cases": [], "INS": [], "ELD": [], "LL+": [], "TFX": []},
@@ -506,93 +983,207 @@
         23: {"OBS - Phones": [], "OBS - Cases": [], "INS": [], "ELD": [], "LL+": [], "TFX": []}
     };
 
-    // Consolidated Volume Data across all 5 tables from the file
-    const volumeDataCombined = {
+    // Store separate volume data tables for each team
+    let teamVolumeData = {
+        obs: {},
+        ins: {},
+        eld: {},
+        ll: {},
+        tfx: {}
+    };
+
+    // Consolidated Volume Data
+    let volumeDataCombined = {
         0: { ans: 0.0, abQ: 0.0, abCSAT: 0.0, abH: 0.0, tot: 0.0, max: 0 },
         1: { ans: 0.0, abQ: 0.0, abCSAT: 0.0, abH: 0.0, tot: 0.0, max: 0 },
         2: { ans: 0.0, abQ: 0.0, abCSAT: 0.0, abH: 0.0, tot: 0.0, max: 0 },
         3: { ans: 0.0, abQ: 0.0, abCSAT: 0.0, abH: 0.0, tot: 0.0, max: 0 },
         4: { ans: 0.0, abQ: 0.0, abCSAT: 0.0, abH: 0.0, tot: 0.0, max: 0 },
         5: { ans: 0.0, abQ: 0.0, abCSAT: 0.0, abH: 0.0, tot: 0.0, max: 0 },
-        6: { ans: 9.0, abQ: 4.6, abCSAT: 3.3, abH: 0.0, tot: 17.2, max: 37 },
-        7: { ans: 49.3, abQ: 10.3, abCSAT: 19.4, abH: 0.4, tot: 79.9, max: 161 },
-        8: { ans: 99.6, abQ: 12.9, abCSAT: 37.4, abH: 1.3, tot: 151.7, max: 310 },
-        9: { ans: 113.9, abQ: 25.4, abCSAT: 46.1, abH: 1.4, tot: 188.4, max: 399 },
-        10: { ans: 126.1, abQ: 21.6, abCSAT: 53.1, abH: 1.1, tot: 202.9, max: 339 },
-        11: { ans: 113.9, abQ: 16.6, abCSAT: 45.7, abH: 1.3, tot: 178.6, max: 329 },
-        12: { ans: 107.1, abQ: 27.2, abCSAT: 38.5, abH: 0.8, tot: 174.4, max: 302 },
-        13: { ans: 95.4, abQ: 36.6, abCSAT: 34.6, abH: 0.9, tot: 168.6, max: 325 },
-        14: { ans: 97.1, abQ: 16.7, abCSAT: 35.1, abH: 1.1, tot: 150.6, max: 282 },
-        15: { ans: 85.5, abQ: 16.3, abCSAT: 35.1, abH: 1.0, tot: 138.9, max: 256 },
-        16: { ans: 53.9, abQ: 10.4, abCSAT: 27.6, abH: 0.6, tot: 93.4, max: 163 },
-        17: { ans: 24.8, abQ: 15.4, abCSAT: 13.1, abH: 0.1, tot: 53.6, max: 107 },
-        18: { ans: 10.5, abQ: 11.7, abCSAT: 4.6, abH: 0.0, tot: 27.1, max: 52 },
-        19: { ans: 0.0, abQ: 0.2, abCSAT: 0.0, abH: 0.0, tot: 0.2, max: 2 },
+        6: { ans: 7.5, abQ: 5.5, abCSAT: 1.5, abH: 0.0, tot: 15.0, max: 18 },
+        7: { ans: 54.5, abQ: 22.5, abCSAT: 19.5, abH: 1.5, tot: 100.5, max: 102 },
+        8: { ans: 88.0, abQ: 60.0, abCSAT: 32.5, abH: 6.0, tot: 190.0, max: 196 },
+        9: { ans: 139.5, abQ: 75.0, abCSAT: 34.5, abH: 0.5, tot: 253.0, max: 293 },
+        10: { ans: 135.5, abQ: 62.0, abCSAT: 36.0, abH: 1.0, tot: 236.5, max: 249 },
+        11: { ans: 149.5, abQ: 44.5, abCSAT: 43.5, abH: 0.5, tot: 239.5, max: 266 },
+        12: { ans: 123.5, abQ: 45.0, abCSAT: 35.0, abH: 1.5, tot: 207.5, max: 217 },
+        13: { ans: 97.0, abQ: 64.0, abCSAT: 37.5, abH: 2.0, tot: 203.0, max: 216 },
+        14: { ans: 94.5, abQ: 30.0, abCSAT: 33.5, abH: 0.5, tot: 160.0, max: 168 },
+        15: { ans: 96.0, abQ: 24.0, abCSAT: 24.0, abH: 0.5, tot: 145.5, max: 166 },
+        16: { ans: 60.0, abQ: 42.0, abCSAT: 20.0, abH: 0.5, tot: 123.0, max: 128 },
+        17: { ans: 96.0, abQ: 7.0, abCSAT: 14.0, abH: 0.0, tot: 118.5, max: 145 },
+        18: { ans: 30.5, abQ: 2.5, abCSAT: 8.5, abH: 0.0, tot: 41.5, max: 54 },
+        19: { ans: 0.0, abQ: 0.5, abCSAT: 0.0, abH: 0.0, tot: 0.5, max: 1 },
         20: { ans: 0.0, abQ: 0.0, abCSAT: 0.0, abH: 0.0, tot: 0.0, max: 0 },
         21: { ans: 0.0, abQ: 0.0, abCSAT: 0.0, abH: 0.0, tot: 0.0, max: 0 },
         22: { ans: 0.0, abQ: 0.0, abCSAT: 0.0, abH: 0.0, tot: 0.0, max: 0 },
         23: { ans: 0.0, abQ: 0.0, abCSAT: 0.0, abH: 0.0, tot: 0.0, max: 0 }
     };
 
-    const hourlySlots = generateHourlySlots();
-    const depts = ['OBS - Phones', 'OBS - Cases', 'INS', 'ELD', 'LL+', 'TFX'];
-    let selectedDepts = new Set(['ALL']);
-    let manualSelectedHour = null;
+    let masterAgentsDB = [];
 
-    function renderTable() {
-        const tbody = document.getElementById('tableBody');
+    function initMasterDBFromPattern() {
+        masterAgentsDB = [];
+        let agentMap = {};
+        let idCounter = 1;
+
+        for (let h = 0; h < 24; h++) {
+            for (let d of depts) {
+                if (hourlyDataPattern[h] && hourlyDataPattern[h][d]) {
+                    hourlyDataPattern[h][d].forEach(ag => {
+                        let key = ag.name + '___' + d;
+                        if (!agentMap[key]) {
+                            agentMap[key] = { id: idCounter++, name: ag.name, dept: d, hours: {} };
+                        }
+                        agentMap[key].hours[h] = ag.act || "Break/Lunch";
+                    });
+                }
+            }
+        }
+        for (let k in agentMap) {
+            masterAgentsDB.push(agentMap[k]);
+        }
+    }
+
+    function syncPatternFromMasterDB() {
+        for (let h = 0; h < 24; h++) {
+            hourlyDataPattern[h] = {};
+            for (let d of depts) {
+                hourlyDataPattern[h][d] = [];
+            }
+        }
+
+        masterAgentsDB.forEach(ag => {
+            for (let h in ag.hours) {
+                let hourInt = parseInt(h, 10);
+                if (hourlyDataPattern[hourInt] && hourlyDataPattern[hourInt][ag.dept]) {
+                    hourlyDataPattern[hourInt][ag.dept].push({
+                        name: ag.name,
+                        act: ag.hours[h]
+                    });
+                }
+            }
+        });
+    }
+
+    // App State
+    let selectedDepts = new Set(['ALL']);
+    let isAuthenticated = false;
+    let pendingAction = null;
+
+    // Chart instances
+    let volumeCapacityChartInstance = null;
+    let deptDistributionChartInstance = null;
+
+    function generateHourlySlots() {
+        const slots = [];
+        for (let h = 0; h < 24; h++) {
+            const suffix = h >= 12 ? 'PM' : 'AM';
+            let h12 = h % 12;
+            if (h12 === 0) h12 = 12;
+            slots.push({ time12: `${h12}:00 ${suffix}`, h24: h });
+        }
+        return slots;
+    }
+    const hourlySlots = generateHourlySlots();
+
+    document.addEventListener("DOMContentLoaded", () => {
+        initMasterDBFromPattern();
+        initCharts();
+        renderAll();
+        setupEventListeners();
+    });
+
+    function renderAll() {
+        renderScheduleTable();
+        renderVolumeTable();
+        renderComparisonTable();
+        updateCharts();
+    }
+
+    // 1. Render Schedule Table
+    function renderScheduleTable() {
+        const tbody = document.getElementById('scheduleTableBody');
         tbody.innerHTML = '';
+        const isAll = selectedDepts.has('ALL');
+
+        document.querySelectorAll('th.dept-col').forEach(th => {
+            const d = th.getAttribute('data-dept');
+            th.style.display = (isAll || selectedDepts.has(d)) ? '' : 'none';
+        });
+
+        document.querySelectorAll('td.dept-foot').forEach(td => {
+            const d = td.getAttribute('data-dept');
+            td.style.display = (isAll || selectedDepts.has(d)) ? '' : 'none';
+            if (deptRosterCounts[d] !== undefined) {
+                td.textContent = deptRosterCounts[d];
+            }
+        });
+
+        let totalHeadcount = 0;
+        if (isAll) {
+            totalHeadcount = Object.values(deptRosterCounts).reduce((a, b) => a + b, 0);
+        } else {
+            selectedDepts.forEach(d => {
+                if (deptRosterCounts[d]) totalHeadcount += deptRosterCounts[d];
+            });
+        }
+        document.getElementById('footTotal').textContent = totalHeadcount;
+        document.getElementById('footNote').textContent = `Selected Headcount Total = ${totalHeadcount} Agents`;
 
         hourlySlots.forEach(slot => {
             const tr = document.createElement('tr');
-            tr.setAttribute('data-h24', slot.h24);
-
+            
             const tdTime = document.createElement('td');
             tdTime.className = 'time-col';
             tdTime.textContent = slot.time12;
             tr.appendChild(tdTime);
 
+            let rowTotalAway = 0;
+            let rowDetails = [];
+
             depts.forEach(dept => {
                 const td = document.createElement('td');
                 td.className = 'dept-cell';
-                td.setAttribute('data-dept', dept);
+                const isVisible = isAll || selectedDepts.has(dept);
+                td.style.display = isVisible ? '' : 'none';
 
-                let agents = [];
-                if (hourlyDataPattern[slot.h24] && hourlyDataPattern[slot.h24][dept]) {
-                    agents = hourlyDataPattern[slot.h24][dept];
+                let agents = (hourlyDataPattern[slot.h24] && hourlyDataPattern[slot.h24][dept]) ? hourlyDataPattern[slot.h24][dept] : [];
+                
+                if (isVisible) {
+                    rowTotalAway += agents.length;
+                    agents.forEach(ag => {
+                        rowDetails.push(`<b>${ag.name}</b> (${dept} - <i>${ag.act}</i>)`);
+                    });
                 }
 
                 td.innerHTML = agents.length > 0 
-                    ? `<span class="count-badge">${agents.length}</span>`
+                    ? `<span class="count-badge">${agents.length}</span>` 
                     : `<span class="zero-count">-</span>`;
-
                 tr.appendChild(td);
             });
 
             const tdTotal = document.createElement('td');
             tdTotal.className = 'total-col';
-            tdTotal.textContent = '0';
+            tdTotal.textContent = rowTotalAway;
             tr.appendChild(tdTotal);
 
             const tdDetails = document.createElement('td');
             tdDetails.className = 'details-col';
-            tdDetails.innerHTML = '<span class="none-text">None</span>';
+            tdDetails.innerHTML = rowDetails.length > 0 ? rowDetails.join(', ') : '<span class="none-text">None</span>';
             tr.appendChild(tdDetails);
 
             tbody.appendChild(tr);
         });
-
-        updateTableVisibility();
-        renderVolumeTable();
-        renderComparisonTable();
     }
 
+    // 2. Render Volume Table
     function renderVolumeTable() {
         const tbody = document.getElementById('volumeTableBody');
         tbody.innerHTML = '';
 
         hourlySlots.forEach(slot => {
-            const v = volumeDataCombined[slot.h24];
+            const v = volumeDataCombined[slot.h24] || { ans:0, abQ:0, abCSAT:0, abH:0, tot:0, max:0 };
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td class="time-col">${slot.time12}</td>
@@ -600,24 +1191,28 @@
                 <td>${v.abQ.toFixed(1)}</td>
                 <td>${v.abCSAT.toFixed(1)}</td>
                 <td>${v.abH.toFixed(1)}</td>
-                <td><b>${v.tot.toFixed(1)}</b></td>
+                <td style="background-color: var(--accent-yellow-light); font-weight: bold; color: var(--accent-yellow-dark);"><b>${v.tot.toFixed(1)}</b></td>
                 <td>${v.max}</td>
             `;
             tbody.appendChild(tr);
         });
     }
 
+    // 3. Render Capacity & Gap Table
     function renderComparisonTable() {
         const tbody = document.getElementById('comparisonTableBody');
         tbody.innerHTML = '';
 
-        hourlySlots.forEach(slot => {
-            const v = volumeDataCombined[slot.h24];
-            const phoneAway = hourlyDataPattern[slot.h24]["OBS - Phones"] ? hourlyDataPattern[slot.h24]["OBS - Phones"].length : 0;
-            const phoneAvail = deptRosterCounts["OBS - Phones"] - phoneAway;
+        const aht = parseFloat(document.getElementById('ahtInput').value) || 5;
+        const occ = (parseFloat(document.getElementById('occInput').value) || 85) / 100;
+        const callsPerHourPerAgent = (60 / aht) * occ;
 
-            // Capacity calculation assuming AHT = 5 mins = 12 calls/hr/agent with 85% target occupancy
-            const reqAgents = v.tot > 0 ? Math.ceil((v.tot / 12) * 1.15) : 0;
+        hourlySlots.forEach(slot => {
+            const v = volumeDataCombined[slot.h24] || { tot: 0 };
+            const phoneAway = (hourlyDataPattern[slot.h24]["OBS - Phones"]) ? hourlyDataPattern[slot.h24]["OBS - Phones"].length : 0;
+            const phoneAvail = Math.max(0, deptRosterCounts["OBS - Phones"] - phoneAway);
+
+            const reqAgents = v.tot > 0 ? Math.ceil(v.tot / callsPerHourPerAgent) : 0;
             const gap = phoneAvail - reqAgents;
 
             let recText = "";
@@ -632,7 +1227,7 @@
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td class="time-col">${slot.time12}</td>
-                <td><b>${v.tot.toFixed(1)}</b></td>
+                <td style="background-color: var(--accent-yellow-light);"><b>${v.tot.toFixed(1)}</b></td>
                 <td>${phoneAvail} of ${deptRosterCounts["OBS - Phones"]}</td>
                 <td>${reqAgents}</td>
                 <td>${gap >= 0 ? '+' + gap : gap}</td>
@@ -642,228 +1237,483 @@
         });
     }
 
-    document.getElementById('slicerContainer').addEventListener('click', (e) => {
-        if (!e.target.classList.contains('btn-slicer')) return;
-
-        const dept = e.target.getAttribute('data-dept');
-        const allBtn = document.querySelector('.btn-slicer[data-dept="ALL"]');
-
-        if (dept === 'ALL') {
-            selectedDepts.clear();
-            selectedDepts.add('ALL');
-            document.querySelectorAll('.btn-slicer').forEach(btn => btn.classList.remove('active'));
-            allBtn.classList.add('active');
-        } else {
-            if (selectedDepts.has('ALL')) {
-                selectedDepts.delete('ALL');
-                allBtn.classList.remove('active');
-            }
-
-            if (selectedDepts.has(dept)) {
-                selectedDepts.delete(dept);
-                e.target.classList.remove('active');
-            } else {
-                selectedDepts.add(dept);
-                e.target.classList.add('active');
-            }
-
-            if (selectedDepts.size === 0) {
-                selectedDepts.add('ALL');
-                allBtn.classList.add('active');
-            }
-        }
-
-        manualSelectedHour = null;
-        updateTableVisibility();
-    });
-
-    document.getElementById('hourSelect').addEventListener('change', (e) => {
-        manualSelectedHour = parseInt(e.target.value, 10);
-        renderDynamicChart(selectedDepts.has('ALL'));
-    });
-
-    function updateTableVisibility() {
-        const isAll = selectedDepts.has('ALL');
-
-        document.querySelectorAll('th.dept-col').forEach(th => {
-            const d = th.getAttribute('data-dept');
-            th.style.display = (isAll || selectedDepts.has(d)) ? '' : 'none';
-        });
-
-        document.querySelectorAll('td.dept-foot').forEach(td => {
-            const d = td.getAttribute('data-dept');
-            td.style.display = (isAll || selectedDepts.has(d)) ? '' : 'none';
-        });
-
-        let totalHeadcount = 0;
-        if (isAll) {
-            totalHeadcount = 93;
-        } else {
-            selectedDepts.forEach(d => {
-                if (deptRosterCounts[d]) totalHeadcount += deptRosterCounts[d];
-            });
-        }
-        document.getElementById('footTotal').textContent = totalHeadcount;
-        document.getElementById('footNote').textContent = `Total Selected Roster Headcount = ${totalHeadcount} Agents`;
-
-        document.querySelectorAll('#tableBody tr').forEach(tr => {
-            const h24 = tr.getAttribute('data-h24');
-            let newRowTotal = 0;
-            const newDetails = [];
-
-            tr.querySelectorAll('td.dept-cell').forEach(td => {
-                const d = td.getAttribute('data-dept');
-                const isVisible = isAll || selectedDepts.has(d);
-
-                if (isVisible) {
-                    td.style.display = '';
-                    const badge = td.querySelector('.count-badge');
-                    if (badge) {
-                        newRowTotal += parseInt(badge.textContent, 10);
-                        if (hourlyDataPattern[h24] && hourlyDataPattern[h24][d]) {
-                            hourlyDataPattern[h24][d].forEach(ag => {
-                                newDetails.push(`<b>${ag.name}</b> (${d} - <i>${ag.act}</i>)`);
-                            });
-                        }
+    // Charting Engine
+    function initCharts() {
+        const ctx1 = document.getElementById('volumeCapacityChart').getContext('2d');
+        volumeCapacityChartInstance = new Chart(ctx1, {
+            type: 'line',
+            data: {
+                labels: hourlySlots.map(s => s.time12),
+                datasets: [
+                    {
+                        label: 'Total Call Volume (Yellow Accent)',
+                        data: [],
+                        borderColor: '#E6A100',
+                        backgroundColor: 'rgba(230, 161, 0, 0.2)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.3
+                    },
+                    {
+                        label: 'Available Phone Capacity',
+                        data: [],
+                        borderColor: '#1F4E78',
+                        borderDash: [5, 5],
+                        borderWidth: 2,
+                        fill: false
                     }
-                } else {
-                    td.style.display = 'none';
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'top' }
+                },
+                scales: {
+                    y: { beginAtZero: true }
                 }
-            });
-
-            tr.querySelector('td.total-col').textContent = newRowTotal;
-            const detailsCell = tr.querySelector('td.details-col');
-            detailsCell.innerHTML = newDetails.length > 0 ? newDetails.join(', ') : '<span class="none-text">None</span>';
+            }
         });
 
-        renderDynamicChart(isAll);
+        const ctx2 = document.getElementById('deptDistributionChart').getContext('2d');
+        deptDistributionChartInstance = new Chart(ctx2, {
+            type: 'bar',
+            data: {
+                labels: depts,
+                datasets: [
+                    {
+                        label: 'Total Headcount',
+                        data: [],
+                        backgroundColor: '#1F4E78'
+                    },
+                    {
+                        label: 'Away Agents in Peak Hour (1:00 PM)',
+                        data: [],
+                        backgroundColor: '#E6A100'
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'top' }
+                },
+                scales: {
+                    y: { beginAtZero: true }
+                }
+            }
+        });
     }
 
-    function renderDynamicChart(isAll) {
-        const svg = document.getElementById('dynamicChart');
-        svg.innerHTML = '';
+    function updateCharts() {
+        const aht = parseFloat(document.getElementById('ahtInput').value) || 5;
+        const occ = (parseFloat(document.getElementById('occInput').value) || 85) / 100;
+        const callsPerHourPerAgent = (60 / aht) * occ;
 
-        const activeDepts = isAll ? depts : Array.from(selectedDepts);
+        const volumeData = [];
+        const capacityData = [];
 
-        let peakHour = 13;
-        let maxAwayInPeak = -1;
+        hourlySlots.forEach(slot => {
+            const v = volumeDataCombined[slot.h24] ? volumeDataCombined[slot.h24].tot : 0;
+            const phoneAway = hourlyDataPattern[slot.h24]["OBS - Phones"] ? hourlyDataPattern[slot.h24]["OBS - Phones"].length : 0;
+            const phoneAvail = Math.max(0, deptRosterCounts["OBS - Phones"] - phoneAway);
+            const callCapacity = Math.round(phoneAvail * callsPerHourPerAgent);
 
+            volumeData.push(v);
+            capacityData.push(callCapacity);
+        });
+
+        volumeCapacityChartInstance.data.datasets[0].data = volumeData;
+        volumeCapacityChartInstance.data.datasets[1].data = capacityData;
+        volumeCapacityChartInstance.update();
+
+        const totalHeadcounts = depts.map(d => deptRosterCounts[d]);
+        const peakAway = depts.map(d => (hourlyDataPattern[13][d] ? hourlyDataPattern[13][d].length : 0));
+
+        deptDistributionChartInstance.data.datasets[0].data = totalHeadcounts;
+        deptDistributionChartInstance.data.datasets[1].data = peakAway;
+        deptDistributionChartInstance.update();
+    }
+
+    function requireAuth(callback) {
+        if (isAuthenticated) {
+            callback();
+        } else {
+            pendingAction = callback;
+            document.getElementById('authPasswordInput').value = '';
+            document.getElementById('authErrorMsg').style.display = 'none';
+            document.getElementById('authModal').classList.add('active');
+        }
+    }
+
+    function setupEventListeners() {
+        // Slicers
+        document.getElementById('slicerContainer').addEventListener('click', (e) => {
+            if (!e.target.classList.contains('btn-slicer')) return;
+            const dept = e.target.getAttribute('data-dept');
+            const allBtn = document.querySelector('.btn-slicer[data-dept="ALL"]');
+
+            if (dept === 'ALL') {
+                selectedDepts.clear();
+                selectedDepts.add('ALL');
+                document.querySelectorAll('.btn-slicer').forEach(btn => btn.classList.remove('active'));
+                allBtn.classList.add('active');
+            } else {
+                if (selectedDepts.has('ALL')) {
+                    selectedDepts.delete('ALL');
+                    allBtn.classList.remove('active');
+                }
+
+                if (selectedDepts.has(dept)) {
+                    selectedDepts.delete(dept);
+                    e.target.classList.remove('active');
+                } else {
+                    selectedDepts.add(dept);
+                    e.target.classList.add('active');
+                }
+
+                if (selectedDepts.size === 0) {
+                    selectedDepts.add('ALL');
+                    allBtn.classList.add('active');
+                }
+            }
+            renderScheduleTable();
+        });
+
+        // Parameters inputs
+        document.getElementById('ahtInput').addEventListener('input', () => {
+            renderComparisonTable();
+            updateCharts();
+        });
+        document.getElementById('occInput').addEventListener('input', () => {
+            renderComparisonTable();
+            updateCharts();
+        });
+
+        // Auth Modal Handlers
+        document.getElementById('btnCloseAuth').addEventListener('click', () => {
+            document.getElementById('authModal').classList.remove('active');
+        });
+        document.getElementById('btnSubmitAuth').addEventListener('click', verifyAuthPassword);
+        document.getElementById('authPasswordInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') verifyAuthPassword();
+        });
+
+        // Import Modal Handlers
+        document.getElementById('btnOpenImport').addEventListener('click', () => {
+            document.getElementById('importModal').classList.add('active');
+        });
+        document.getElementById('btnCloseImport').addEventListener('click', () => {
+            document.getElementById('importModal').classList.remove('active');
+        });
+        document.getElementById('btnCancelImport').addEventListener('click', () => {
+            document.getElementById('importModal').classList.remove('active');
+        });
+        document.getElementById('btnApplyImport').addEventListener('click', processTeamTabsData);
+
+        // Import Tabs Switcher
+        document.getElementById('teamImportTabs').addEventListener('click', (e) => {
+            if (!e.target.classList.contains('tab-btn')) return;
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+            e.target.classList.add('active');
+            const targetTab = e.target.getAttribute('data-tab');
+            document.getElementById(targetTab).classList.add('active');
+        });
+
+        // Management Modal Handlers
+        document.getElementById('btnOpenMgmt').addEventListener('click', () => {
+            requireAuth(() => {
+                openManagementModal();
+            });
+        });
+        document.getElementById('btnCloseMgmt').addEventListener('click', () => {
+            document.getElementById('mgmtModal').classList.remove('active');
+        });
+        document.getElementById('btnCloseMgmtFooter').addEventListener('click', () => {
+            document.getElementById('mgmtModal').classList.remove('active');
+        });
+        document.getElementById('mgmtDeptSelect').addEventListener('change', renderMgmtAgentsTable);
+        
+        // Agent Form Handlers
+        document.getElementById('btnAddNewAgentForm').addEventListener('click', () => {
+            openAgentForm();
+        });
+        document.getElementById('btnCancelAgentForm').addEventListener('click', () => {
+            document.getElementById('agentFormCard').style.display = 'none';
+        });
+        document.getElementById('btnSaveAgent').addEventListener('click', saveAgentForm);
+    }
+
+    function verifyAuthPassword() {
+        const input = document.getElementById('authPasswordInput').value;
+        if (input === 'management2026!') {
+            isAuthenticated = true;
+            document.getElementById('authModal').classList.remove('active');
+            if (pendingAction) {
+                pendingAction();
+                pendingAction = null;
+            }
+        } else {
+            document.getElementById('authErrorMsg').style.display = 'block';
+        }
+    }
+
+    // Multi-Team Paste Data Parser
+    function parsePastedTable(text) {
+        if (!text || !text.trim()) return {};
+        const parsed = Papa.parse(text.trim(), { delimiter: "", skipEmptyLines: true });
+        const result = {};
+
+        parsed.data.forEach((row, idx) => {
+            if (row.length >= 2) {
+                let hourStr = row[0].toString().trim();
+                let ans = parseFloat(row[1]) || 0;
+                let abQ = parseFloat(row[2]) || 0;
+                let abCSAT = parseFloat(row[3]) || 0;
+                let abH = parseFloat(row[4]) || 0;
+
+                // Match hour string (e.g., "8:00 AM" or "8" or "08:00")
+                let h24 = -1;
+                let match = hourStr.match(/(\d+):?(\d+)?\s*(AM|PM)?/i);
+                if (match) {
+                    let h = parseInt(match[1], 10);
+                    let pm = match[3] && match[3].toUpperCase() === 'PM';
+                    let am = match[3] && match[3].toUpperCase() === 'AM';
+                    if (pm && h < 12) h += 12;
+                    if (am && h === 12) h = 0;
+                    if (h >= 0 && h < 24) h24 = h;
+                }
+
+                if (h24 !== -1) {
+                    result[h24] = {
+                        ans: ans,
+                        abQ: abQ,
+                        abCSAT: abCSAT,
+                        abH: abH,
+                        tot: ans + abQ + abCSAT + abH
+                    };
+                }
+            }
+        });
+        return result;
+    }
+
+    function processTeamTabsData() {
+        const obsText = document.getElementById('volumeText_obs').value;
+        const insText = document.getElementById('volumeText_ins').value;
+        const eldText = document.getElementById('volumeText_eld').value;
+        const llText = document.getElementById('volumeText_ll').value;
+        const tfxText = document.getElementById('volumeText_tfx').value;
+
+        teamVolumeData.obs = parsePastedTable(obsText);
+        teamVolumeData.ins = parsePastedTable(insText);
+        teamVolumeData.eld = parsePastedTable(eldText);
+        teamVolumeData.ll = parsePastedTable(llText);
+        teamVolumeData.tfx = parsePastedTable(tfxText);
+
+        // Consolidate across all 5 team tables
         for (let h = 0; h < 24; h++) {
-            let hourTotalAway = 0;
-            activeDepts.forEach(d => {
-                if (hourlyDataPattern[h] && hourlyDataPattern[h][d]) {
-                    hourTotalAway += hourlyDataPattern[h][d].length;
+            let sumAns = 0, sumAbQ = 0, sumAbCSAT = 0, sumAbH = 0, sumTot = 0;
+            let teamKeys = ['obs', 'ins', 'eld', 'll', 'tfx'];
+
+            teamKeys.forEach(t => {
+                if (teamVolumeData[t] && teamVolumeData[t][h]) {
+                    const item = teamVolumeData[t][h];
+                    sumAns += item.ans;
+                    sumAbQ += item.abQ;
+                    sumAbCSAT += item.abCSAT;
+                    sumAbH += item.abH;
+                    sumTot += item.tot;
                 }
             });
-            if (hourTotalAway > maxAwayInPeak) {
-                maxAwayInPeak = hourTotalAway;
-                peakHour = h;
+
+            if (sumTot > 0) {
+                volumeDataCombined[h] = {
+                    ans: sumAns,
+                    abQ: sumAbQ,
+                    abCSAT: sumAbCSAT,
+                    abH: sumAbH,
+                    tot: sumTot,
+                    max: Math.round(sumTot * 1.1)
+                };
             }
         }
 
-        const activeHour = (manualSelectedHour !== null) ? manualSelectedHour : peakHour;
-
-        const select = document.getElementById('hourSelect');
-        select.innerHTML = '';
-        hourlySlots.forEach(slot => {
-            const opt = document.createElement('option');
-            opt.value = slot.h24;
-            const isPeak = (slot.h24 === peakHour);
-            opt.textContent = `${slot.time12}${isPeak ? ' (Peak Hour)' : ''}`;
-            if (slot.h24 === activeHour) opt.selected = true;
-            select.appendChild(opt);
-        });
-
-        const activeSuffix = activeHour >= 12 ? 'PM' : 'AM';
-        let activeH12 = activeHour % 12;
-        if (activeH12 === 0) activeH12 = 12;
-        const activeHourStr = `${activeH12}:00 ${activeSuffix}`;
-        const isShowingPeak = (activeHour === peakHour);
-
-        const totalHeadcounts = activeDepts.map(d => deptRosterCounts[d]);
-        const awayCounts = activeDepts.map(d => (hourlyDataPattern[activeHour][d] ? hourlyDataPattern[activeHour][d].length : 0));
-
-        const maxVal = Math.max(...totalHeadcounts, 10);
-        const svgWidth = 850;
-        const groupWidth = svgWidth / activeDepts.length;
-        const barWidth = Math.min(25, groupWidth / 3);
-
-        const hourLabelTag = isShowingPeak ? `Peak Hour: ${activeHourStr}` : `Selected Hour: ${activeHourStr}`;
-        document.getElementById('chartTitle').textContent = isAll 
-            ? `All Departments Headcount vs. Away Agents (${hourLabelTag})` 
-            : `Filtered Department Headcount vs. Away Agents (${hourLabelTag})`;
-
-        activeDepts.forEach((d, i) => {
-            const centerX = i * groupWidth + groupWidth / 2;
-            const x1 = centerX - barWidth - 2;
-            const x2 = centerX + 2;
-
-            const hTotal = (totalHeadcounts[i] / maxVal) * 130;
-            const hAway = (awayCounts[i] / maxVal) * 130;
-
-            const yTotal = 170 - hTotal;
-            const yAway = 170 - hAway;
-
-            const rectTotal = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-            rectTotal.setAttribute('x', x1);
-            rectTotal.setAttribute('y', yTotal);
-            rectTotal.setAttribute('width', barWidth);
-            rectTotal.setAttribute('height', hTotal);
-            rectTotal.setAttribute('fill', '#1F4E78');
-            rectTotal.setAttribute('rx', '3');
-            svg.appendChild(rectTotal);
-
-            const txtTotal = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-            txtTotal.setAttribute('x', x1 + barWidth / 2);
-            txtTotal.setAttribute('y', yTotal - 4);
-            txtTotal.setAttribute('text-anchor', 'middle');
-            txtTotal.setAttribute('font-size', '11');
-            txtTotal.setAttribute('font-weight', 'bold');
-            txtTotal.setAttribute('fill', '#1F4E78');
-            txtTotal.textContent = totalHeadcounts[i];
-            svg.appendChild(txtTotal);
-
-            const rectAway = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-            rectAway.setAttribute('x', x2);
-            rectAway.setAttribute('y', yAway);
-            rectAway.setAttribute('width', barWidth);
-            rectAway.setAttribute('height', hAway);
-            rectAway.setAttribute('fill', '#C65911');
-            rectAway.setAttribute('rx', '3');
-            svg.appendChild(rectAway);
-
-            const txtAway = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-            txtAway.setAttribute('x', x2 + barWidth / 2);
-            txtAway.setAttribute('y', yAway - 4);
-            txtAway.setAttribute('text-anchor', 'middle');
-            txtAway.setAttribute('font-size', '11');
-            txtAway.setAttribute('font-weight', 'bold');
-            txtAway.setAttribute('fill', '#C65911');
-            txtAway.textContent = awayCounts[i];
-            svg.appendChild(txtAway);
-
-            const txtLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-            txtLabel.setAttribute('x', centerX);
-            txtLabel.setAttribute('y', 190);
-            txtLabel.setAttribute('text-anchor', 'middle');
-            txtLabel.setAttribute('font-size', '11');
-            txtLabel.setAttribute('font-weight', 'bold');
-            txtLabel.setAttribute('fill', '#333');
-            txtLabel.textContent = d;
-            svg.appendChild(txtLabel);
-        });
-
-        const legendG = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-        legendG.innerHTML = `
-            <rect x="${svgWidth - 280}" y="10" width="12" height="12" fill="#1F4E78" rx="2" />
-            <text x="${svgWidth - 262}" y="20" font-size="11" fill="#333">Total Headcount</text>
-            <rect x="${svgWidth - 160}" y="10" width="12" height="12" fill="#C65911" rx="2" />
-            <text x="${svgWidth - 142}" y="20" font-size="11" fill="#333">Away (${activeHourStr})</text>
-        `;
-        svg.appendChild(legendG);
+        renderAll();
+        document.getElementById('importModal').classList.remove('active');
+        alert('Volume tables parsed and consolidated successfully!');
     }
 
-    renderTable();
+    // Management Modal Logic
+    function openManagementModal() {
+        document.getElementById('mgmtModal').classList.add('active');
+        renderMgmtAgentsTable();
+    }
+
+    function renderMgmtAgentsTable() {
+        const selectedDept = document.getElementById('mgmtDeptSelect').value;
+        const tbody = document.getElementById('mgmtAgentsTableBody');
+        tbody.innerHTML = '';
+
+        const deptAgents = masterAgentsDB.filter(ag => ag.dept === selectedDept);
+
+        if (deptAgents.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#999;">No agents registered in this department.</td></tr>`;
+            return;
+        }
+
+        deptAgents.forEach(ag => {
+            const tr = document.createElement('tr');
+            
+            let hoursBadges = [];
+            for (let h in ag.hours) {
+                let slot = hourlySlots.find(s => s.h24 == h);
+                let timeLabel = slot ? slot.time12 : `${h}:00`;
+                hoursBadges.push(`<span class="badge-act">${timeLabel}: ${ag.hours[h]}</span>`);
+            }
+            let hoursStr = hoursBadges.length > 0 ? hoursBadges.join(' ') : '<span style="color:#aaa;">No scheduled away hours</span>';
+
+            tr.innerHTML = `
+                <td><b>${ag.name}</b></td>
+                <td><span class="badge-dept">${ag.dept}</span></td>
+                <td>${hoursStr}</td>
+                <td>
+                    <div class="action-btns">
+                        <button class="btn btn-outline btn-sm" onclick="editAgentPrompt(${ag.id})">Edit</button>
+                        <button class="btn btn-danger btn-sm" onclick="deleteAgentPrompt(${ag.id})">Delete</button>
+                    </div>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    window.editAgentPrompt = function(agentId) {
+        requireAuth(() => {
+            openAgentForm(agentId);
+        });
+    };
+
+    window.deleteAgentPrompt = function(agentId) {
+        requireAuth(() => {
+            const ag = masterAgentsDB.find(a => a.id === agentId);
+            if (ag && confirm(`Are you sure you want to delete agent "${ag.name}"?`)) {
+                masterAgentsDB = masterAgentsDB.filter(a => a.id !== agentId);
+                syncPatternFromMasterDB();
+                renderAll();
+                renderMgmtAgentsTable();
+            }
+        });
+    };
+
+    function openAgentForm(agentId = null) {
+        const card = document.getElementById('agentFormCard');
+        card.style.display = 'block';
+        
+        const chipsContainer = document.getElementById('hourChipsContainer');
+        chipsContainer.innerHTML = '';
+
+        const currentDept = document.getElementById('mgmtDeptSelect').value;
+
+        if (agentId) {
+            const ag = masterAgentsDB.find(a => a.id === agentId);
+            document.getElementById('agentFormTitle').textContent = 'Edit Agent & Schedule';
+            document.getElementById('editAgentId').value = ag.id;
+            document.getElementById('agentNameInput').value = ag.name;
+            document.getElementById('agentDeptInput').value = ag.dept;
+
+            hourlySlots.forEach(slot => {
+                const isChecked = ag.hours[slot.h24] !== undefined;
+                const actValue = ag.hours[slot.h24] || "Break 1";
+                
+                const div = document.createElement('div');
+                div.className = 'chip-checkbox';
+                div.innerHTML = `
+                    <input type="checkbox" value="${slot.h24}" ${isChecked ? 'checked' : ''} onchange="toggleActivitySelect(this, ${slot.h24})">
+                    <span>${slot.time12}</span>
+                    <select id="act_select_${slot.h24}" style="font-size:0.7rem; ${isChecked ? '' : 'display:none;'}">
+                        <option value="Break 1" ${actValue === 'Break 1' ? 'selected' : ''}>Break 1</option>
+                        <option value="Lunch" ${actValue === 'Lunch' ? 'selected' : ''}>Lunch</option>
+                        <option value="Break 2" ${actValue === 'Break 2' ? 'selected' : ''}>Break 2</option>
+                    </select>
+                `;
+                chipsContainer.appendChild(div);
+            });
+
+        } else {
+            document.getElementById('agentFormTitle').textContent = 'Add New Agent';
+            document.getElementById('editAgentId').value = '';
+            document.getElementById('agentNameInput').value = '';
+            document.getElementById('agentDeptInput').value = currentDept;
+
+            hourlySlots.forEach(slot => {
+                const div = document.createElement('div');
+                div.className = 'chip-checkbox';
+                div.innerHTML = `
+                    <input type="checkbox" value="${slot.h24}" onchange="toggleActivitySelect(this, ${slot.h24})">
+                    <span>${slot.time12}</span>
+                    <select id="act_select_${slot.h24}" style="font-size:0.7rem; display:none;">
+                        <option value="Break 1">Break 1</option>
+                        <option value="Lunch">Lunch</option>
+                        <option value="Break 2">Break 2</option>
+                    </select>
+                `;
+                chipsContainer.appendChild(div);
+            });
+        }
+    }
+
+    window.toggleActivitySelect = function(checkbox, hour) {
+        const select = document.getElementById(`act_select_${hour}`);
+        if (select) {
+            select.style.display = checkbox.checked ? 'inline-block' : 'none';
+        }
+    };
+
+    function saveAgentForm() {
+        const idVal = document.getElementById('editAgentId').value;
+        const name = document.getElementById('agentNameInput').value.trim();
+        const dept = document.getElementById('agentDeptInput').value;
+
+        if (!name) {
+            alert('Please enter agent name.');
+            return;
+        }
+
+        const hoursObj = {};
+        const checkboxes = document.querySelectorAll('#hourChipsContainer input[type="checkbox"]:checked');
+        checkboxes.forEach(cb => {
+            const h = parseInt(cb.value, 10);
+            const select = document.getElementById(`act_select_${h}`);
+            hoursObj[h] = select ? select.value : "Break 1";
+        });
+
+        if (idVal) {
+            const ag = masterAgentsDB.find(a => a.id == idVal);
+            if (ag) {
+                ag.name = name;
+                ag.dept = dept;
+                ag.hours = hoursObj;
+            }
+        } else {
+            const newId = masterAgentsDB.length > 0 ? Math.max(...masterAgentsDB.map(a => a.id)) + 1 : 1;
+            masterAgentsDB.push({
+                id: newId,
+                name: name,
+                dept: dept,
+                hours: hoursObj
+            });
+        }
+
+        syncPatternFromMasterDB();
+        renderAll();
+        renderMgmtAgentsTable();
+        document.getElementById('agentFormCard').style.display = 'none';
+    }
 </script>
 
 </body>

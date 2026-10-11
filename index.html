@@ -4,10 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WFM Analytics & Call Volume Analysis Dashboard</title>
-    <!-- Chart.js, PapaParse & LZ-String for URL compression -->
+    <!-- Chart.js & PapaParse -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/lz-string@1.5.0/libs/lz-string.min.js"></script>
     <style>
         :root {
             --primary-color: #1F4E78;
@@ -580,7 +579,6 @@
             <small style="opacity: 0.85;">Workforce Management, Hourly Schedules & Consolidated Call Volume Analytics</small>
         </div>
         <div class="header-actions">
-            <button class="btn btn-secondary" id="btnShareLink">🔗 Share Live Link</button>
             <button class="btn btn-secondary" id="btnOpenImport">Paste Team Data Tables</button>
             <button class="btn btn-yellow" id="btnOpenMgmt">Manage Agents & Schedules</button>
         </div>
@@ -588,6 +586,34 @@
 
     <!-- Controls Panel -->
     <div class="controls-panel">
+        <div class="control-group">
+            <span class="controls-title">Select Period</span>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <select id="monthSelect" class="input-select" style="font-weight: bold;">
+                    <option value="January">January</option>
+                    <option value="February">February</option>
+                    <option value="March">March</option>
+                    <option value="April">April</option>
+                    <option value="May">May</option>
+                    <option value="June">June</option>
+                    <option value="July">July</option>
+                    <option value="August">August</option>
+                    <option value="September">September</option>
+                    <option value="October" selected>October</option>
+                    <option value="November">November</option>
+                    <option value="December">December</option>
+                </select>
+
+                <select id="weekSelect" class="input-select" style="font-weight: bold;">
+                    <option value="Week 1" selected>Week 1</option>
+                    <option value="Week 2">Week 2</option>
+                    <option value="Week 3">Week 3</option>
+                    <option value="Week 4">Week 4</option>
+                    <option value="Week 5">Week 5</option>
+                </select>
+            </div>
+        </div>
+
         <div class="control-group">
             <span class="controls-title">Filter by Department</span>
             <div class="slicer-buttons" id="slicerContainer">
@@ -602,12 +628,12 @@
         </div>
 
         <div class="control-group">
-            <span class="controls-title">Staffing Calculation Parameters</span>
+            <span class="controls-title">Staffing Parameters</span>
             <div style="display: flex; gap: 10px; align-items: center;">
                 <label style="font-size: 0.8rem; font-weight: bold;">AHT (min):</label>
-                <input type="number" id="ahtInput" class="input-number" value="5" min="1" max="60" style="width: 60px;">
-                <label style="font-size: 0.8rem; font-weight: bold;">Target Occupancy (%):</label>
-                <input type="number" id="occInput" class="input-number" value="85" min="50" max="100" style="width: 65px;">
+                <input type="number" id="ahtInput" class="input-number" value="5" min="1" max="60" style="width: 55px;">
+                <label style="font-size: 0.8rem; font-weight: bold;">Occ (%):</label>
+                <input type="number" id="occInput" class="input-number" value="85" min="50" max="100" style="width: 55px;">
             </div>
         </div>
     </div>
@@ -615,13 +641,13 @@
     <!-- Visualizations -->
     <div class="charts-grid">
         <div class="chart-card">
-            <h3>Consolidated Call Volume vs. Available Phone Capacity</h3>
+            <h3 id="chart1Title">Consolidated Call Volume vs. Capacity (October - Week 1)</h3>
             <div class="chart-container">
                 <canvas id="volumeCapacityChart"></canvas>
             </div>
         </div>
         <div class="chart-card">
-            <h3>Department Breakdown: Headcount vs. Away Agents (Peak Hour)</h3>
+            <h3 id="chart2Title">Department Breakdown: Headcount vs. Away (Peak Hour)</h3>
             <div class="chart-container">
                 <canvas id="deptDistributionChart"></canvas>
             </div>
@@ -665,7 +691,9 @@
     </div>
 
     <!-- Table 2: Call Volume Metrics -->
-    <h2 class="section-title">2. Consolidated Call Volume Metrics</h2>
+    <h2 class="section-title">
+        <span>2. Consolidated Call Volume Metrics (<span class="periodLabel">October - Week 1</span>)</span>
+    </h2>
     <div class="table-responsive">
         <table>
             <thead>
@@ -684,7 +712,9 @@
     </div>
 
     <!-- Table 3: Capacity & Staffing Gap -->
-    <h2 class="section-title">3. Staffing Requirements & Coverage Gap Analysis</h2>
+    <h2 class="section-title">
+        <span>3. Staffing Requirements & Coverage Gap (<span class="periodLabel">October - Week 1</span>)</span>
+    </h2>
     <div class="table-responsive">
         <table>
             <thead>
@@ -703,16 +733,7 @@
 
     <!-- Section 4: Operational Recommendations -->
     <h2 class="section-title">4. Operational Recommendations & Staffing Insights</h2>
-    <div id="recommendationsContainer">
-        <div class="recommendation-card">
-            <h3>Peak-Hour Shift & Meal Staggering (9:00 AM – 2:00 PM)</h3>
-            <p>During the main morning surge, consolidated call volume increases significantly, reaching <b>203 to 253 calls/hour</b> between 9:00 AM and 1:00 PM. However, overlapping lunches and breaks reduce the available <i>OBS - Phones</i> team down to just <b>12–14 agents</b>, generating a coverage deficit of <b>7 to 11 agents</b> against overall demand. Staggering meal schedules into smaller shifts across 11:00 AM – 3:00 PM is essential to prevent severe queue congestion.</p>
-        </div>
-        <div class="recommendation-card">
-            <h3>Cross-Queue Reinforcement & Flex Staffing</h3>
-            <p>With historical volume spiking up to <b>293 calls/hour</b> at 9:00 AM, <i>OBS - Phones</i> (21 agents total roster) cannot handle full consolidated demand alone during peak windows. We recommend triggering automated cross-skilling protocols so that <b>7 to 11 agents</b> from non-phone or lower-volume teams handle phone overflow during peak windows.</p>
-        </div>
-    </div>
+    <div id="recommendationsContainer"></div>
 </div>
 
 <!-- MODAL: Import Team Volume Tables -->
@@ -723,7 +744,34 @@
             <button class="close-btn" id="btnCloseImport">&times;</button>
         </div>
         <div class="modal-body">
-            <p style="font-size:0.85rem; color:#555; margin-top:0;">Paste data directly from Excel or TSV/CSV format for each queue. Expected headers: <b>Hour, Answered, Abnd. in Queue, Abnd in CSAT, Abnd on Hold</b>.</p>
+            <div style="display:flex; gap:15px; margin-bottom:15px; background:#f1f4f8; padding:10px; border-radius:6px; align-items:center;">
+                <label style="font-weight:bold; font-size:0.85rem;">Target Month:</label>
+                <select id="importMonthSelect" class="input-select">
+                    <option value="January">January</option>
+                    <option value="February">February</option>
+                    <option value="March">March</option>
+                    <option value="April">April</option>
+                    <option value="May">May</option>
+                    <option value="June">June</option>
+                    <option value="July">July</option>
+                    <option value="August">August</option>
+                    <option value="September">September</option>
+                    <option value="October" selected>October</option>
+                    <option value="November">November</option>
+                    <option value="December">December</option>
+                </select>
+
+                <label style="font-weight:bold; font-size:0.85rem;">Target Week:</label>
+                <select id="importWeekSelect" class="input-select">
+                    <option value="Week 1" selected>Week 1</option>
+                    <option value="Week 2">Week 2</option>
+                    <option value="Week 3">Week 3</option>
+                    <option value="Week 4">Week 4</option>
+                    <option value="Week 5">Week 5</option>
+                </select>
+            </div>
+
+            <p style="font-size:0.85rem; color:#555; margin-top:0;">Paste data directly from Excel or TSV/CSV format. Expected headers: <b>Hour, Answered, Abnd. in Queue, Abnd in CSAT, Abnd on Hold</b>.</p>
             
             <div class="tab-buttons" id="teamImportTabs">
                 <button class="tab-btn active" data-tab="tab-obs">OBS Phones</button>
@@ -737,7 +785,7 @@
             <div class="tab-content active" id="tab-obs">
                 <div class="form-group">
                     <label>OBS Phones Volume Data:</label>
-                    <textarea class="input-text team-volume-input" id="volumeText_obs" style="height: 220px; font-family: monospace; font-size:0.8rem;" placeholder="Hour&#192;Answered&#192;Abnd. in Queue&#192;Abnd in CSAT&#192;Abnd on Hold..."></textarea>
+                    <textarea class="input-text team-volume-input" id="volumeText_obs" style="height: 200px; font-family: monospace; font-size:0.8rem;" placeholder="Hour&#192;Answered&#192;Abnd. in Queue&#192;Abnd in CSAT&#192;Abnd on Hold..."></textarea>
                 </div>
             </div>
 
@@ -745,7 +793,7 @@
             <div class="tab-content" id="tab-ins">
                 <div class="form-group">
                     <label>INS Phones Volume Data:</label>
-                    <textarea class="input-text team-volume-input" id="volumeText_ins" style="height: 220px; font-family: monospace; font-size:0.8rem;" placeholder="Hour&#192;Answered&#192;Abnd. in Queue&#192;Abnd in CSAT&#192;Abnd on Hold..."></textarea>
+                    <textarea class="input-text team-volume-input" id="volumeText_ins" style="height: 200px; font-family: monospace; font-size:0.8rem;" placeholder="Hour&#192;Answered&#192;Abnd. in Queue&#192;Abnd in CSAT&#192;Abnd on Hold..."></textarea>
                 </div>
             </div>
 
@@ -753,7 +801,7 @@
             <div class="tab-content" id="tab-eld">
                 <div class="form-group">
                     <label>ELD Phones Volume Data:</label>
-                    <textarea class="input-text team-volume-input" id="volumeText_eld" style="height: 220px; font-family: monospace; font-size:0.8rem;" placeholder="Hour&#192;Answered&#192;Abnd. in Queue&#192;Abnd in CSAT&#192;Abnd on Hold..."></textarea>
+                    <textarea class="input-text team-volume-input" id="volumeText_eld" style="height: 200px; font-family: monospace; font-size:0.8rem;" placeholder="Hour&#192;Answered&#192;Abnd. in Queue&#192;Abnd in CSAT&#192;Abnd on Hold..."></textarea>
                 </div>
             </div>
 
@@ -761,7 +809,7 @@
             <div class="tab-content" id="tab-ll">
                 <div class="form-group">
                     <label>LL+ Volume Data:</label>
-                    <textarea class="input-text team-volume-input" id="volumeText_ll" style="height: 220px; font-family: monospace; font-size:0.8rem;" placeholder="Hour&#192;Answered&#192;Abnd. in Queue&#192;Abnd in CSAT&#192;Abnd on Hold..."></textarea>
+                    <textarea class="input-text team-volume-input" id="volumeText_ll" style="height: 200px; font-family: monospace; font-size:0.8rem;" placeholder="Hour&#192;Answered&#192;Abnd. in Queue&#192;Abnd in CSAT&#192;Abnd on Hold..."></textarea>
                 </div>
             </div>
 
@@ -769,13 +817,13 @@
             <div class="tab-content" id="tab-tfx">
                 <div class="form-group">
                     <label>TFX Volume Data:</label>
-                    <textarea class="input-text team-volume-input" id="volumeText_tfx" style="height: 220px; font-family: monospace; font-size:0.8rem;" placeholder="Hour&#192;Answered&#192;Abnd. in Queue&#192;Abnd in CSAT&#192;Abnd on Hold..."></textarea>
+                    <textarea class="input-text team-volume-input" id="volumeText_tfx" style="height: 200px; font-family: monospace; font-size:0.8rem;" placeholder="Hour&#192;Answered&#192;Abnd. in Queue&#192;Abnd in CSAT&#192;Abnd on Hold..."></textarea>
                 </div>
             </div>
         </div>
         <div class="modal-footer">
             <button class="btn btn-outline" id="btnCancelImport">Cancel</button>
-            <button class="btn btn-yellow" id="btnApplyImport">Calculate & Consolidate Volume</button>
+            <button class="btn btn-yellow" id="btnApplyImport">Save & Consolidate Period Data</button>
         </div>
     </div>
 </div>
@@ -876,7 +924,6 @@
 </div>
 
 <script>
-    // System Data & State
     const depts = ['OBS - Phones', 'OBS - Cases', 'INS', 'ELD', 'LL+', 'TFX'];
     
     let deptRosterCounts = {
@@ -888,7 +935,6 @@
         'TFX': 3
     };
 
-    // Initial Away Pattern
     let hourlyDataPattern = {
         0: {"OBS - Phones": [], "OBS - Cases": [], "INS": [], "ELD": [], "LL+": [], "TFX": []},
         1: {"OBS - Phones": [], "OBS - Cases": [], "INS": [], "ELD": [], "LL+": [], "TFX": []},
@@ -986,37 +1032,44 @@
         23: {"OBS - Phones": [], "OBS - Cases": [], "INS": [], "ELD": [], "LL+": [], "TFX": []}
     };
 
-    // Store separate volume data tables for each team
-    let teamVolumeData = { obs: {}, ins: {}, eld: {}, ll: {}, tfx: {} };
+    let multiPeriodVolumeDB = {};
 
-    // Consolidated Volume Data
-    let volumeDataCombined = {
-        0: { ans: 0, abQ: 0, abCSAT: 0, abH: 0, tot: 0, max: 0 },
-        1: { ans: 0, abQ: 0, abCSAT: 0, abH: 0, tot: 0, max: 0 },
-        2: { ans: 0, abQ: 0, abCSAT: 0, abH: 0, tot: 0, max: 0 },
-        3: { ans: 0, abQ: 0, abCSAT: 0, abH: 0, tot: 0, max: 0 },
-        4: { ans: 0, abQ: 0, abCSAT: 0, abH: 0, tot: 0, max: 0 },
-        5: { ans: 0, abQ: 0, abCSAT: 0, abH: 0, tot: 0, max: 0 },
-        6: { ans: 7.5, abQ: 5.5, abCSAT: 1.5, abH: 0, tot: 15.0, max: 18 },
-        7: { ans: 54.5, abQ: 22.5, abCSAT: 19.5, abH: 1.5, tot: 100.5, max: 102 },
-        8: { ans: 88.0, abQ: 60.0, abCSAT: 32.5, abH: 6, tot: 190.0, max: 196 },
-        9: { ans: 139.5, abQ: 75.0, abCSAT: 34.5, abH: 0.5, tot: 253.0, max: 293 },
-        10: { ans: 135.5, abQ: 62.0, abCSAT: 36.0, abH: 1, tot: 236.5, max: 249 },
-        11: { ans: 149.5, abQ: 44.5, abCSAT: 43.5, abH: 0.5, tot: 239.5, max: 266 },
-        12: { ans: 123.5, abQ: 45.0, abCSAT: 35.0, abH: 1.5, tot: 207.5, max: 217 },
-        13: { ans: 97.0, abQ: 64.0, abCSAT: 37.5, abH: 2, tot: 203.0, max: 216 },
-        14: { ans: 94.5, abQ: 30.0, abCSAT: 33.5, abH: 0.5, tot: 160.0, max: 168 },
-        15: { ans: 96.0, abQ: 24.0, abCSAT: 24.0, abH: 0.5, tot: 145.5, max: 166 },
-        16: { ans: 60.0, abQ: 42.0, abCSAT: 20.0, abH: 0.5, tot: 123.0, max: 128 },
-        17: { ans: 96.0, abQ: 7.0, abCSAT: 14.0, abH: 0, tot: 118.5, max: 145 },
-        18: { ans: 30.5, abQ: 2.5, abCSAT: 8.5, abH: 0, tot: 41.5, max: 54 },
-        19: { ans: 0, abQ: 0.5, abCSAT: 0, abH: 0, tot: 0.5, max: 1 },
-        20: { ans: 0, abQ: 0, abCSAT: 0, abH: 0, tot: 0, max: 0 },
-        21: { ans: 0, abQ: 0, abCSAT: 0, abH: 0, tot: 0, max: 0 },
-        22: { ans: 0, abQ: 0, abCSAT: 0, abH: 0, tot: 0, max: 0 },
-        23: { ans: 0, abQ: 0, abCSAT: 0, abH: 0, tot: 0, max: 0 }
-    };
+    function initDefaultVolumeData() {
+        const defaultSample = {
+            0: { ans: 0, abQ: 0, abCSAT: 0, abH: 0, tot: 0, max: 0 },
+            1: { ans: 0, abQ: 0, abCSAT: 0, abH: 0, tot: 0, max: 0 },
+            2: { ans: 0, abQ: 0, abCSAT: 0, abH: 0, tot: 0, max: 0 },
+            3: { ans: 0, abQ: 0, abCSAT: 0, abH: 0, tot: 0, max: 0 },
+            4: { ans: 0, abQ: 0, abCSAT: 0, abH: 0, tot: 0, max: 0 },
+            5: { ans: 0, abQ: 0, abCSAT: 0, abH: 0, tot: 0, max: 0 },
+            6: { ans: 7.5, abQ: 5.5, abCSAT: 1.5, abH: 0, tot: 15.0, max: 18 },
+            7: { ans: 54.5, abQ: 22.5, abCSAT: 19.5, abH: 1.5, tot: 100.5, max: 102 },
+            8: { ans: 88.0, abQ: 60.0, abCSAT: 32.5, abH: 6, tot: 190.0, max: 196 },
+            9: { ans: 139.5, abQ: 75.0, abCSAT: 34.5, abH: 0.5, tot: 253.0, max: 293 },
+            10: { ans: 135.5, abQ: 62.0, abCSAT: 36.0, abH: 1, tot: 236.5, max: 249 },
+            11: { ans: 149.5, abQ: 44.5, abCSAT: 43.5, abH: 0.5, tot: 239.5, max: 266 },
+            12: { ans: 123.5, abQ: 45.0, abCSAT: 35.0, abH: 1.5, tot: 207.5, max: 217 },
+            13: { ans: 97.0, abQ: 64.0, abCSAT: 37.5, abH: 2, tot: 203.0, max: 216 },
+            14: { ans: 94.5, abQ: 30.0, abCSAT: 33.5, abH: 0.5, tot: 160.0, max: 168 },
+            15: { ans: 96.0, abQ: 24.0, abCSAT: 24.0, abH: 0.5, tot: 145.5, max: 166 },
+            16: { ans: 60.0, abQ: 42.0, abCSAT: 20.0, abH: 0.5, tot: 123.0, max: 128 },
+            17: { ans: 96.0, abQ: 7.0, abCSAT: 14.0, abH: 0, tot: 118.5, max: 145 },
+            18: { ans: 30.5, abQ: 2.5, abCSAT: 8.5, abH: 0, tot: 41.5, max: 54 },
+            19: { ans: 0, abQ: 0.5, abCSAT: 0, abH: 0, tot: 0.5, max: 1 },
+            20: { ans: 0, abQ: 0, abCSAT: 0, abH: 0, tot: 0, max: 0 },
+            21: { ans: 0, abQ: 0, abCSAT: 0, abH: 0, tot: 0, max: 0 },
+            22: { ans: 0, abQ: 0, abCSAT: 0, abH: 0, tot: 0, max: 0 },
+            23: { ans: 0, abQ: 0, abCSAT: 0, abH: 0, tot: 0, max: 0 }
+        };
 
+        if (!multiPeriodVolumeDB['October']) multiPeriodVolumeDB['October'] = {};
+        multiPeriodVolumeDB['October']['Week 1'] = {
+            obs: defaultSample,
+            ins: {}, eld: {}, ll: {}, tfx: {}
+        };
+    }
+
+    let volumeDataCombined = {};
     let masterAgentsDB = [];
 
     function initMasterDBFromPattern() {
@@ -1037,17 +1090,13 @@
                 }
             }
         }
-        for (let k in agentMap) {
-            masterAgentsDB.push(agentMap[k]);
-        }
+        for (let k in agentMap) masterAgentsDB.push(agentMap[k]);
     }
 
     function syncPatternFromMasterDB() {
         for (let h = 0; h < 24; h++) {
             hourlyDataPattern[h] = {};
-            for (let d of depts) {
-                hourlyDataPattern[h][d] = [];
-            }
+            for (let d of depts) hourlyDataPattern[h][d] = [];
         }
 
         masterAgentsDB.forEach(ag => {
@@ -1063,12 +1112,10 @@
         });
     }
 
-    // App State
     let selectedDepts = new Set(['ALL']);
     let isAuthenticated = false;
     let pendingAction = null;
 
-    // Chart instances
     let volumeCapacityChartInstance = null;
     let deptDistributionChartInstance = null;
 
@@ -1085,22 +1132,64 @@
     const hourlySlots = generateHourlySlots();
 
     document.addEventListener("DOMContentLoaded", () => {
+        initDefaultVolumeData();
         initMasterDBFromPattern();
-        loadStateFromURLOrStorage();
         initCharts();
+        loadActivePeriodVolume();
         renderAll();
         setupEventListeners();
     });
+
+    function getActiveMonth() { return document.getElementById('monthSelect').value; }
+    function getActiveWeek() { return document.getElementById('weekSelect').value; }
+
+    function loadActivePeriodVolume() {
+        const month = getActiveMonth();
+        const week = getActiveWeek();
+
+        if (!multiPeriodVolumeDB[month]) multiPeriodVolumeDB[month] = {};
+        if (!multiPeriodVolumeDB[month][week]) {
+            multiPeriodVolumeDB[month][week] = { obs: {}, ins: {}, eld: {}, ll: {}, tfx: {} };
+        }
+
+        const periodStore = multiPeriodVolumeDB[month][week];
+        volumeDataCombined = {};
+
+        for (let h = 0; h < 24; h++) {
+            let sumAns = 0, sumAbQ = 0, sumAbCSAT = 0, sumAbH = 0;
+            ['obs', 'ins', 'eld', 'll', 'tfx'].forEach(t => {
+                if (periodStore[t] && periodStore[t][h]) {
+                    const item = periodStore[t][h];
+                    sumAns += item.ans || 0;
+                    sumAbQ += item.abQ || 0;
+                    sumAbCSAT += item.abCSAT || 0;
+                    sumAbH += item.abH || 0;
+                }
+            });
+
+            const totalVol = sumAns + sumAbQ + sumAbCSAT + sumAbH;
+            volumeDataCombined[h] = {
+                ans: sumAns,
+                abQ: sumAbQ,
+                abCSAT: sumAbCSAT,
+                abH: sumAbH,
+                tot: totalVol,
+                max: Math.round(totalVol * 1.1)
+            };
+        }
+
+        document.querySelectorAll('.periodLabel').forEach(el => el.textContent = `${month} - ${week}`);
+        document.getElementById('chart1Title').textContent = `Consolidated Call Volume vs. Capacity (${month} - ${week})`;
+    }
 
     function renderAll() {
         renderScheduleTable();
         renderVolumeTable();
         renderComparisonTable();
+        renderRecommendations();
         updateCharts();
-        saveStateToLocalStorage();
     }
 
-    // 1. Render Schedule Table
     function renderScheduleTable() {
         const tbody = document.getElementById('scheduleTableBody');
         tbody.innerHTML = '';
@@ -1114,9 +1203,7 @@
         document.querySelectorAll('td.dept-foot').forEach(td => {
             const d = td.getAttribute('data-dept');
             td.style.display = (isAll || selectedDepts.has(d)) ? '' : 'none';
-            if (deptRosterCounts[d] !== undefined) {
-                td.textContent = deptRosterCounts[d];
-            }
+            if (deptRosterCounts[d] !== undefined) td.textContent = deptRosterCounts[d];
         });
 
         let totalHeadcount = 0;
@@ -1176,7 +1263,6 @@
         });
     }
 
-    // 2. Render Volume Table
     function renderVolumeTable() {
         const tbody = document.getElementById('volumeTableBody');
         tbody.innerHTML = '';
@@ -1197,7 +1283,6 @@
         });
     }
 
-    // 3. Render Capacity & Gap Table
     function renderComparisonTable() {
         const tbody = document.getElementById('comparisonTableBody');
         tbody.innerHTML = '';
@@ -1236,7 +1321,37 @@
         });
     }
 
-    // Charting Engine
+    function renderRecommendations() {
+        const container = document.getElementById('recommendationsContainer');
+        const month = getActiveMonth();
+        const week = getActiveWeek();
+
+        let maxVol = 0;
+        let peakHour = 9;
+
+        for (let h = 0; h < 24; h++) {
+            let v = volumeDataCombined[h] ? volumeDataCombined[h].tot : 0;
+            if (v > maxVol) {
+                maxVol = v;
+                peakHour = h;
+            }
+        }
+
+        let peakSlot = hourlySlots.find(s => s.h24 === peakHour);
+        let timeLabel = peakSlot ? peakSlot.time12 : "Peak Hour";
+
+        container.innerHTML = `
+            <div class="recommendation-card">
+                <h3>Peak-Hour Shift & Meal Staggering (${month} - ${week})</h3>
+                <p>For <b>${month} (${week})</b>, overall call volume peaks around <b>${timeLabel}</b> with an average volume of <b>${maxVol.toFixed(1)} calls/hour</b>. Overlapping lunches and breaks reduce available phone capacity during key morning windows. Staggering meal schedules into smaller shifts is essential to maintain queue SLA.</p>
+            </div>
+            <div class="recommendation-card">
+                <h3>Cross-Queue Reinforcement & Flex Staffing</h3>
+                <p>When demand spikes above capacity in <i>${month} - ${week}</i>, activate cross-skilling protocols so that agents from non-phone or lower-volume teams support phone queues during high-demand hours.</p>
+            </div>
+        `;
+    }
+
     function initCharts() {
         const ctx1 = document.getElementById('volumeCapacityChart').getContext('2d');
         volumeCapacityChartInstance = new Chart(ctx1, {
@@ -1245,7 +1360,7 @@
                 labels: hourlySlots.map(s => s.time12),
                 datasets: [
                     {
-                        label: 'Total Call Volume (Yellow Accent)',
+                        label: 'Total Call Volume',
                         data: [],
                         borderColor: '#E6A100',
                         backgroundColor: 'rgba(230, 161, 0, 0.2)',
@@ -1266,12 +1381,8 @@
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: {
-                    legend: { position: 'top' }
-                },
-                scales: {
-                    y: { beginAtZero: true }
-                }
+                plugins: { legend: { position: 'top' } },
+                scales: { y: { beginAtZero: true } }
             }
         });
 
@@ -1281,27 +1392,15 @@
             data: {
                 labels: depts,
                 datasets: [
-                    {
-                        label: 'Total Headcount',
-                        data: [],
-                        backgroundColor: '#1F4E78'
-                    },
-                    {
-                        label: 'Away Agents in Peak Hour (1:00 PM)',
-                        data: [],
-                        backgroundColor: '#E6A100'
-                    }
+                    { label: 'Total Headcount', data: [], backgroundColor: '#1F4E78' },
+                    { label: 'Away Agents in Peak Hour (1:00 PM)', data: [], backgroundColor: '#E6A100' }
                 ]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: {
-                    legend: { position: 'top' }
-                },
-                scales: {
-                    y: { beginAtZero: true }
-                }
+                plugins: { legend: { position: 'top' } },
+                scales: { y: { beginAtZero: true } }
             }
         });
     }
@@ -1348,7 +1447,15 @@
     }
 
     function setupEventListeners() {
-        // Slicers
+        document.getElementById('monthSelect').addEventListener('change', () => {
+            loadActivePeriodVolume();
+            renderAll();
+        });
+        document.getElementById('weekSelect').addEventListener('change', () => {
+            loadActivePeriodVolume();
+            renderAll();
+        });
+
         document.getElementById('slicerContainer').addEventListener('click', (e) => {
             if (!e.target.classList.contains('btn-slicer')) return;
             const dept = e.target.getAttribute('data-dept');
@@ -1381,7 +1488,6 @@
             renderScheduleTable();
         });
 
-        // Parameters inputs
         document.getElementById('ahtInput').addEventListener('input', () => {
             renderComparisonTable();
             updateCharts();
@@ -1390,9 +1496,6 @@
             renderComparisonTable();
             updateCharts();
         });
-
-        // Share Link Button
-        document.getElementById('btnShareLink').addEventListener('click', generateShareableLink);
 
         // Auth Modal Handlers
         document.getElementById('btnCloseAuth').addEventListener('click', () => {
@@ -1405,6 +1508,8 @@
 
         // Import Modal Handlers
         document.getElementById('btnOpenImport').addEventListener('click', () => {
+            document.getElementById('importMonthSelect').value = getActiveMonth();
+            document.getElementById('importWeekSelect').value = getActiveWeek();
             document.getElementById('importModal').classList.add('active');
         });
         document.getElementById('btnCloseImport').addEventListener('click', () => {
@@ -1428,9 +1533,7 @@
 
         // Management Modal Handlers
         document.getElementById('btnOpenMgmt').addEventListener('click', () => {
-            requireAuth(() => {
-                openManagementModal();
-            });
+            requireAuth(() => { openManagementModal(); });
         });
         document.getElementById('btnCloseMgmt').addEventListener('click', () => {
             document.getElementById('mgmtModal').classList.remove('active');
@@ -1441,9 +1544,7 @@
         document.getElementById('mgmtDeptSelect').addEventListener('change', renderMgmtAgentsTable);
         
         // Agent Form Handlers
-        document.getElementById('btnAddNewAgentForm').addEventListener('click', () => {
-            openAgentForm();
-        });
+        document.getElementById('btnAddNewAgentForm').addEventListener('click', () => { openAgentForm(); });
         document.getElementById('btnCancelAgentForm').addEventListener('click', () => {
             document.getElementById('agentFormCard').style.display = 'none';
         });
@@ -1464,7 +1565,6 @@
         }
     }
 
-    // Multi-Team Paste Data Parser
     function parsePastedTable(text) {
         if (!text || !text.trim()) return {};
         const parsed = Papa.parse(text.trim(), { delimiter: "", skipEmptyLines: true });
@@ -1504,6 +1604,16 @@
     }
 
     function processTeamTabsData() {
+        const targetMonth = document.getElementById('importMonthSelect').value;
+        const targetWeek = document.getElementById('importWeekSelect').value;
+
+        if (!multiPeriodVolumeDB[targetMonth]) multiPeriodVolumeDB[targetMonth] = {};
+        if (!multiPeriodVolumeDB[targetMonth][targetWeek]) {
+            multiPeriodVolumeDB[targetMonth][targetWeek] = { obs: {}, ins: {}, eld: {}, ll: {}, tfx: {} };
+        }
+
+        const periodStore = multiPeriodVolumeDB[targetMonth][targetWeek];
+
         const inputs = {
             'obs': document.getElementById('volumeText_obs').value,
             'ins': document.getElementById('volumeText_ins').value,
@@ -1512,109 +1622,23 @@
             'tfx': document.getElementById('volumeText_tfx').value
         };
 
-        // Update parsed tables for provided teams
         Object.keys(inputs).forEach(key => {
             if (inputs[key] && inputs[key].trim().length > 0) {
-                teamVolumeData[key] = parsePastedTable(inputs[key]);
+                periodStore[key] = parsePastedTable(inputs[key]);
             }
         });
 
-        // Recalculate consolidated volume across all teams
-        for (let h = 0; h < 24; h++) {
-            let sumAns = 0, sumAbQ = 0, sumAbCSAT = 0, sumAbH = 0;
-            let teamKeys = ['obs', 'ins', 'eld', 'll', 'tfx'];
+        // Set active month/week to target
+        document.getElementById('monthSelect').value = targetMonth;
+        document.getElementById('weekSelect').value = targetWeek;
 
-            teamKeys.forEach(t => {
-                if (teamVolumeData[t] && teamVolumeData[t][h]) {
-                    const item = teamVolumeData[t][h];
-                    sumAns += item.ans;
-                    sumAbQ += item.abQ;
-                    sumAbCSAT += item.abCSAT;
-                    sumAbH += item.abH;
-                }
-            });
-
-            const totalVol = sumAns + sumAbQ + sumAbCSAT + sumAbH;
-
-            volumeDataCombined[h] = {
-                ans: sumAns,
-                abQ: sumAbQ,
-                abCSAT: sumAbCSAT,
-                abH: sumAbH,
-                tot: totalVol,
-                max: Math.round(totalVol * 1.1)
-            };
-        }
-
+        loadActivePeriodVolume();
         renderAll();
+
         document.getElementById('importModal').classList.remove('active');
-        alert('Volume tables parsed and consolidated successfully across all teams!');
+        alert(`Volume data successfully imported and consolidated for ${targetMonth} (${targetWeek})!`);
     }
 
-    // State URL Sharing & LocalStorage Management
-    function getAppStatePayload() {
-        return {
-            teamVolumeData: teamVolumeData,
-            volumeDataCombined: volumeDataCombined,
-            masterAgentsDB: masterAgentsDB,
-            deptRosterCounts: deptRosterCounts
-        };
-    }
-
-    function saveStateToLocalStorage() {
-        try {
-            localStorage.setItem('wfm_dashboard_state', JSON.stringify(getAppStatePayload()));
-        } catch(e) {}
-    }
-
-    function generateShareableLink() {
-        const payload = JSON.stringify(getAppStatePayload());
-        const compressed = LZString.compressToEncodedURIComponent(payload);
-        const url = window.location.origin + window.location.pathname + '?state=' + compressed;
-
-        navigator.clipboard.writeText(url).then(() => {
-            alert('Shareable link copied to clipboard! Anyone opening this link will see your updated tables and charts.');
-        }).catch(() => {
-            prompt('Copy this link to share your updated dashboard:', url);
-        });
-    }
-
-    function loadStateFromURLOrStorage() {
-        const urlParams = new URLSearchParams(window.location.search);
-        const stateParam = urlParams.get('state');
-
-        if (stateParam) {
-            try {
-                const decompressed = LZString.decompressFromEncodedURIComponent(stateParam);
-                if (decompressed) {
-                    const parsedState = JSON.parse(decompressed);
-                    applyAppState(parsedState);
-                    return;
-                }
-            } catch(e) {
-                console.error("Failed to load state from URL", e);
-            }
-        }
-
-        // Fallback to local storage if available
-        const localSaved = localStorage.getItem('wfm_dashboard_state');
-        if (localSaved) {
-            try {
-                const parsedState = JSON.parse(localSaved);
-                applyAppState(parsedState);
-            } catch(e) {}
-        }
-    }
-
-    function applyAppState(state) {
-        if (state.teamVolumeData) teamVolumeData = state.teamVolumeData;
-        if (state.volumeDataCombined) volumeDataCombined = state.volumeDataCombined;
-        if (state.masterAgentsDB) masterAgentsDB = state.masterAgentsDB;
-        if (state.deptRosterCounts) deptRosterCounts = state.deptRosterCounts;
-        syncPatternFromMasterDB();
-    }
-
-    // Management Modal Logic
     function openManagementModal() {
         document.getElementById('mgmtModal').classList.add('active');
         renderMgmtAgentsTable();
@@ -1659,9 +1683,7 @@
     }
 
     window.editAgentPrompt = function(agentId) {
-        requireAuth(() => {
-            openAgentForm(agentId);
-        });
+        requireAuth(() => { openAgentForm(agentId); });
     };
 
     window.deleteAgentPrompt = function(agentId) {
@@ -1735,9 +1757,7 @@
 
     window.toggleActivitySelect = function(checkbox, hour) {
         const select = document.getElementById(`act_select_${hour}`);
-        if (select) {
-            select.style.display = checkbox.checked ? 'inline-block' : 'none';
-        }
+        if (select) select.style.display = checkbox.checked ? 'inline-block' : 'none';
     };
 
     function saveAgentForm() {
@@ -1767,12 +1787,7 @@
             }
         } else {
             const newId = masterAgentsDB.length > 0 ? Math.max(...masterAgentsDB.map(a => a.id)) + 1 : 1;
-            masterAgentsDB.push({
-                id: newId,
-                name: name,
-                dept: dept,
-                hours: hoursObj
-            });
+            masterAgentsDB.push({ id: newId, name: name, dept: dept, hours: hoursObj });
         }
 
         syncPatternFromMasterDB();

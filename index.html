@@ -8,10 +8,6 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 
-    <!-- Firebase JS SDK (v9 Compat - Direct Global Window Binding) -->
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-
     <style>
         :root {
             --primary-color: #1F4E78;
@@ -895,9 +891,11 @@
     </div>
 </div>
 
-<!-- APPLICATION SCRIPT & FIREBASE ENGINE -->
+<!-- FIREBASE SDK COMPAT ENGINE -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
 <script>
-    // FIREBASE INITIALIZATION USING COMPAT V9 ENGINE
     const firebaseConfig = {
         apiKey: "AIzaSyAmB9PhTd_Dz68rTZQZlRS1mcfAy1SQxgo",
         authDomain: "volumevsavailability.firebaseapp.com",
@@ -1579,7 +1577,6 @@
         if (!rawText || !rawText.trim()) return {};
         const result = {};
 
-        // Regex captures timestamps with optional seconds e.g., 12:00:00 AM, 12:00 AM
         const timeRegex = /(\d{1,2}:\d{2}(?::\d{2})?\s*(?:AM|PM)?)/gi;
         const matches = [];
         let match;
@@ -1665,11 +1662,9 @@
         document.getElementById('monthSelect').value = targetMonth;
         document.getElementById('weekSelect').value = targetWeek;
 
-        // Force local sync and instant UI re-render
         loadActivePeriodVolume();
         renderAllUI();
 
-        // Push update to Firebase in background
         saveVolumeDBToFirebase();
         broadcastNavChange(targetMonth, targetWeek);
 

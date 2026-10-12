@@ -592,7 +592,7 @@
     <div class="header">
         <div>
             <h1>WFM Capacity & Volume Dashboard</h1>
-            <small style="opacity: 0.85;">Workforce Management, 15-Min Schedules & Consolidated Call Volume Analytics</small>
+            <small style="opacity: 0.85;">Workforce Management, Hourly Analytics & 15-Min Agent Schedules</small>
         </div>
         <div class="header-actions">
             <button class="btn btn-secondary" id="btnOpenImport">Paste Team Data Tables</button>
@@ -663,7 +663,7 @@
             </div>
         </div>
         <div class="chart-card">
-            <h3 id="chart2Title">Department Breakdown: Headcount vs. Away (Peak Interval)</h3>
+            <h3 id="chart2Title">Department Breakdown: Headcount vs. Away (Peak Hour)</h3>
             <div class="chart-container">
                 <canvas id="deptDistributionChart"></canvas>
             </div>
@@ -672,7 +672,7 @@
 
     <!-- Table 1: Schedule & Away Roster -->
     <h2 class="section-title">
-        <span>1. Away Agents Matrix by 15-Minute Interval</span>
+        <span>1. Away Agents Matrix by Hourly Time Interval</span>
     </h2>
     <div class="table-responsive">
         <table>
@@ -976,7 +976,23 @@
         'TFX': 3
     };
 
-    // GENERATE 96 INTERVALS OF 15 MINUTES (0 TO 95)
+    // GENERATE 24 HOURLY SLOTS (0 TO 23) FOR DASHBOARD TABLES & CHARTS
+    function generate24HourlySlots() {
+        const slots = [];
+        for (let h = 0; h < 24; h++) {
+            let suffix = h >= 12 ? 'PM' : 'AM';
+            let h12 = h % 12;
+            if (h12 === 0) h12 = 12;
+            slots.push({
+                time12: `${h12}:00 ${suffix}`,
+                h24: h
+            });
+        }
+        return slots;
+    }
+    const hourlySlots = generate24HourlySlots();
+
+    // GENERATE 96 INTERVALS OF 15 MINUTES (0 TO 95) ONLY FOR AGENTS FORM
     function generate15MinSlots() {
         const slots = [];
         for (let idx = 0; idx < 96; idx++) {
@@ -990,30 +1006,28 @@
             slots.push({
                 time12: `${h12}:${mStr} ${suffix}`,
                 idx: idx,
-                h24: h,
-                mins: m
+                h24: h
             });
         }
         return slots;
     }
-    const hourlySlots = generate15MinSlots();
+    const agentSlots15Min = generate15MinSlots();
 
     const defaultRosterPattern = {
-        32: { // 8:00 AM (8 * 4)
+        8: {
             "OBS - Phones": [{"name": "Lelburn Gordon", "act": "Break 1"}, {"name": "Dean Spencer", "act": "Break 1"}],
             "OBS - Cases": [{"name": "Emely Hernandez", "act": "Break 1"}],
-            "INS": [{"name": "Keyren Fuertes", "act": "Break 1"}, {"name": "Otto de la Cruz", "act": "Break 1"}],
-            "ELD": [{"name": "Edgar Castillo", "act": "Break 1"}]
+            "INS": [{"name": "Keyren Fuertes", "act": "Break 1"}, {"name": "Otto de la Cruz", "act": "Break 1"}]
         },
-        36: { // 9:00 AM (9 * 4)
+        9: {
             "OBS - Phones": [{"name": "Shanique Kelly", "act": "Break 1"}, {"name": "Alberto Arana", "act": "Break 1"}],
             "OBS - Cases": [{"name": "Lucia Herrera", "act": "Break 1"}]
         },
-        40: { // 10:00 AM (10 * 4)
+        10: {
             "OBS - Phones": [{"name": "Daneil Facey", "act": "Lunch"}],
             "OBS - Cases": [{"name": "Pablo Saquilmer", "act": "Break 1"}]
         },
-        48: { // 12:00 PM (12 * 4)
+        12: {
             "OBS - Phones": [{"name": "Shanique Kelly", "act": "Lunch"}, {"name": "Alberto Arana", "act": "Lunch"}],
             "OBS - Cases": [{"name": "Lucia Herrera", "act": "Lunch"}]
         }
@@ -1022,16 +1036,18 @@
     function buildDefaultMasterAgents() {
         let agentMap = {};
         let idCounter = 1;
-        for (let idx = 0; idx < 96; idx++) {
-            if (defaultRosterPattern[idx]) {
+        for (let h = 0; h < 24; h++) {
+            if (defaultRosterPattern[h]) {
                 for (let d of depts) {
-                    if (defaultRosterPattern[idx][d]) {
-                        defaultRosterPattern[idx][d].forEach(ag => {
+                    if (defaultRosterPattern[h][d]) {
+                        defaultRosterPattern[h][d].forEach(ag => {
                             let key = ag.name + '___' + d;
                             if (!agentMap[key]) {
                                 agentMap[key] = { id: idCounter++, name: ag.name, dept: d, hours: {} };
                             }
-                            agentMap[key].hours[idx] = ag.act || "Break/Lunch";
+                            // Store on nearest 15-min index e.g., 8:00 AM -> 32
+                            let slot15Idx = h * 4;
+                            agentMap[key].hours[slot15Idx] = ag.act || "Break/Lunch";
                         });
                     }
                 }
@@ -1110,21 +1126,27 @@
         });
     }
 
+    // MAP 15-MIN AGENT HOURS TO 24 HOURLY INTERVALS FOR TABLE 1
     function syncPatternFromMasterDB() {
-        for (let idx = 0; idx < 96; idx++) {
-            hourlyDataPattern[idx] = {};
-            for (let d of depts) hourlyDataPattern[idx][d] = [];
+        for (let h = 0; h < 24; h++) {
+            hourlyDataPattern[h] = {};
+            for (let d of depts) hourlyDataPattern[h][d] = [];
         }
 
         masterAgentsDB.forEach(ag => {
             if (ag.hours) {
                 for (let idx in ag.hours) {
-                    let slotIdx = parseInt(idx, 10);
-                    if (hourlyDataPattern[slotIdx] && hourlyDataPattern[slotIdx][ag.dept]) {
-                        hourlyDataPattern[slotIdx][ag.dept].push({
-                            name: ag.name,
-                            act: ag.hours[idx]
-                        });
+                    let slot15Idx = parseInt(idx, 10);
+                    let hour24 = Math.floor(slot15Idx / 4);
+                    if (hour24 >= 0 && hour24 < 24 && hourlyDataPattern[hour24] && hourlyDataPattern[hour24][ag.dept]) {
+                        // Prevent duplicate agent entries in the same hour row
+                        let exists = hourlyDataPattern[hour24][ag.dept].some(item => item.name === ag.name);
+                        if (!exists) {
+                            hourlyDataPattern[hour24][ag.dept].push({
+                                name: ag.name,
+                                act: ag.hours[idx]
+                            });
+                        }
                     }
                 }
             }
@@ -1161,11 +1183,11 @@
         const periodStore = multiPeriodVolumeDB[monthKey][weekKey];
         volumeDataCombined = {};
 
-        for (let idx = 0; idx < 96; idx++) {
+        for (let h = 0; h < 24; h++) {
             let sumAns = 0, sumAbQ = 0, sumAbCSAT = 0, sumAbH = 0;
             ['obs', 'ins', 'eld', 'll', 'tfx'].forEach(t => {
-                if (periodStore[t] && periodStore[t][idx]) {
-                    const item = periodStore[t][idx];
+                if (periodStore[t] && periodStore[t][h]) {
+                    const item = periodStore[t][h];
                     sumAns += item.ans || 0;
                     sumAbQ += item.abQ || 0;
                     sumAbCSAT += item.abCSAT || 0;
@@ -1174,7 +1196,7 @@
             });
 
             const totalVol = sumAns + sumAbQ + sumAbCSAT + sumAbH;
-            volumeDataCombined[idx] = {
+            volumeDataCombined[h] = {
                 ans: sumAns,
                 abQ: sumAbQ,
                 abCSAT: sumAbCSAT,
@@ -1240,7 +1262,7 @@
                 const isVisible = isAll || selectedDepts.has(dept);
                 td.style.display = isVisible ? '' : 'none';
 
-                let agents = (hourlyDataPattern[slot.idx] && hourlyDataPattern[slot.idx][dept]) ? hourlyDataPattern[slot.idx][dept] : [];
+                let agents = (hourlyDataPattern[slot.h24] && hourlyDataPattern[slot.h24][dept]) ? hourlyDataPattern[slot.h24][dept] : [];
                 
                 if (isVisible) {
                     rowTotalAway += agents.length;
@@ -1274,7 +1296,7 @@
         tbody.innerHTML = '';
 
         hourlySlots.forEach(slot => {
-            const v = volumeDataCombined[slot.idx] || { ans:0, abQ:0, abCSAT:0, abH:0, tot:0, max:0 };
+            const v = volumeDataCombined[slot.h24] || { ans:0, abQ:0, abCSAT:0, abH:0, tot:0, max:0 };
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td class="time-col">${slot.time12}</td>
@@ -1295,15 +1317,14 @@
 
         const aht = parseFloat(document.getElementById('ahtInput').value) || 5;
         const occ = (parseFloat(document.getElementById('occInput').value) || 85) / 100;
-        // 15-min capacity = (15 / AHT) * Occ per agent
-        const callsPer15MinPerAgent = (15 / aht) * occ;
+        const callsPerHourPerAgent = (60 / aht) * occ;
 
         hourlySlots.forEach(slot => {
-            const v = volumeDataCombined[slot.idx] || { tot: 0 };
-            const phoneAway = (hourlyDataPattern[slot.idx]["OBS - Phones"]) ? hourlyDataPattern[slot.idx]["OBS - Phones"].length : 0;
+            const v = volumeDataCombined[slot.h24] || { tot: 0 };
+            const phoneAway = (hourlyDataPattern[slot.h24]["OBS - Phones"]) ? hourlyDataPattern[slot.h24]["OBS - Phones"].length : 0;
             const phoneAvail = Math.max(0, deptRosterCounts["OBS - Phones"] - phoneAway);
 
-            const reqAgents = v.tot > 0 ? Math.ceil(v.tot / callsPer15MinPerAgent) : 0;
+            const reqAgents = v.tot > 0 ? Math.ceil(v.tot / callsPerHourPerAgent) : 0;
             const gap = phoneAvail - reqAgents;
 
             let recText = "";
@@ -1334,27 +1355,27 @@
         const week = getActiveWeek();
 
         let maxVol = 0;
-        let peakIdx = 36;
+        let peakHour = 9;
 
-        for (let idx = 0; idx < 96; idx++) {
-            let v = volumeDataCombined[idx] ? volumeDataCombined[idx].tot : 0;
+        for (let h = 0; h < 24; h++) {
+            let v = volumeDataCombined[h] ? volumeDataCombined[h].tot : 0;
             if (v > maxVol) {
                 maxVol = v;
-                peakIdx = idx;
+                peakHour = h;
             }
         }
 
-        let peakSlot = hourlySlots.find(s => s.idx === peakIdx);
-        let timeLabel = peakSlot ? peakSlot.time12 : "Peak Interval";
+        let peakSlot = hourlySlots.find(s => s.h24 === peakHour);
+        let timeLabel = peakSlot ? peakSlot.time12 : "Peak Hour";
 
         container.innerHTML = `
             <div class="recommendation-card">
-                <h3>Peak-Interval Shift & Meal Staggering (${month} - ${week})</h3>
-                <p>For <b>${month} (${week})</b>, overall call volume peaks around <b>${timeLabel}</b> with an average volume of <b>${maxVol.toFixed(1)} calls/interval</b>. Overlapping lunches and breaks reduce available phone capacity during key morning windows. Staggering meal schedules into 15-minute staggered shifts is essential to maintain queue SLA.</p>
+                <h3>Peak-Hour Shift & Meal Staggering (${month} - ${week})</h3>
+                <p>For <b>${month} (${week})</b>, overall call volume peaks around <b>${timeLabel}</b> with an average volume of <b>${maxVol.toFixed(1)} calls/hour</b>. Overlapping lunches and breaks reduce available phone capacity during key morning windows. Staggering meal schedules into smaller shifts is essential to maintain queue SLA.</p>
             </div>
             <div class="recommendation-card">
                 <h3>Cross-Queue Reinforcement & Flex Staffing</h3>
-                <p>When demand spikes above capacity in <i>${month} - ${week}</i>, activate cross-skilling protocols so that agents from non-phone or lower-volume teams support phone queues during high-demand intervals.</p>
+                <p>When demand spikes above capacity in <i>${month} - ${week}</i>, activate cross-skilling protocols so that agents from non-phone or lower-volume teams support phone queues during high-demand hours.</p>
             </div>
         `;
     }
@@ -1371,18 +1392,16 @@
                         data: [],
                         borderColor: '#E6A100',
                         backgroundColor: 'rgba(230, 161, 0, 0.2)',
-                        borderWidth: 2,
-                        pointRadius: 1,
+                        borderWidth: 3,
                         fill: true,
-                        tension: 0.2
+                        tension: 0.3
                     },
                     {
                         label: 'Available Phone Capacity',
                         data: [],
                         borderColor: '#1F4E78',
-                        borderDash: [4, 4],
+                        borderDash: [5, 5],
                         borderWidth: 2,
-                        pointRadius: 1,
                         fill: false
                     }
                 ]
@@ -1402,7 +1421,7 @@
                 labels: depts,
                 datasets: [
                     { label: 'Total Headcount', data: [], backgroundColor: '#1F4E78' },
-                    { label: 'Away Agents in Peak Interval', data: [], backgroundColor: '#E6A100' }
+                    { label: 'Away Agents in Peak Hour (1:00 PM)', data: [], backgroundColor: '#E6A100' }
                 ]
             },
             options: {
@@ -1417,16 +1436,16 @@
     function updateCharts() {
         const aht = parseFloat(document.getElementById('ahtInput').value) || 5;
         const occ = (parseFloat(document.getElementById('occInput').value) || 85) / 100;
-        const callsPer15MinPerAgent = (15 / aht) * occ;
+        const callsPerHourPerAgent = (60 / aht) * occ;
 
         const volumeData = [];
         const capacityData = [];
 
         hourlySlots.forEach(slot => {
-            const v = volumeDataCombined[slot.idx] ? volumeDataCombined[slot.idx].tot : 0;
-            const phoneAway = hourlyDataPattern[slot.idx]["OBS - Phones"] ? hourlyDataPattern[slot.idx]["OBS - Phones"].length : 0;
+            const v = volumeDataCombined[slot.h24] ? volumeDataCombined[slot.h24].tot : 0;
+            const phoneAway = hourlyDataPattern[slot.h24]["OBS - Phones"] ? hourlyDataPattern[slot.h24]["OBS - Phones"].length : 0;
             const phoneAvail = Math.max(0, deptRosterCounts["OBS - Phones"] - phoneAway);
-            const callCapacity = Math.round(phoneAvail * callsPer15MinPerAgent);
+            const callCapacity = Math.round(phoneAvail * callsPerHourPerAgent);
 
             volumeData.push(v);
             capacityData.push(callCapacity);
@@ -1437,7 +1456,7 @@
         volumeCapacityChartInstance.update();
 
         const totalHeadcounts = depts.map(d => deptRosterCounts[d]);
-        const peakAway = depts.map(d => (hourlyDataPattern[52][d] ? hourlyDataPattern[52][d].length : 0)); // 1:00 PM
+        const peakAway = depts.map(d => (hourlyDataPattern[13][d] ? hourlyDataPattern[13][d].length : 0));
 
         deptDistributionChartInstance.data.datasets[0].data = totalHeadcounts;
         deptDistributionChartInstance.data.datasets[1].data = peakAway;
@@ -1632,7 +1651,7 @@
         }
     }
 
-    // MULTI-DAY EXCEL PARSER MAPPED TO 96 INTERVALS
+    // MULTI-DAY PARSER MAPS TO 24 HOURLY INTERVALS FOR DASHBOARD TABLES/CHARTS
     function parsePastedTable(rawText) {
         if (!rawText || !rawText.trim()) return {};
         const result = {};
@@ -1651,29 +1670,25 @@
 
         if (matches.length === 0) return result;
 
-        const intervalAccumulator = {};
+        const hourlyAccumulator = {};
 
         for (let i = 0; i < matches.length; i++) {
             const current = matches[i];
             const nextIndex = (i + 1 < matches.length) ? matches[i + 1].index : rawText.length;
             const numSegment = rawText.substring(current.endIndex, nextIndex).trim();
 
-            let slotIdx = -1;
-            let hourMatch = current.timeStr.match(/(\d{1,2}):(\d{2})(?::\d{2})?\s*(AM|PM)?/i);
+            let h24 = -1;
+            let hourMatch = current.timeStr.match(/(\d{1,2}):?(\d{2})?:?(\d{2})?\s*(AM|PM)?/i);
             if (hourMatch) {
                 let h = parseInt(hourMatch[1], 10);
-                let m = parseInt(hourMatch[2], 10);
-                let pm = hourMatch[3] && hourMatch[3].toUpperCase() === 'PM';
-                let am = hourMatch[3] && hourMatch[3].toUpperCase() === 'AM';
+                let pm = hourMatch[4] && hourMatch[4].toUpperCase() === 'PM';
+                let am = hourMatch[4] && hourMatch[4].toUpperCase() === 'AM';
                 if (pm && h < 12) h += 12;
                 if (am && h === 12) h = 0;
-                
-                // Map minutes to nearest 15-min block
-                let mBlock = Math.floor(m / 15);
-                slotIdx = (h * 4) + mBlock;
+                if (h >= 0 && h < 24) h24 = h;
             }
 
-            if (slotIdx >= 0 && slotIdx < 96) {
+            if (h24 !== -1) {
                 let digits = numSegment.split(/[\t\s\n,]+/).map(v => parseFloat(v)).filter(v => !isNaN(v));
                 if (digits.length === 0 && numSegment.length > 0) {
                     let dMatch = numSegment.match(/\d+/g);
@@ -1685,27 +1700,27 @@
                 let abCSAT = digits[2] || 0;
                 let abH = digits[3] || digits[4] || 0;
 
-                if (!intervalAccumulator[slotIdx]) {
-                    intervalAccumulator[slotIdx] = { ansSum: 0, abQSum: 0, abCSATSum: 0, abHSum: 0, count: 0 };
+                if (!hourlyAccumulator[h24]) {
+                    hourlyAccumulator[h24] = { ansSum: 0, abQSum: 0, abCSATSum: 0, abHSum: 0, count: 0 };
                 }
 
-                intervalAccumulator[slotIdx].ansSum += ans;
-                intervalAccumulator[slotIdx].abQSum += abQ;
-                intervalAccumulator[slotIdx].abCSATSum += abCSAT;
-                intervalAccumulator[slotIdx].abHSum += abH;
-                intervalAccumulator[slotIdx].count += 1;
+                hourlyAccumulator[h24].ansSum += ans;
+                hourlyAccumulator[h24].abQSum += abQ;
+                hourlyAccumulator[h24].abCSATSum += abCSAT;
+                hourlyAccumulator[h24].abHSum += abH;
+                hourlyAccumulator[h24].count += 1;
             }
         }
 
-        for (let idx in intervalAccumulator) {
-            let item = intervalAccumulator[idx];
+        for (let h in hourlyAccumulator) {
+            let item = hourlyAccumulator[h];
             let cnt = item.count || 1;
             let avgAns = item.ansSum / cnt;
             let avgAbQ = item.abQSum / cnt;
             let avgCSAT = item.abCSATSum / cnt;
             let avgAbH = item.abHSum / cnt;
 
-            result[idx] = {
+            result[h] = {
                 ans: avgAns,
                 abQ: avgAbQ,
                 abCSAT: avgCSAT,
@@ -1786,7 +1801,7 @@
             let hoursBadges = [];
             if (ag.hours) {
                 for (let idx in ag.hours) {
-                    let slot = hourlySlots.find(s => s.idx == idx);
+                    let slot = agentSlots15Min.find(s => s.idx == idx);
                     let timeLabel = slot ? slot.time12 : `${idx}`;
                     hoursBadges.push(`<span class="badge-act">${timeLabel}: ${ag.hours[idx]}</span>`);
                 }
@@ -1841,7 +1856,7 @@
             document.getElementById('agentNameInput').value = ag.name;
             document.getElementById('agentDeptInput').value = ag.dept;
 
-            hourlySlots.forEach(slot => {
+            agentSlots15Min.forEach(slot => {
                 const isChecked = ag.hours && ag.hours[slot.idx] !== undefined;
                 const actValue = (ag.hours && ag.hours[slot.idx]) || "Break 1";
                 
@@ -1865,7 +1880,7 @@
             document.getElementById('agentNameInput').value = '';
             document.getElementById('agentDeptInput').value = currentDept;
 
-            hourlySlots.forEach(slot => {
+            agentSlots15Min.forEach(slot => {
                 const div = document.createElement('div');
                 div.className = 'chip-checkbox';
                 div.innerHTML = `

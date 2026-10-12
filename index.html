@@ -891,7 +891,7 @@
     </div>
 </div>
 
-<!-- FIREBASE SDK INTEGRATION -->
+<!-- FIREBASE SDK ES MODULE INTEGRATION -->
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-app.js";
     import { getDatabase, ref, onValue, set } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-database.js";
@@ -1570,12 +1570,12 @@
         }
     }
 
-    // ADVANCED REGEX PARSER FOR EXCEL UNSPACED DATA
+    // ADVANCED PARSER FOR COMPACT EXCEL DATA WITH SECONDS
     function parsePastedTable(rawText) {
         if (!rawText || !rawText.trim()) return {};
         const result = {};
 
-        // Regex matches 12-hour timestamps (e.g., 12:00:00 AM, 1:00 AM) or 24-hour timestamps
+        // Regex matches 12-hour timestamps with optional seconds e.g. 12:00:00 AM or 12:00 AM
         const timeRegex = /(\d{1,2}:\d{2}(?::\d{2})?\s*(?:AM|PM)?)/gi;
         const matches = [];
         let match;
@@ -1607,10 +1607,8 @@
             }
 
             if (h24 !== -1) {
-                // Extract contiguous digits or tabular numbers
                 let digits = numSegment.split(/[\t\s\n,]+/).map(v => parseFloat(v)).filter(v => !isNaN(v));
                 if (digits.length === 0 && numSegment.length > 0) {
-                    // Fallback for compact single digit blocks (e.g., "35200" -> 35, 20, 0)
                     let dMatch = numSegment.match(/\d+/g);
                     if (dMatch) digits = dMatch.map(v => parseFloat(v));
                 }

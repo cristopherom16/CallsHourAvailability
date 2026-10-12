@@ -370,8 +370,8 @@
             background: #ffffff;
             border-radius: 10px;
             width: 90%;
-            max-width: 900px;
-            max-height: 88vh;
+            max-width: 950px;
+            max-height: 90vh;
             display: flex;
             flex-direction: column;
             box-shadow: 0 10px 30px rgba(0,0,0,0.2);
@@ -443,6 +443,45 @@
 
         .tab-content { display: none; }
         .tab-content.active { display: block; }
+
+        .saved-weeks-panel {
+            background: #EBF2FA;
+            border: 1px solid var(--primary-color);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 15px;
+        }
+
+        .saved-weeks-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .saved-week-chip {
+            background: #ffffff;
+            border: 1px solid var(--primary-color);
+            padding: 4px 10px;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .saved-week-chip button {
+            background: none;
+            border: none;
+            color: var(--primary-color);
+            font-weight: bold;
+            cursor: pointer;
+            padding: 0 2px;
+        }
+
+        .saved-week-chip .btn-del-period {
+            color: var(--danger-color);
+        }
 
         .mgmt-toolbar {
             display: flex;
@@ -715,10 +754,17 @@
 <div class="modal-overlay" id="importModal">
     <div class="modal-card">
         <div class="modal-header">
-            <h3>Paste Call Volume Tables by Team</h3>
+            <h3>Paste Call Volume Tables & Period Manager</h3>
             <button class="close-btn" id="btnCloseImport">&times;</button>
         </div>
         <div class="modal-body">
+            <div class="saved-weeks-panel">
+                <span style="font-weight:bold; font-size:0.85rem; color:var(--primary-dark);">Saved Periods in Storage/Firebase:</span>
+                <div class="saved-weeks-list" id="savedPeriodsContainer">
+                    <span style="font-size:0.8rem; color:#666;">No periods saved yet.</span>
+                </div>
+            </div>
+
             <div style="display:flex; gap:15px; margin-bottom:15px; background:#f1f4f8; padding:10px; border-radius:6px; align-items:center;">
                 <label style="font-weight:bold; font-size:0.85rem;">Target Month:</label>
                 <select id="importMonthSelect" class="input-select">
@@ -746,7 +792,7 @@
                 </select>
             </div>
 
-            <p style="font-size:0.85rem; color:#555; margin-top:0;">Paste data directly from Excel or TSV/CSV format. Expected headers: <b>Hour, Answered, Abnd. in Queue, Abnd in CSAT, Abnd on Hold</b>.</p>
+            <p style="font-size:0.85rem; color:#555; margin-top:0;">Paste data directly from Excel for each queue tab below.</p>
             
             <div class="tab-buttons" id="teamImportTabs">
                 <button class="tab-btn active" data-tab="tab-obs">OBS Phones</button>
@@ -759,35 +805,35 @@
             <div class="tab-content active" id="tab-obs">
                 <div class="form-group">
                     <label>OBS Phones Volume Data:</label>
-                    <textarea class="input-text team-volume-input" id="volumeText_obs" style="height: 200px; font-family: monospace; font-size:0.8rem;"></textarea>
+                    <textarea class="input-text team-volume-input" id="volumeText_obs" style="height: 180px; font-family: monospace; font-size:0.8rem;"></textarea>
                 </div>
             </div>
 
             <div class="tab-content" id="tab-ins">
                 <div class="form-group">
                     <label>INS Phones Volume Data:</label>
-                    <textarea class="input-text team-volume-input" id="volumeText_ins" style="height: 200px; font-family: monospace; font-size:0.8rem;"></textarea>
+                    <textarea class="input-text team-volume-input" id="volumeText_ins" style="height: 180px; font-family: monospace; font-size:0.8rem;"></textarea>
                 </div>
             </div>
 
             <div class="tab-content" id="tab-eld">
                 <div class="form-group">
                     <label>ELD Phones Volume Data:</label>
-                    <textarea class="input-text team-volume-input" id="volumeText_eld" style="height: 200px; font-family: monospace; font-size:0.8rem;"></textarea>
+                    <textarea class="input-text team-volume-input" id="volumeText_eld" style="height: 180px; font-family: monospace; font-size:0.8rem;"></textarea>
                 </div>
             </div>
 
             <div class="tab-content" id="tab-ll">
                 <div class="form-group">
                     <label>LL+ Volume Data:</label>
-                    <textarea class="input-text team-volume-input" id="volumeText_ll" style="height: 200px; font-family: monospace; font-size:0.8rem;"></textarea>
+                    <textarea class="input-text team-volume-input" id="volumeText_ll" style="height: 180px; font-family: monospace; font-size:0.8rem;"></textarea>
                 </div>
             </div>
 
             <div class="tab-content" id="tab-tfx">
                 <div class="form-group">
                     <label>TFX Volume Data:</label>
-                    <textarea class="input-text team-volume-input" id="volumeText_tfx" style="height: 200px; font-family: monospace; font-size:0.8rem;"></textarea>
+                    <textarea class="input-text team-volume-input" id="volumeText_tfx" style="height: 180px; font-family: monospace; font-size:0.8rem;"></textarea>
                 </div>
             </div>
         </div>
@@ -891,11 +937,11 @@
     </div>
 </div>
 
-<!-- FIREBASE SDK COMPAT ENGINE -->
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<!-- FIREBASE SDK ENGINE -->
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-app.js";
+    import { getDatabase, ref, onValue, set, remove } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-database.js";
 
-<script>
     const firebaseConfig = {
         apiKey: "AIzaSyAmB9PhTd_Dz68rTZQZlRS1mcfAy1SQxgo",
         authDomain: "volumevsavailability.firebaseapp.com",
@@ -907,14 +953,13 @@
         measurementId: "G-YDZ8542ENX"
     };
 
-    if (!firebase.apps.length) {
-        firebase.initializeApp(firebaseConfig);
-    }
-    const db = firebase.database();
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
 
-    const dbRefVolume = db.ref('wfm_data/multiPeriodVolumeDB');
-    const dbRefAgents = db.ref('wfm_data/masterAgentsDB');
-    const dbRefActiveNav = db.ref('wfm_data/activeNavigation');
+    const dbRefVolume = ref(db, 'wfm_data/multiPeriodVolumeDB');
+    const dbRefRawTexts = ref(db, 'wfm_data/rawTextsDB');
+    const dbRefAgents = ref(db, 'wfm_data/masterAgentsDB');
+    const dbRefActiveNav = ref(db, 'wfm_data/activeNavigation');
 
     let isRemoteUpdate = false;
 
@@ -1031,6 +1076,7 @@
 
     let hourlyDataPattern = {};
     let multiPeriodVolumeDB = {};
+    let rawTextsDB = {};
     let volumeDataCombined = {};
     let masterAgentsDB = buildDefaultMasterAgents();
 
@@ -1039,22 +1085,26 @@
     }
 
     function initFirebaseListeners() {
-        dbRefVolume.on('value', (snapshot) => {
+        onValue(dbRefVolume, (snapshot) => {
             const data = snapshot.val();
             if (data) {
                 multiPeriodVolumeDB = data;
             }
             loadActivePeriodVolume();
             renderAllUI();
+            renderSavedPeriodsList();
         });
 
-        dbRefAgents.on('value', (snapshot) => {
+        onValue(dbRefRawTexts, (snapshot) => {
+            const data = snapshot.val();
+            if (data) rawTextsDB = data;
+        });
+
+        onValue(dbRefAgents, (snapshot) => {
             const data = snapshot.val();
             if (data) {
                 let parsed = Array.isArray(data) ? data : Object.values(data);
-                if (parsed.length > 0) {
-                    masterAgentsDB = parsed;
-                }
+                if (parsed.length > 0) masterAgentsDB = parsed;
             } else {
                 saveAgentsDBToFirebase();
             }
@@ -1066,7 +1116,7 @@
             }
         });
 
-        dbRefActiveNav.on('value', (snapshot) => {
+        onValue(dbRefActiveNav, (snapshot) => {
             const nav = snapshot.val();
             if (nav && !isRemoteUpdate) {
                 isRemoteUpdate = true;
@@ -1079,26 +1129,18 @@
         });
     }
 
-    function saveVolumeDBToFirebase() {
-        dbRefVolume.set(multiPeriodVolumeDB);
-    }
-
-    function saveAgentsDBToFirebase() {
-        dbRefAgents.set(masterAgentsDB);
-    }
+    function saveVolumeDBToFirebase() { set(dbRefVolume, multiPeriodVolumeDB); }
+    function saveRawTextsToFirebase() { set(dbRefRawTexts, rawTextsDB); }
+    function saveAgentsDBToFirebase() { set(dbRefAgents, masterAgentsDB); }
 
     function broadcastNavChange(month, week) {
-        if (!isRemoteUpdate) {
-            dbRefActiveNav.set({ month: month, week: week });
-        }
+        if (!isRemoteUpdate) set(dbRefActiveNav, { month: month, week: week });
     }
 
     function recountRosterFromMasterDB() {
         depts.forEach(d => deptRosterCounts[d] = 0);
         masterAgentsDB.forEach(ag => {
-            if (deptRosterCounts[ag.dept] !== undefined) {
-                deptRosterCounts[ag.dept]++;
-            }
+            if (deptRosterCounts[ag.dept] !== undefined) deptRosterCounts[ag.dept]++;
         });
     }
 
@@ -1445,6 +1487,68 @@
         deptDistributionChartInstance.update();
     }
 
+    function renderSavedPeriodsList() {
+        const container = document.getElementById('savedPeriodsContainer');
+        container.innerHTML = '';
+
+        let count = 0;
+        for (let monthKey in multiPeriodVolumeDB) {
+            for (let weekKey in multiPeriodVolumeDB[monthKey]) {
+                const store = multiPeriodVolumeDB[monthKey][weekKey];
+                let hasData = false;
+                for (let k in store) {
+                    if (Object.keys(store[k]).length > 0) { hasData = true; break; }
+                }
+
+                if (hasData) {
+                    count++;
+                    const origMonth = monthKey.replace(/_/g, ' ');
+                    const origWeek = weekKey.replace(/_/g, ' ');
+
+                    const chip = document.createElement('div');
+                    chip.className = 'saved-week-chip';
+                    chip.innerHTML = `
+                        <span><b>${origMonth}</b> - ${origWeek}</span>
+                        <button onclick="loadSavedPeriodToModal('${monthKey}', '${weekKey}')" title="Load to Edit">✏️</button>
+                        <button class="btn-del-period" onclick="deleteSavedPeriod('${monthKey}', '${weekKey}')" title="Delete">✕</button>
+                    `;
+                    container.appendChild(chip);
+                }
+            }
+        }
+
+        if (count === 0) {
+            container.innerHTML = `<span style="font-size:0.8rem; color:#666;">No periods saved yet.</span>`;
+        }
+    }
+
+    window.loadSavedPeriodToModal = function(mKey, wKey) {
+        if (rawTextsDB[mKey] && rawTextsDB[mKey][wKey]) {
+            const raw = rawTextsDB[mKey][wKey];
+            document.getElementById('volumeText_obs').value = raw.obs || '';
+            document.getElementById('volumeText_ins').value = raw.ins || '';
+            document.getElementById('volumeText_eld').value = raw.eld || '';
+            document.getElementById('volumeText_ll').value = raw.ll || '';
+            document.getElementById('volumeText_tfx').value = raw.tfx || '';
+        }
+    };
+
+    window.deleteSavedPeriod = function(mKey, wKey) {
+        if (confirm(`Are you sure you want to delete period ${mKey} - ${wKey}?`)) {
+            if (multiPeriodVolumeDB[mKey] && multiPeriodVolumeDB[mKey][wKey]) {
+                delete multiPeriodVolumeDB[mKey][wKey];
+                remove(ref(db, `wfm_data/multiPeriodVolumeDB/${mKey}/${wKey}`));
+            }
+            if (rawTextsDB[mKey] && rawTextsDB[mKey][wKey]) {
+                delete rawTextsDB[mKey][wKey];
+                remove(ref(db, `wfm_data/rawTextsDB/${mKey}/${wKey}`));
+            }
+            loadActivePeriodVolume();
+            renderAllUI();
+            renderSavedPeriodsList();
+        }
+    };
+
     function requireAuth(callback) {
         if (isAuthenticated) {
             callback();
@@ -1520,6 +1624,7 @@
         document.getElementById('btnOpenImport').addEventListener('click', () => {
             document.getElementById('importMonthSelect').value = getActiveMonth();
             document.getElementById('importWeekSelect').value = getActiveWeek();
+            renderSavedPeriodsList();
             document.getElementById('importModal').classList.add('active');
         });
         document.getElementById('btnCloseImport').addEventListener('click', () => {
@@ -1572,7 +1677,7 @@
         }
     }
 
-    // ADVANCED ADAPTIVE REGEX PARSER FOR UNSPACED EXCEL DATA
+    // MULTI-DAY EXCEL PARSER (Calculates hourly average across 7 days if pasted)
     function parsePastedTable(rawText) {
         if (!rawText || !rawText.trim()) return {};
         const result = {};
@@ -1590,6 +1695,8 @@
         }
 
         if (matches.length === 0) return result;
+
+        const hourlyAccumulator = {};
 
         for (let i = 0; i < matches.length; i++) {
             const current = matches[i];
@@ -1619,15 +1726,35 @@
                 let abCSAT = digits[2] || 0;
                 let abH = digits[3] || digits[4] || 0;
 
-                result[h24] = {
-                    ans: ans,
-                    abQ: abQ,
-                    abCSAT: abCSAT,
-                    abH: abH,
-                    tot: ans + abQ + abCSAT + abH
-                };
+                if (!hourlyAccumulator[h24]) {
+                    hourlyAccumulator[h24] = { ansSum: 0, abQSum: 0, abCSATSum: 0, abHSum: 0, count: 0 };
+                }
+
+                hourlyAccumulator[h24].ansSum += ans;
+                hourlyAccumulator[h24].abQSum += abQ;
+                hourlyAccumulator[h24].abCSATSum += abCSAT;
+                hourlyAccumulator[h24].abHSum += abH;
+                hourlyAccumulator[h24].count += 1;
             }
         }
+
+        for (let h in hourlyAccumulator) {
+            let item = hourlyAccumulator[h];
+            let cnt = item.count || 1;
+            let avgAns = item.ansSum / cnt;
+            let avgAbQ = item.abQSum / cnt;
+            let avgCSAT = item.abCSATSum / cnt;
+            let avgAbH = item.abHSum / cnt;
+
+            result[h] = {
+                ans: avgAns,
+                abQ: avgAbQ,
+                abCSAT: avgCSAT,
+                abH: avgAbH,
+                tot: avgAns + avgAbQ + avgCSAT + avgAbH
+            };
+        }
+
         return result;
     }
 
@@ -1643,7 +1770,11 @@
             multiPeriodVolumeDB[monthKey][weekKey] = { obs: {}, ins: {}, eld: {}, ll: {}, tfx: {} };
         }
 
+        if (!rawTextsDB[monthKey]) rawTextsDB[monthKey] = {};
+        if (!rawTextsDB[monthKey][weekKey]) rawTextsDB[monthKey][weekKey] = {};
+
         const periodStore = multiPeriodVolumeDB[monthKey][weekKey];
+        const rawStore = rawTextsDB[monthKey][weekKey];
 
         const inputs = {
             'obs': document.getElementById('volumeText_obs').value,
@@ -1655,6 +1786,7 @@
 
         Object.keys(inputs).forEach(key => {
             if (inputs[key] && inputs[key].trim().length > 0) {
+                rawStore[key] = inputs[key];
                 periodStore[key] = parsePastedTable(inputs[key]);
             }
         });
@@ -1666,6 +1798,7 @@
         renderAllUI();
 
         saveVolumeDBToFirebase();
+        saveRawTextsToFirebase();
         broadcastNavChange(targetMonth, targetWeek);
 
         document.getElementById('importModal').classList.remove('active');

@@ -4,9 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WFM Analytics & Call Volume Analysis Dashboard</title>
-    <!-- Chart.js & PapaParse -->
+    <!-- Chart.js, PapaParse, and Firebase Compat SDKs -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
     <style>
         :root {
             --primary-color: #1F4E78;
@@ -65,6 +68,19 @@
             display: flex;
             gap: 10px;
             flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .sync-badge {
+            background: #2e7d32;
+            color: #ffffff;
+            font-size: 0.75rem;
+            padding: 5px 12px;
+            border-radius: 12px;
+            font-weight: bold;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
         }
 
         .btn {
@@ -204,10 +220,6 @@
             background-color: #ffffff;
             font-size: 0.9rem;
             outline: none;
-        }
-
-        .input-select:focus, .input-number:focus, .input-text:focus {
-            border-color: var(--primary-color);
         }
 
         .charts-grid {
@@ -443,13 +455,8 @@
             color: #000;
         }
 
-        .tab-content {
-            display: none;
-        }
-
-        .tab-content.active {
-            display: block;
-        }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
 
         .mgmt-toolbar {
             display: flex;
@@ -471,9 +478,7 @@
             padding: 8px;
         }
 
-        .agent-list-table td {
-            padding: 8px;
-        }
+        .agent-list-table td { padding: 8px; }
 
         .badge-dept {
             background: var(--accent-yellow-light);
@@ -518,9 +523,7 @@
             gap: 5px;
         }
 
-        .form-group.full {
-            grid-column: span 2;
-        }
+        .form-group.full { grid-column: span 2; }
 
         .form-group label {
             font-weight: bold;
@@ -552,14 +555,8 @@
             cursor: pointer;
         }
 
-        .chip-checkbox input {
-            cursor: pointer;
-        }
-
-        .auth-card {
-            max-width: 400px;
-            text-align: center;
-        }
+        .chip-checkbox input { cursor: pointer; }
+        .auth-card { max-width: 400px; text-align: center; }
     </style>
 </head>
 <body>
@@ -571,6 +568,7 @@
             <small style="opacity: 0.85;">Workforce Management, Hourly Schedules & Consolidated Call Volume Analytics</small>
         </div>
         <div class="header-actions">
+            <span class="sync-badge" id="syncStatusBadge">🟢 Connected to Firebase</span>
             <button class="btn btn-secondary" id="btnOpenImport">Paste Team Data Tables</button>
             <button class="btn btn-yellow" id="btnOpenMgmt">Manage Agents & Schedules</button>
         </div>
@@ -810,7 +808,7 @@
         </div>
         <div class="modal-footer">
             <button class="btn btn-outline" id="btnCancelImport">Cancel</button>
-            <button class="btn btn-yellow" id="btnApplyImport">Save & Consolidate Period Data</button>
+            <button class="btn btn-yellow" id="btnApplyImport">Save & Sync to Firebase</button>
         </div>
     </div>
 </div>
@@ -909,6 +907,30 @@
 </div>
 
 <script>
+    // -----------------------------------------------------------------
+    // YOUR INTEGRATED FIREBASE CONFIGURATION
+    // -----------------------------------------------------------------
+    const firebaseConfig = {
+        apiKey: "AIzaSyAmB9PhTd_Dz68rTZQZlRS1mcfAy1SQxgo",
+        authDomain: "volumevsavailability.firebaseapp.com",
+        databaseURL: "https://volumevsavailability-default-rtdb.firebaseio.com",
+        projectId: "volumevsavailability",
+        storageBucket: "volumevsavailability.firebasestorage.app",
+        messagingSenderId: "536106438860",
+        appId: "1:536106438860:web:a7b62c957028813d9f3269",
+        measurementId: "G-YDZ8542ENX"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    // Firebase DB References
+    const dbRefVolume = db.ref('wfm_data/multiPeriodVolumeDB');
+    const dbRefAgents = db.ref('wfm_data/masterAgentsDB');
+    const dbRefActiveNav = db.ref('wfm_data/activeNavigation');
+
+    let isRemoteUpdate = false;
+
     const depts = ['OBS - Phones', 'OBS - Cases', 'INS', 'ELD', 'LL+', 'TFX'];
     
     let deptRosterCounts = {
@@ -920,189 +942,67 @@
         'TFX': 3
     };
 
-    let hourlyDataPattern = {
-        0: {"OBS - Phones": [], "OBS - Cases": [], "INS": [], "ELD": [], "LL+": [], "TFX": []},
-        1: {"OBS - Phones": [], "OBS - Cases": [], "INS": [], "ELD": [], "LL+": [], "TFX": []},
-        2: {"OBS - Phones": [], "OBS - Cases": [], "INS": [], "ELD": [], "LL+": [], "TFX": []},
-        3: {"OBS - Phones": [], "OBS - Cases": [], "INS": [], "ELD": [], "LL+": [], "TFX": []},
-        4: {"OBS - Phones": [], "OBS - Cases": [], "INS": [], "ELD": [], "LL+": [], "TFX": []},
-        5: {"OBS - Phones": [], "OBS - Cases": [], "INS": [], "ELD": [], "LL+": [], "TFX": []},
-        6: {"OBS - Phones": [], "OBS - Cases": [], "INS": [], "ELD": [], "LL+": [], "TFX": []},
-        7: {"OBS - Phones": [], "OBS - Cases": [], "INS": [], "ELD": [], "LL+": [], "TFX": []},
-        8: {
-            "OBS - Phones": [{"name": "Lelburn Gordon", "act": "Break 1"}, {"name": "Dean Spencer", "act": "Break 1"}],
-            "OBS - Cases": [{"name": "Emely Hernandez", "act": "Break 1"}],
-            "INS": [{"name": "Keyren Fuertes", "act": "Break 1"}, {"name": "Otto de la Cruz", "act": "Break 1"}, {"name": "Eunice Sir", "act": "Break 1"}, {"name": "Gustavo Lopez", "act": "Break 1"}],
-            "ELD": [{"name": "Edgar Castillo", "act": "Break 1"}, {"name": "Sonia Jimenez", "act": "Break 1"}],
-            "LL+": [{"name": "Julio Cortez", "act": "Break 1"}, {"name": "Alex Coyote", "act": "Break 1"}],
-            "TFX": []
-        },
-        9: {
-            "OBS - Phones": [{"name": "Shanique Kelly", "act": "Break 1"}, {"name": "Alberto Arana", "act": "Break 1"}, {"name": "Stephanie Temple", "act": "Break 1"}, {"name": "Kellyneth Estrada", "act": "Break 1"}, {"name": "Alexander Santamaria", "act": "Break 1"}, {"name": "Kevin Durango", "act": "Break 1"}, {"name": "Alexander Jaramillo", "act": "Break 1"}],
-            "OBS - Cases": [{"name": "Lucia Herrera", "act": "Break 1"}, {"name": "Fernando Garcia", "act": "Break 1"}, {"name": "Alejandra Manco", "act": "Break 1"}],
-            "INS": [{"name": "Freddy Monterroso", "act": "Break 1"}, {"name": "Ana Melendez", "act": "Break 1"}, {"name": "Monica Prado", "act": "Break 1"}, {"name": "Joseth Huerta", "act": "Break 1"}, {"name": "Acsa Esquivel", "act": "Break 1"}, {"name": "Luis Leon", "act": "Break 1"}],
-            "ELD": [{"name": "Sergio Chiguil", "act": "Break 1"}, {"name": "Sharon Olivares", "act": "Break 1"}, {"name": "Kevin Acabal", "act": "Break 1"}, {"name": "Kenford Morris", "act": "Break 1"}, {"name": "Luis Gonzalez", "act": "Break 1"}, {"name": "Jesus Rios", "act": "Break 1"}, {"name": "Marie Perez", "act": "Break 1"}],
-            "LL+": [{"name": "Luis Escobar", "act": "Break 1"}, {"name": "Andy Pineda", "act": "Break 1"}],
-            "TFX": [{"name": "Fernando Daniel Ramirez", "act": "Break 1"}]
-        },
-        10: {
-            "OBS - Phones": [{"name": "Daneil Facey", "act": "Lunch"}, {"name": "Vashaun Thompson", "act": "Break 1"}, {"name": "Bruno Rodriguez", "act": "Break 1"}, {"name": "Israel Arias", "act": "Break 1"}, {"name": "Andrea Gonzalez", "act": "Break 1"}],
-            "OBS - Cases": [{"name": "Pablo Saquilmer", "act": "Break 1"}, {"name": "Emilia Chajon", "act": "Break 1"}, {"name": "Galilea Gutierrez", "act": "Break 1"}, {"name": "Jorge Saban", "act": "Break 1"}],
-            "INS": [{"name": "Eunice Sir", "act": "Break 2"}, {"name": "Gustavo Lopez", "act": "Break 2"}, {"name": "Dana Redwood", "act": "Break 1"}, {"name": "Marco Ovalle", "act": "Break 1"}, {"name": "Ariel Yaegui", "act": "Break 1"}, {"name": "Michelle Marquez", "act": "Break 1"}, {"name": "Kener Lee", "act": "Break 1"}, {"name": "Alondra Mendoza", "act": "Break 1"}],
-            "ELD": [{"name": "Edgar Castillo", "act": "Break 2"}, {"name": "Samantha Chinchilla", "act": "Break 1"}, {"name": "Celina Franco", "act": "Break 1"}, {"name": "Brandon Vasquez", "act": "Break 1"}, {"name": "Josue Sucuc", "act": "Break 1"}, {"name": "Froy Gonzalez", "act": "Break 1"}, {"name": "Danae Castillo", "act": "Break 1"}, {"name": "Cesar Larios", "act": "Break 1"}, {"name": "Daniel Pelayo", "act": "Break 1"}, {"name": "Sebastian Quiñonez", "act": "Break 1"}],
-            "LL+": [{"name": "Julio Cortez", "act": "Break 2"}, {"name": "Alex Coyote", "act": "Break 2"}, {"name": "Omar Gomez", "act": "Break 1"}, {"name": "Edgar Palomo", "act": "Break 1"}, {"name": "Jonathan Pirir", "act": "Break 1"}],
-            "TFX": [{"name": "Mariana Velazquez Cruz", "act": "Break 1"}]
-        },
-        11: {
-            "OBS - Phones": [{"name": "Lelburn Gordon", "act": "Lunch"}, {"name": "Dean Spencer", "act": "Lunch"}, {"name": "Zinedine Moscote", "act": "Break 1"}, {"name": "Alex Scarlett", "act": "Break 1"}, {"name": "Raul Garcia", "act": "Break 1"}, {"name": "Felix Torres", "act": "Break 1"}],
-            "OBS - Cases": [{"name": "Emely Hernandez", "act": "Lunch"}],
-            "INS": [{"name": "Keyren Fuertes", "act": "Lunch"}, {"name": "Otto de la Cruz", "act": "Lunch"}, {"name": "Freddy Monterroso", "act": "Break 2"}, {"name": "Ana Melendez", "act": "Break 2"}, {"name": "Joseth Huerta", "act": "Lunch"}, {"name": "Kathering Santos", "act": "Break 1"}, {"name": "Lynda Escobedo", "act": "Break 1"}, {"name": "Marielys Tejada", "act": "Break 1"}, {"name": "Juan Avedaño", "act": "Break 1"}],
-            "ELD": [{"name": "Sergio Chiguil", "act": "Lunch"}, {"name": "Esvin Gomez", "act": "Break 1"}, {"name": "Sharon Olivares", "act": "Break 2"}, {"name": "Iverth Monterroso", "act": "Break 1"}, {"name": "Kevin Acabal", "act": "Break 2"}, {"name": "Brandon Vasquez", "act": "Lunch"}, {"name": "Benneth Smith", "act": "Break 1"}, {"name": "Kevin Ibarra", "act": "Break 1"}, {"name": "Melanie Garcia", "act": "Break 1"}, {"name": "Jose Rodriguez", "act": "Break 1"}],
-            "LL+": [{"name": "Luis Escobar", "act": "Break 2"}, {"name": "Andy Pineda", "act": "Break 2"}, {"name": "Yossi Martinez", "act": "Break 1"}],
-            "TFX": [{"name": "Fernando Daniel Ramirez", "act": "Lunch"}]
-        },
-        12: {
-            "OBS - Phones": [{"name": "Shanique Kelly", "act": "Lunch"}, {"name": "Alberto Arana", "act": "Lunch"}, {"name": "Stephanie Temple", "act": "Lunch"}, {"name": "Alexander Santamaria", "act": "Lunch"}, {"name": "Leona Wallace", "act": "Lunch"}, {"name": "Vashaun Thompson", "act": "Lunch"}, {"name": "Israel Arias", "act": "Lunch"}, {"name": "Daneil Facey", "act": "Break 1"}, {"name": "Omar Jimenez", "act": "Break 1"}],
-            "OBS - Cases": [{"name": "Diana Orozco", "act": "Break 1"}, {"name": "Lucia Herrera", "act": "Lunch"}, {"name": "Fernando Garcia", "act": "Lunch"}, {"name": "Emilia Chajon", "act": "Break 2"}],
-            "INS": [{"name": "Otto de la Cruz", "act": "Lunch"}, {"name": "Eunice Sir", "act": "Lunch"}, {"name": "Monica Prado", "act": "Lunch"}, {"name": "Gustavo Lopez", "act": "Lunch"}, {"name": "Joseth Huerta", "act": "Lunch"}, {"name": "Dana Redwood", "act": "Lunch"}, {"name": "Ariel Yaegui", "act": "Break 2"}, {"name": "Acsa Esquivel", "act": "Break 2"}, {"name": "Luis Leon", "act": "Lunch"}, {"name": "Michelle Marquez", "act": "Lunch"}, {"name": "Kener Lee", "act": "Break 2"}, {"name": "Cesar Colaj", "act": "Break 1"}],
-            "ELD": [{"name": "Edgar Castillo", "act": "Lunch"}, {"name": "Brandon Vasquez", "act": "Lunch"}, {"name": "Sonia Jimenez", "act": "Lunch"}, {"name": "Froy Gonzalez", "act": "Break 2"}, {"name": "Jesus Rios", "act": "Lunch"}, {"name": "Cesar Larios", "act": "Lunch"}, {"name": "Jorge Najera", "act": "Lunch"}, {"name": "Kevin Williams", "act": "Break 1"}, {"name": "Luis Ajche", "act": "Break 1"}, {"name": "Kia Francis", "act": "Break 1"}, {"name": "Tevin Smallwood", "act": "Break 1"}, {"name": "Shiyan Lee", "act": "Break 1"}],
-            "LL+": [{"name": "Julio Cortez", "act": "Lunch"}, {"name": "Alex Coyote", "act": "Lunch"}, {"name": "Omar Gomez", "act": "Break 2"}, {"name": "Edgar Palomo", "act": "Break 2"}, {"name": "Jonathan Pirir", "act": "Break 2"}],
-            "TFX": [{"name": "Fernando Daniel Ramirez", "act": "Lunch"}, {"name": "Maria Fernanda Saucedo", "act": "Break 1"}]
-        },
-        13: {
-            "OBS - Phones": [{"name": "Lelburn Gordon", "act": "Break 2"}, {"name": "Kellyneth Estrada", "act": "Lunch"}, {"name": "Bruno Rodriguez", "act": "Lunch"}, {"name": "Kevin Durango", "act": "Lunch"}, {"name": "Andrea Gonzalez", "act": "Lunch"}, {"name": "Alexander Jaramillo", "act": "Lunch"}, {"name": "Raul Garcia", "act": "Lunch"}, {"name": "Felix Torres", "act": "Lunch"}, {"name": "Michelle Salmon", "act": "Break 1"}],
-            "OBS - Cases": [{"name": "Pablo Saquilmer", "act": "Lunch"}, {"name": "Lucia Herrera", "act": "Lunch"}, {"name": "Alejandra Manco", "act": "Lunch"}, {"name": "Jorge Saban", "act": "Break 2"}, {"name": "Rudy Herrera", "act": "Break 1"}],
-            "INS": [{"name": "Keyren Fuertes", "act": "Break 2"}, {"name": "Otto de la Cruz", "act": "Break 2"}, {"name": "Freddy Monterroso", "act": "Lunch"}, {"name": "Eunice Sir", "act": "Lunch"}, {"name": "Ana Melendez", "act": "Lunch"}, {"name": "Gustavo Lopez", "act": "Lunch"}, {"name": "Marco Ovalle", "act": "Lunch"}, {"name": "Acsa Esquivel", "act": "Lunch"}, {"name": "Luis Leon", "act": "Lunch"}, {"name": "Michelle Marquez", "act": "Lunch"}, {"name": "Alondra Mendoza", "act": "Lunch"}, {"name": "Lynda Escobedo", "act": "Lunch"}, {"name": "Marielys Tejada", "act": "Lunch"}, {"name": "Kathering Santos", "act": "Break 2"}],
-            "ELD": [{"name": "Sergio Chiguil", "act": "Break 2"}, {"name": "Samantha Chinchilla", "act": "Lunch"}, {"name": "Celina Franco", "act": "Lunch"}, {"name": "Esvin Gomez", "act": "Lunch"}, {"name": "Iverth Monterroso", "act": "Lunch"}, {"name": "Kenford Morris", "act": "Lunch"}, {"name": "Luis Gonzalez", "act": "Break 2"}, {"name": "Melanie Garcia", "act": "Break 2"}, {"name": "Marie Perez", "act": "Lunch"}, {"name": "Danae Castillo", "act": "Lunch"}, {"name": "Cesar Larios", "act": "Lunch"}, {"name": "Benneth Smith", "act": "Lunch"}, {"name": "Daniel Pelayo", "act": "Lunch"}, {"name": "Kevin Williams", "act": "Lunch"}, {"name": "Luis Ajche", "act": "Lunch"}],
-            "LL+": [{"name": "Omar Gomez", "act": "Lunch"}, {"name": "Luis Escobar", "act": "Lunch"}, {"name": "Andy Pineda", "act": "Lunch"}, {"name": "Yossi Martinez", "act": "Break 2"}],
-            "TFX": [{"name": "Fernando Daniel Ramirez", "act": "Break 2"}, {"name": "Mariana Velazquez Cruz", "act": "Lunch"}]
-        },
-        14: {
-            "OBS - Phones": [{"name": "Dean Spencer", "act": "Break 2"}, {"name": "Alberto Arana", "act": "Break 2"}, {"name": "Stephanie Temple", "act": "Break 2"}, {"name": "Leona Wallace", "act": "Break 1"}, {"name": "Zinedine Moscote", "act": "Lunch"}, {"name": "Alex Scarlett", "act": "Lunch"}, {"name": "Omar Jimenez", "act": "Lunch"}],
-            "OBS - Cases": [{"name": "Emely Hernandez", "act": "Break 2"}, {"name": "Pablo Saquilmer", "act": "Break 2"}, {"name": "Lucia Herrera", "act": "Break 2"}, {"name": "Fernando Garcia", "act": "Break 2"}, {"name": "Alejandra Manco", "act": "Lunch"}, {"name": "Galilea Gutierrez", "act": "Lunch"}],
-            "INS": [{"name": "Freddy Monterroso", "act": "Lunch"}, {"name": "Joseth Huerta", "act": "Break 2"}, {"name": "Ariel Yaegui", "act": "Lunch"}, {"name": "Acsa Esquivel", "act": "Lunch"}, {"name": "Kener Lee", "act": "Lunch"}, {"name": "Alondra Mendoza", "act": "Lunch"}, {"name": "Kathering Santos", "act": "Lunch"}, {"name": "Lynda Escobedo", "act": "Lunch"}, {"name": "Cesar Colaj", "act": "Break 2"}, {"name": "Juan Avedaño", "act": "Break 2"}],
-            "ELD": [{"name": "Sharon Olivares", "act": "Lunch"}, {"name": "Kevin Acabal", "act": "Lunch"}, {"name": "Brandon Vasquez", "act": "Break 2"}, {"name": "Josue Sucuc", "act": "Lunch"}, {"name": "Luis Gonzalez", "act": "Lunch"}, {"name": "Froy Gonzalez", "act": "Lunch"}, {"name": "Marie Perez", "act": "Lunch"}, {"name": "Danae Castillo", "act": "Lunch"}, {"name": "Daniel Pelayo", "act": "Lunch"}, {"name": "Kevin Ibarra", "act": "Lunch"}, {"name": "Sebastian Quiñonez", "act": "Lunch"}, {"name": "Jose Rodriguez", "act": "Lunch"}, {"name": "Luis Ajche", "act": "Lunch"}],
-            "LL+": [{"name": "Edgar Palomo", "act": "Lunch"}, {"name": "Jonathan Pirir", "act": "Lunch"}],
-            "TFX": [{"name": "Maria Fernanda Saucedo", "act": "Lunch"}]
-        },
-        15: {
-            "OBS - Phones": [{"name": "Kellyneth Estrada", "act": "Break 2"}, {"name": "Alexander Santamaria", "act": "Break 2"}, {"name": "Israel Arias", "act": "Break 2"}, {"name": "Bruno Rodriguez", "act": "Break 2"}, {"name": "Kevin Durango", "act": "Break 2"}, {"name": "Andrea Gonzalez", "act": "Break 2"}, {"name": "Alexander Jaramillo", "act": "Break 2"}, {"name": "Felix Torres", "act": "Break 2"}, {"name": "Omar Jimenez", "act": "Lunch"}],
-            "OBS - Cases": [{"name": "Diana Orozco", "act": "Break 2"}, {"name": "Emilia Chajon", "act": "Lunch"}, {"name": "Alejandra Manco", "act": "Break 2"}, {"name": "Jorge Saban", "act": "Lunch"}],
-            "INS": [{"name": "Dana Redwood", "act": "Break 2"}, {"name": "Marco Ovalle", "act": "Break 2"}, {"name": "Ariel Yaegui", "act": "Lunch"}, {"name": "Luis Leon", "act": "Break 2"}, {"name": "Michelle Marquez", "act": "Break 2"}, {"name": "Kener Lee", "act": "Lunch"}, {"name": "Alondra Mendoza", "act": "Break 2"}, {"name": "Kathering Santos", "act": "Lunch"}, {"name": "Cesar Colaj", "act": "Lunch"}],
-            "ELD": [{"name": "Samantha Chinchilla", "act": "Break 2"}, {"name": "Celina Franco", "act": "Break 2"}, {"name": "Esvin Gomez", "act": "Break 2"}, {"name": "Iverth Monterroso", "act": "Break 2"}, {"name": "Kevin Acabal", "act": "Lunch"}, {"name": "Sonia Jimenez", "act": "Break 2"}, {"name": "Josue Sucuc", "act": "Break 2"}, {"name": "Melanie Garcia", "act": "Lunch"}, {"name": "Cesar Larios", "act": "Break 2"}, {"name": "Benneth Smith", "act": "Break 2"}, {"name": "Sebastian Quiñonez", "act": "Break 2"}, {"name": "Shiyan Lee", "act": "Lunch"}],
-            "LL+": [{"name": "Yossi Martinez", "act": "Lunch"}],
-            "TFX": [{"name": "Maria Fernanda Saucedo", "act": "Break 2"}, {"name": "Mariana Velazquez Cruz", "act": "Break 2"}]
-        },
-        16: {
-            "OBS - Phones": [{"name": "Zinedine Moscote", "act": "Break 2"}, {"name": "Raul Garcia", "act": "Break 2"}, {"name": "Michelle Salmon", "act": "Lunch"}],
-            "OBS - Cases": [{"name": "Galilea Gutierrez", "act": "Break 2"}, {"name": "Rudy Herrera", "act": "Break 2"}],
-            "INS": [{"name": "Lynda Escobedo", "act": "Break 2"}, {"name": "Marielys Tejada", "act": "Break 2"}, {"name": "Cesar Colaj", "act": "Lunch"}, {"name": "Juan Avedaño", "act": "Lunch"}],
-            "ELD": [{"name": "Marie Perez", "act": "Break 2"}, {"name": "Danae Castillo", "act": "Break 2"}, {"name": "Daniel Pelayo", "act": "Break 2"}, {"name": "Kevin Ibarra", "act": "Break 2"}, {"name": "Jorge Najera", "act": "Break 1"}, {"name": "Kevin Williams", "act": "Break 2"}, {"name": "Kia Francis", "act": "Lunch"}, {"name": "Tevin Smallwood", "act": "Lunch"}],
-            "LL+": [],
-            "TFX": []
-        },
-        17: {
-            "OBS - Phones": [{"name": "Omar Jimenez", "act": "Break 2"}],
-            "OBS - Cases": [{"name": "Diana Orozco", "act": "Lunch"}],
-            "INS": [{"name": "Juan Avedaño", "act": "Lunch"}],
-            "ELD": [{"name": "Jose Rodriguez", "act": "Break 2"}, {"name": "Luis Ajche", "act": "Break 2"}, {"name": "Jorge Najera", "act": "Break 2"}],
-            "LL+": [],
-            "TFX": []
-        },
-        18: {"OBS - Phones": [], "OBS - Cases": [{"name": "Rudy Herrera", "act": "Lunch"}], "INS": [], "ELD": [], "LL+": [], "TFX": []},
-        19: {"OBS - Phones": [], "OBS - Cases": [], "INS": [], "ELD": [], "LL+": [], "TFX": []},
-        20: {"OBS - Phones": [], "OBS - Cases": [], "INS": [], "ELD": [], "LL+": [], "TFX": []},
-        21: {"OBS - Phones": [], "OBS - Cases": [], "INS": [], "ELD": [], "LL+": [], "TFX": []},
-        22: {"OBS - Phones": [], "OBS - Cases": [], "INS": [], "ELD": [], "LL+": [], "TFX": []},
-        23: {"OBS - Phones": [], "OBS - Cases": [], "INS": [], "ELD": [], "LL+": [], "TFX": []}
-    };
-
+    let hourlyDataPattern = {};
     let multiPeriodVolumeDB = {};
-
-    function initDefaultVolumeData() {
-        const defaultSample = {
-            0: { ans: 0, abQ: 0, abCSAT: 0, abH: 0, tot: 0, max: 0 },
-            1: { ans: 0, abQ: 0, abCSAT: 0, abH: 0, tot: 0, max: 0 },
-            2: { ans: 0, abQ: 0, abCSAT: 0, abH: 0, tot: 0, max: 0 },
-            3: { ans: 0, abQ: 0, abCSAT: 0, abH: 0, tot: 0, max: 0 },
-            4: { ans: 0, abQ: 0, abCSAT: 0, abH: 0, tot: 0, max: 0 },
-            5: { ans: 0, abQ: 0, abCSAT: 0, abH: 0, tot: 0, max: 0 },
-            6: { ans: 7.5, abQ: 5.5, abCSAT: 1.5, abH: 0, tot: 15.0, max: 18 },
-            7: { ans: 54.5, abQ: 22.5, abCSAT: 19.5, abH: 1.5, tot: 100.5, max: 102 },
-            8: { ans: 88.0, abQ: 60.0, abCSAT: 32.5, abH: 6, tot: 190.0, max: 196 },
-            9: { ans: 139.5, abQ: 75.0, abCSAT: 34.5, abH: 0.5, tot: 253.0, max: 293 },
-            10: { ans: 135.5, abQ: 62.0, abCSAT: 36.0, abH: 1, tot: 236.5, max: 249 },
-            11: { ans: 149.5, abQ: 44.5, abCSAT: 43.5, abH: 0.5, tot: 239.5, max: 266 },
-            12: { ans: 123.5, abQ: 45.0, abCSAT: 35.0, abH: 1.5, tot: 207.5, max: 217 },
-            13: { ans: 97.0, abQ: 64.0, abCSAT: 37.5, abH: 2, tot: 203.0, max: 216 },
-            14: { ans: 94.5, abQ: 30.0, abCSAT: 33.5, abH: 0.5, tot: 160.0, max: 168 },
-            15: { ans: 96.0, abQ: 24.0, abCSAT: 24.0, abH: 0.5, tot: 145.5, max: 166 },
-            16: { ans: 60.0, abQ: 42.0, abCSAT: 20.0, abH: 0.5, tot: 123.0, max: 128 },
-            17: { ans: 96.0, abQ: 7.0, abCSAT: 14.0, abH: 0, tot: 118.5, max: 145 },
-            18: { ans: 30.5, abQ: 2.5, abCSAT: 8.5, abH: 0, tot: 41.5, max: 54 },
-            19: { ans: 0, abQ: 0.5, abCSAT: 0, abH: 0, tot: 0.5, max: 1 },
-            20: { ans: 0, abQ: 0, abCSAT: 0, abH: 0, tot: 0, max: 0 },
-            21: { ans: 0, abQ: 0, abCSAT: 0, abH: 0, tot: 0, max: 0 },
-            22: { ans: 0, abQ: 0, abCSAT: 0, abH: 0, tot: 0, max: 0 },
-            23: { ans: 0, abQ: 0, abCSAT: 0, abH: 0, tot: 0, max: 0 }
-        };
-
-        if (!multiPeriodVolumeDB['October']) multiPeriodVolumeDB['October'] = {};
-        multiPeriodVolumeDB['October']['Week 1'] = {
-            obs: defaultSample,
-            ins: {}, eld: {}, ll: {}, tfx: {}
-        };
-    }
-
     let volumeDataCombined = {};
     let masterAgentsDB = [];
 
-    function saveMasterDBToStorage() {
-        try {
-            localStorage.setItem('wfm_master_agents', JSON.stringify(masterAgentsDB));
-            localStorage.setItem('wfm_volume_db', JSON.stringify(multiPeriodVolumeDB));
-        } catch(e) {}
-    }
+    function initFirebaseListeners() {
+        // 1. Listen for Volume Data Changes from any user
+        dbRefVolume.on('value', (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                multiPeriodVolumeDB = data;
+                loadActivePeriodVolume();
+                renderAllUI();
+            }
+        });
 
-    function initMasterDBFromPattern() {
-        const storedAgents = localStorage.getItem('wfm_master_agents');
-        const storedVolume = localStorage.getItem('wfm_volume_db');
-
-        if (storedVolume) {
-            try { multiPeriodVolumeDB = JSON.parse(storedVolume); } catch(e) {}
-        }
-
-        if (storedAgents) {
-            try {
-                masterAgentsDB = JSON.parse(storedAgents);
+        // 2. Listen for Agent Roster Changes from any user
+        dbRefAgents.on('value', (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                masterAgentsDB = Array.isArray(data) ? data : Object.values(data);
                 recountRosterFromMasterDB();
                 syncPatternFromMasterDB();
-                return;
-            } catch(e) {}
-        }
-
-        masterAgentsDB = [];
-        let agentMap = {};
-        let idCounter = 1;
-
-        for (let h = 0; h < 24; h++) {
-            for (let d of depts) {
-                if (hourlyDataPattern[h] && hourlyDataPattern[h][d]) {
-                    hourlyDataPattern[h][d].forEach(ag => {
-                        let key = ag.name + '___' + d;
-                        if (!agentMap[key]) {
-                            agentMap[key] = { id: idCounter++, name: ag.name, dept: d, hours: {} };
-                        }
-                        agentMap[key].hours[h] = ag.act || "Break/Lunch";
-                    });
+                renderAllUI();
+                if (document.getElementById('mgmtModal').classList.contains('active')) {
+                    renderMgmtAgentsTable();
                 }
             }
-        }
-        for (let k in agentMap) masterAgentsDB.push(agentMap[k]);
-        recountRosterFromMasterDB();
-        saveMasterDBToStorage();
+        });
+
+        // 3. Listen for Navigation/Month/Week Selection Changes from any user
+        dbRefActiveNav.on('value', (snapshot) => {
+            const nav = snapshot.val();
+            if (nav && !isRemoteUpdate) {
+                isRemoteUpdate = true;
+                if (nav.month) document.getElementById('monthSelect').value = nav.month;
+                if (nav.week) document.getElementById('weekSelect').value = nav.week;
+                loadActivePeriodVolume();
+                renderAllUI();
+                isRemoteUpdate = false;
+            }
+        });
     }
 
+    function saveVolumeDBToFirebase() {
+        dbRefVolume.set(multiPeriodVolumeDB);
+    }
+
+    function saveAgentsDBToFirebase() {
+        dbRefAgents.set(masterAgentsDB);
+    }
+
+    function broadcastNavChange(month, week) {
+        if (!isRemoteUpdate) {
+            dbRefActiveNav.set({ month: month, week: week });
+        }
+    }
+
+    // -----------------------------------------------------------------
+    // CORE DASHBOARD ENGINE
+    // -----------------------------------------------------------------
     function recountRosterFromMasterDB() {
         depts.forEach(d => deptRosterCounts[d] = 0);
         masterAgentsDB.forEach(ag => {
@@ -1119,13 +1019,15 @@
         }
 
         masterAgentsDB.forEach(ag => {
-            for (let h in ag.hours) {
-                let hourInt = parseInt(h, 10);
-                if (hourlyDataPattern[hourInt] && hourlyDataPattern[hourInt][ag.dept]) {
-                    hourlyDataPattern[hourInt][ag.dept].push({
-                        name: ag.name,
-                        act: ag.hours[h]
-                    });
+            if (ag.hours) {
+                for (let h in ag.hours) {
+                    let hourInt = parseInt(h, 10);
+                    if (hourlyDataPattern[hourInt] && hourlyDataPattern[hourInt][ag.dept]) {
+                        hourlyDataPattern[hourInt][ag.dept].push({
+                            name: ag.name,
+                            act: ag.hours[h]
+                        });
+                    }
                 }
             }
         });
@@ -1151,12 +1053,9 @@
     const hourlySlots = generateHourlySlots();
 
     document.addEventListener("DOMContentLoaded", () => {
-        initDefaultVolumeData();
-        initMasterDBFromPattern();
         initCharts();
-        loadActivePeriodVolume();
-        renderAll();
         setupEventListeners();
+        initFirebaseListeners();
     });
 
     function getActiveMonth() { return document.getElementById('monthSelect').value; }
@@ -1201,13 +1100,12 @@
         document.getElementById('chart1Title').textContent = `Consolidated Call Volume vs. Capacity (${month} - ${week})`;
     }
 
-    function renderAll() {
+    function renderAllUI() {
         renderScheduleTable();
         renderVolumeTable();
         renderComparisonTable();
         renderRecommendations();
         updateCharts();
-        saveMasterDBToStorage();
     }
 
     function renderScheduleTable() {
@@ -1469,11 +1367,13 @@
     function setupEventListeners() {
         document.getElementById('monthSelect').addEventListener('change', () => {
             loadActivePeriodVolume();
-            renderAll();
+            renderAllUI();
+            broadcastNavChange(getActiveMonth(), getActiveWeek());
         });
         document.getElementById('weekSelect').addEventListener('change', () => {
             loadActivePeriodVolume();
-            renderAll();
+            renderAllUI();
+            broadcastNavChange(getActiveMonth(), getActiveWeek());
         });
 
         document.getElementById('slicerContainer').addEventListener('click', (e) => {
@@ -1646,11 +1546,11 @@
         document.getElementById('monthSelect').value = targetMonth;
         document.getElementById('weekSelect').value = targetWeek;
 
-        loadActivePeriodVolume();
-        renderAll();
+        saveVolumeDBToFirebase();
+        broadcastNavChange(targetMonth, targetWeek);
 
         document.getElementById('importModal').classList.remove('active');
-        alert(`Volume data successfully imported and consolidated for ${targetMonth} (${targetWeek})!`);
+        alert(`Volume data successfully synced to Firebase for ${targetMonth} (${targetWeek})!`);
     }
 
     function openManagementModal() {
@@ -1674,10 +1574,12 @@
             const tr = document.createElement('tr');
             
             let hoursBadges = [];
-            for (let h in ag.hours) {
-                let slot = hourlySlots.find(s => s.h24 == h);
-                let timeLabel = slot ? slot.time12 : `${h}:00`;
-                hoursBadges.push(`<span class="badge-act">${timeLabel}: ${ag.hours[h]}</span>`);
+            if (ag.hours) {
+                for (let h in ag.hours) {
+                    let slot = hourlySlots.find(s => s.h24 == h);
+                    let timeLabel = slot ? slot.time12 : `${h}:00`;
+                    hoursBadges.push(`<span class="badge-act">${timeLabel}: ${ag.hours[h]}</span>`);
+                }
             }
             let hoursStr = hoursBadges.length > 0 ? hoursBadges.join(' ') : '<span style="color:#aaa;">No scheduled away hours</span>';
 
@@ -1707,7 +1609,7 @@
                 masterAgentsDB = masterAgentsDB.filter(a => a.id !== agentId);
                 recountRosterFromMasterDB();
                 syncPatternFromMasterDB();
-                renderAll();
+                saveAgentsDBToFirebase();
                 renderMgmtAgentsTable();
             }
         });
@@ -1730,8 +1632,8 @@
             document.getElementById('agentDeptInput').value = ag.dept;
 
             hourlySlots.forEach(slot => {
-                const isChecked = ag.hours[slot.h24] !== undefined;
-                const actValue = ag.hours[slot.h24] || "Break 1";
+                const isChecked = ag.hours && ag.hours[slot.h24] !== undefined;
+                const actValue = (ag.hours && ag.hours[slot.h24]) || "Break 1";
                 
                 const div = document.createElement('div');
                 div.className = 'chip-checkbox';
@@ -1807,7 +1709,7 @@
 
         recountRosterFromMasterDB();
         syncPatternFromMasterDB();
-        renderAll();
+        saveAgentsDBToFirebase();
         renderMgmtAgentsTable();
         document.getElementById('agentFormCard').style.display = 'none';
     }

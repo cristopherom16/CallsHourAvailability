@@ -4,11 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WFM Analytics & Call Volume Analysis Dashboard</title>
-    <!-- Chart.js, PapaParse, and Firebase SDKs -->
+    <!-- Chart.js, PapaParse, and LZ-String for URL State Sharing -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lz-string@1.5.0/libs/lz-string.min.js"></script>
 
     <style>
         :root {
@@ -69,18 +68,6 @@
             gap: 10px;
             flex-wrap: wrap;
             align-items: center;
-        }
-
-        .sync-badge {
-            background: #2e7d32;
-            color: #ffffff;
-            font-size: 0.75rem;
-            padding: 5px 12px;
-            border-radius: 12px;
-            font-weight: bold;
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
         }
 
         .btn {
@@ -568,7 +555,6 @@
             <small style="opacity: 0.85;">Workforce Management, Hourly Schedules & Consolidated Call Volume Analytics</small>
         </div>
         <div class="header-actions">
-            <span class="sync-badge" id="syncStatusBadge">🟢 Connected to Firebase</span>
             <button class="btn btn-secondary" id="btnOpenImport">Paste Team Data Tables</button>
             <button class="btn btn-yellow" id="btnOpenMgmt">Manage Agents & Schedules</button>
         </div>
@@ -588,8 +574,8 @@
                     <option value="June">June</option>
                     <option value="July">July</option>
                     <option value="August">August</option>
-                    <option value="September">September</option>
-                    <option value="October" selected>October</option>
+                    <option value="September" selected>September</option>
+                    <option value="October">October</option>
                     <option value="November">November</option>
                     <option value="December">December</option>
                 </select>
@@ -631,7 +617,7 @@
     <!-- Visualizations -->
     <div class="charts-grid">
         <div class="chart-card">
-            <h3 id="chart1Title">Consolidated Call Volume vs. Capacity (October - Week 1)</h3>
+            <h3 id="chart1Title">Consolidated Call Volume vs. Capacity (September - Week 1)</h3>
             <div class="chart-container">
                 <canvas id="volumeCapacityChart"></canvas>
             </div>
@@ -682,7 +668,7 @@
 
     <!-- Table 2: Call Volume Metrics -->
     <h2 class="section-title">
-        <span>2. Consolidated Call Volume Metrics (<span class="periodLabel">October - Week 1</span>)</span>
+        <span>2. Consolidated Call Volume Metrics (<span class="periodLabel">September - Week 1</span>)</span>
     </h2>
     <div class="table-responsive">
         <table>
@@ -703,7 +689,7 @@
 
     <!-- Table 3: Capacity & Staffing Gap -->
     <h2 class="section-title">
-        <span>3. Staffing Requirements & Coverage Gap (<span class="periodLabel">October - Week 1</span>)</span>
+        <span>3. Staffing Requirements & Coverage Gap (<span class="periodLabel">September - Week 1</span>)</span>
     </h2>
     <div class="table-responsive">
         <table>
@@ -745,8 +731,8 @@
                     <option value="June">June</option>
                     <option value="July">July</option>
                     <option value="August">August</option>
-                    <option value="September">September</option>
-                    <option value="October" selected>October</option>
+                    <option value="September" selected>September</option>
+                    <option value="October">October</option>
                     <option value="November">November</option>
                     <option value="December">December</option>
                 </select>
@@ -808,7 +794,7 @@
         </div>
         <div class="modal-footer">
             <button class="btn btn-outline" id="btnCancelImport">Cancel</button>
-            <button class="btn btn-yellow" id="btnApplyImport">Save & Sync to Firebase</button>
+            <button class="btn btn-yellow" id="btnApplyImport">Save & Update Dashboard</button>
         </div>
     </div>
 </div>
@@ -907,29 +893,6 @@
 </div>
 
 <script>
-    // -----------------------------------------------------------------
-    // YOUR FIREBASE CONFIGURATION
-    // -----------------------------------------------------------------
-    const firebaseConfig = {
-        apiKey: "AIzaSyAmB9PhTd_Dz68rTZQZlRS1mcfAy1SQxgo",
-        authDomain: "volumevsavailability.firebaseapp.com",
-        databaseURL: "https://volumevsavailability-default-rtdb.firebaseio.com",
-        projectId: "volumevsavailability",
-        storageBucket: "volumevsavailability.firebasestorage.app",
-        messagingSenderId: "536106438860",
-        appId: "1:536106438860:web:a7b62c957028813d9f3269",
-        measurementId: "G-YDZ8542ENX"
-    };
-
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
-
-    const dbRefVolume = db.ref('wfm_data/multiPeriodVolumeDB');
-    const dbRefAgents = db.ref('wfm_data/masterAgentsDB');
-    const dbRefActiveNav = db.ref('wfm_data/activeNavigation');
-
-    let isRemoteUpdate = false;
-
     const depts = ['OBS - Phones', 'OBS - Cases', 'INS', 'ELD', 'LL+', 'TFX'];
     
     let deptRosterCounts = {
@@ -1047,59 +1010,6 @@
     let volumeDataCombined = {};
     let masterAgentsDB = buildDefaultMasterAgents();
 
-    function initFirebaseListeners() {
-        dbRefVolume.on('value', (snapshot) => {
-            const data = snapshot.val();
-            if (data) {
-                multiPeriodVolumeDB = data;
-                loadActivePeriodVolume();
-                renderAllUI();
-            }
-        });
-
-        dbRefAgents.on('value', (snapshot) => {
-            const data = snapshot.val();
-            if (data) {
-                let parsed = Array.isArray(data) ? data : Object.values(data);
-                if (parsed.length > 0) {
-                    masterAgentsDB = parsed;
-                }
-            }
-            recountRosterFromMasterDB();
-            syncPatternFromMasterDB();
-            renderAllUI();
-            if (document.getElementById('mgmtModal').classList.contains('active')) {
-                renderMgmtAgentsTable();
-            }
-        });
-
-        dbRefActiveNav.on('value', (snapshot) => {
-            const nav = snapshot.val();
-            if (nav && !isRemoteUpdate) {
-                isRemoteUpdate = true;
-                if (nav.month) document.getElementById('monthSelect').value = nav.month;
-                if (nav.week) document.getElementById('weekSelect').value = nav.week;
-                loadActivePeriodVolume();
-                renderAllUI();
-                isRemoteUpdate = false;
-            }
-        });
-    }
-
-    function saveVolumeDBToFirebase() {
-        dbRefVolume.set(multiPeriodVolumeDB);
-    }
-
-    function saveAgentsDBToFirebase() {
-        dbRefAgents.set(masterAgentsDB);
-    }
-
-    function broadcastNavChange(month, week) {
-        if (!isRemoteUpdate) {
-            dbRefActiveNav.set({ month: month, week: week });
-        }
-    }
-
     function recountRosterFromMasterDB() {
         depts.forEach(d => deptRosterCounts[d] = 0);
         masterAgentsDB.forEach(ag => {
@@ -1130,6 +1040,38 @@
         });
     }
 
+    // URL Compression & State Engine
+    function syncStateToURL() {
+        const payload = {
+            m: getActiveMonth(),
+            w: getActiveWeek(),
+            v: multiPeriodVolumeDB,
+            a: masterAgentsDB
+        };
+        const compressed = LZString.compressToEncodedURIComponent(JSON.stringify(payload));
+        const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname + '?s=' + compressed;
+        window.history.replaceState({ path: newUrl }, '', newUrl);
+    }
+
+    function loadStateFromURL() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const stateParam = urlParams.get('s');
+        if (stateParam) {
+            try {
+                const decompressed = LZString.decompressFromEncodedURIComponent(stateParam);
+                if (decompressed) {
+                    const parsed = JSON.parse(decompressed);
+                    if (parsed.v) multiPeriodVolumeDB = parsed.v;
+                    if (parsed.a) masterAgentsDB = parsed.a;
+                    if (parsed.m) document.getElementById('monthSelect').value = parsed.m;
+                    if (parsed.w) document.getElementById('weekSelect').value = parsed.w;
+                }
+            } catch(e) {
+                console.error("Failed to load URL state", e);
+            }
+        }
+    }
+
     let selectedDepts = new Set(['ALL']);
     let isAuthenticated = false;
     let pendingAction = null;
@@ -1150,11 +1092,13 @@
     const hourlySlots = generateHourlySlots();
 
     document.addEventListener("DOMContentLoaded", () => {
+        loadStateFromURL();
         recountRosterFromMasterDB();
         syncPatternFromMasterDB();
         initCharts();
         setupEventListeners();
-        initFirebaseListeners();
+        loadActivePeriodVolume();
+        renderAllUI();
     });
 
     function getActiveMonth() { return document.getElementById('monthSelect').value; }
@@ -1205,6 +1149,7 @@
         renderComparisonTable();
         renderRecommendations();
         updateCharts();
+        syncStateToURL();
     }
 
     function renderScheduleTable() {
@@ -1467,12 +1412,10 @@
         document.getElementById('monthSelect').addEventListener('change', () => {
             loadActivePeriodVolume();
             renderAllUI();
-            broadcastNavChange(getActiveMonth(), getActiveWeek());
         });
         document.getElementById('weekSelect').addEventListener('change', () => {
             loadActivePeriodVolume();
             renderAllUI();
-            broadcastNavChange(getActiveMonth(), getActiveWeek());
         });
 
         document.getElementById('slicerContainer').addEventListener('click', (e) => {
@@ -1648,11 +1591,8 @@
         loadActivePeriodVolume();
         renderAllUI();
 
-        saveVolumeDBToFirebase();
-        broadcastNavChange(targetMonth, targetWeek);
-
         document.getElementById('importModal').classList.remove('active');
-        alert(`Volume data successfully synced to Firebase for ${targetMonth} (${targetWeek})!`);
+        alert(`Volume data successfully updated for ${targetMonth} (${targetWeek})!`);
     }
 
     function openManagementModal() {
@@ -1711,7 +1651,7 @@
                 masterAgentsDB = masterAgentsDB.filter(a => a.id !== agentId);
                 recountRosterFromMasterDB();
                 syncPatternFromMasterDB();
-                saveAgentsDBToFirebase();
+                renderAllUI();
                 renderMgmtAgentsTable();
             }
         });
@@ -1811,7 +1751,7 @@
 
         recountRosterFromMasterDB();
         syncPatternFromMasterDB();
-        saveAgentsDBToFirebase();
+        renderAllUI();
         renderMgmtAgentsTable();
         document.getElementById('agentFormCard').style.display = 'none';
     }

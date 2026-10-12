@@ -294,6 +294,7 @@
             position: sticky;
             left: 0;
             z-index: 5;
+            white-space: nowrap;
         }
 
         td.total-col {
@@ -557,10 +558,10 @@
         }
 
         .hour-chips {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 5px;
-            max-height: 120px;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 6px;
+            max-height: 180px;
             overflow-y: auto;
             border: 1px solid var(--border-color);
             padding: 8px;
@@ -571,6 +572,7 @@
         .chip-checkbox {
             display: flex;
             align-items: center;
+            justify-content: space-between;
             gap: 4px;
             font-size: 0.75rem;
             background: #fff;
@@ -590,7 +592,7 @@
     <div class="header">
         <div>
             <h1>WFM Capacity & Volume Dashboard</h1>
-            <small style="opacity: 0.85;">Workforce Management, Hourly Schedules & Consolidated Call Volume Analytics</small>
+            <small style="opacity: 0.85;">Workforce Management, 15-Min Schedules & Consolidated Call Volume Analytics</small>
         </div>
         <div class="header-actions">
             <button class="btn btn-secondary" id="btnOpenImport">Paste Team Data Tables</button>
@@ -661,7 +663,7 @@
             </div>
         </div>
         <div class="chart-card">
-            <h3 id="chart2Title">Department Breakdown: Headcount vs. Away (Peak Hour)</h3>
+            <h3 id="chart2Title">Department Breakdown: Headcount vs. Away (Peak Interval)</h3>
             <div class="chart-container">
                 <canvas id="deptDistributionChart"></canvas>
             </div>
@@ -670,7 +672,7 @@
 
     <!-- Table 1: Schedule & Away Roster -->
     <h2 class="section-title">
-        <span>1. Away Agents Matrix by Time Interval</span>
+        <span>1. Away Agents Matrix by 15-Minute Interval</span>
     </h2>
     <div class="table-responsive">
         <table>
@@ -759,7 +761,7 @@
         </div>
         <div class="modal-body">
             <div class="saved-weeks-panel">
-                <span style="font-weight:bold; font-size:0.85rem; color:var(--primary-dark);">Saved Periods in Storage/Firebase:</span>
+                <span style="font-weight:bold; font-size:0.85rem; color:var(--primary-dark);">Saved Periods in Database:</span>
                 <div class="saved-weeks-list" id="savedPeriodsContainer">
                     <span style="font-size:0.8rem; color:#666;">No periods saved yet.</span>
                 </div>
@@ -868,7 +870,7 @@
 <div class="modal-overlay" id="mgmtModal">
     <div class="modal-card" style="max-width: 950px;">
         <div class="modal-header">
-            <h3>Agent Roster & Away Schedules Management</h3>
+            <h3>Agent Roster & Away Schedules Management (15-Min Intervals)</h3>
             <button class="close-btn" id="btnCloseMgmt">&times;</button>
         </div>
         <div class="modal-body">
@@ -907,7 +909,7 @@
                         </select>
                     </div>
                     <div class="form-group full">
-                        <label>Select Away Hours (Break / Lunch):</label>
+                        <label>Select Away Intervals (15-Min Granularity):</label>
                         <div class="hour-chips" id="hourChipsContainer"></div>
                     </div>
                 </div>
@@ -974,98 +976,62 @@
         'TFX': 3
     };
 
+    // GENERATE 96 INTERVALS OF 15 MINUTES (0 TO 95)
+    function generate15MinSlots() {
+        const slots = [];
+        for (let idx = 0; idx < 96; idx++) {
+            let totalMins = idx * 15;
+            let h = Math.floor(totalMins / 60);
+            let m = totalMins % 60;
+            let suffix = h >= 12 ? 'PM' : 'AM';
+            let h12 = h % 12;
+            if (h12 === 0) h12 = 12;
+            let mStr = m < 10 ? '0' + m : m;
+            slots.push({
+                time12: `${h12}:${mStr} ${suffix}`,
+                idx: idx,
+                h24: h,
+                mins: m
+            });
+        }
+        return slots;
+    }
+    const hourlySlots = generate15MinSlots();
+
     const defaultRosterPattern = {
-        8: {
+        32: { // 8:00 AM (8 * 4)
             "OBS - Phones": [{"name": "Lelburn Gordon", "act": "Break 1"}, {"name": "Dean Spencer", "act": "Break 1"}],
             "OBS - Cases": [{"name": "Emely Hernandez", "act": "Break 1"}],
-            "INS": [{"name": "Keyren Fuertes", "act": "Break 1"}, {"name": "Otto de la Cruz", "act": "Break 1"}, {"name": "Eunice Sir", "act": "Break 1"}, {"name": "Gustavo Lopez", "act": "Break 1"}],
-            "ELD": [{"name": "Edgar Castillo", "act": "Break 1"}, {"name": "Sonia Jimenez", "act": "Break 1"}],
-            "LL+": [{"name": "Julio Cortez", "act": "Break 1"}, {"name": "Alex Coyote", "act": "Break 1"}]
+            "INS": [{"name": "Keyren Fuertes", "act": "Break 1"}, {"name": "Otto de la Cruz", "act": "Break 1"}],
+            "ELD": [{"name": "Edgar Castillo", "act": "Break 1"}]
         },
-        9: {
-            "OBS - Phones": [{"name": "Shanique Kelly", "act": "Break 1"}, {"name": "Alberto Arana", "act": "Break 1"}, {"name": "Stephanie Temple", "act": "Break 1"}, {"name": "Kellyneth Estrada", "act": "Break 1"}, {"name": "Alexander Santamaria", "act": "Break 1"}, {"name": "Kevin Durango", "act": "Break 1"}, {"name": "Alexander Jaramillo", "act": "Break 1"}],
-            "OBS - Cases": [{"name": "Lucia Herrera", "act": "Break 1"}, {"name": "Fernando Garcia", "act": "Break 1"}, {"name": "Alejandra Manco", "act": "Break 1"}],
-            "INS": [{"name": "Freddy Monterroso", "act": "Break 1"}, {"name": "Ana Melendez", "act": "Break 1"}, {"name": "Monica Prado", "act": "Break 1"}, {"name": "Joseth Huerta", "act": "Break 1"}, {"name": "Acsa Esquivel", "act": "Break 1"}, {"name": "Luis Leon", "act": "Break 1"}],
-            "ELD": [{"name": "Sergio Chiguil", "act": "Break 1"}, {"name": "Sharon Olivares", "act": "Break 1"}, {"name": "Kevin Acabal", "act": "Break 1"}, {"name": "Kenford Morris", "act": "Break 1"}, {"name": "Luis Gonzalez", "act": "Break 1"}, {"name": "Jesus Rios", "act": "Break 1"}, {"name": "Marie Perez", "act": "Break 1"}],
-            "LL+": [{"name": "Luis Escobar", "act": "Break 1"}, {"name": "Andy Pineda", "act": "Break 1"}],
-            "TFX": [{"name": "Fernando Daniel Ramirez", "act": "Break 1"}]
+        36: { // 9:00 AM (9 * 4)
+            "OBS - Phones": [{"name": "Shanique Kelly", "act": "Break 1"}, {"name": "Alberto Arana", "act": "Break 1"}],
+            "OBS - Cases": [{"name": "Lucia Herrera", "act": "Break 1"}]
         },
-        10: {
-            "OBS - Phones": [{"name": "Daneil Facey", "act": "Lunch"}, {"name": "Vashaun Thompson", "act": "Break 1"}, {"name": "Bruno Rodriguez", "act": "Break 1"}, {"name": "Israel Arias", "act": "Break 1"}, {"name": "Andrea Gonzalez", "act": "Break 1"}],
-            "OBS - Cases": [{"name": "Pablo Saquilmer", "act": "Break 1"}, {"name": "Emilia Chajon", "act": "Break 1"}, {"name": "Galilea Gutierrez", "act": "Break 1"}, {"name": "Jorge Saban", "act": "Break 1"}],
-            "INS": [{"name": "Eunice Sir", "act": "Break 2"}, {"name": "Gustavo Lopez", "act": "Break 2"}, {"name": "Dana Redwood", "act": "Break 1"}, {"name": "Marco Ovalle", "act": "Break 1"}, {"name": "Ariel Yaegui", "act": "Break 1"}, {"name": "Michelle Marquez", "act": "Break 1"}, {"name": "Kener Lee", "act": "Break 1"}, {"name": "Alondra Mendoza", "act": "Break 1"}],
-            "ELD": [{"name": "Edgar Castillo", "act": "Break 2"}, {"name": "Samantha Chinchilla", "act": "Break 1"}, {"name": "Celina Franco", "act": "Break 1"}, {"name": "Brandon Vasquez", "act": "Break 1"}, {"name": "Josue Sucuc", "act": "Break 1"}, {"name": "Froy Gonzalez", "act": "Break 1"}, {"name": "Danae Castillo", "act": "Break 1"}, {"name": "Cesar Larios", "act": "Break 1"}, {"name": "Daniel Pelayo", "act": "Break 1"}, {"name": "Sebastian Quiñonez", "act": "Break 1"}],
-            "LL+": [{"name": "Julio Cortez", "act": "Break 2"}, {"name": "Alex Coyote", "act": "Break 2"}, {"name": "Omar Gomez", "act": "Break 1"}, {"name": "Edgar Palomo", "act": "Break 1"}, {"name": "Jonathan Pirir", "act": "Break 1"}],
-            "TFX": [{"name": "Mariana Velazquez Cruz", "act": "Break 1"}]
+        40: { // 10:00 AM (10 * 4)
+            "OBS - Phones": [{"name": "Daneil Facey", "act": "Lunch"}],
+            "OBS - Cases": [{"name": "Pablo Saquilmer", "act": "Break 1"}]
         },
-        11: {
-            "OBS - Phones": [{"name": "Lelburn Gordon", "act": "Lunch"}, {"name": "Dean Spencer", "act": "Lunch"}, {"name": "Zinedine Moscote", "act": "Break 1"}, {"name": "Alex Scarlett", "act": "Break 1"}, {"name": "Raul Garcia", "act": "Break 1"}, {"name": "Felix Torres", "act": "Break 1"}],
-            "OBS - Cases": [{"name": "Emely Hernandez", "act": "Lunch"}],
-            "INS": [{"name": "Keyren Fuertes", "act": "Lunch"}, {"name": "Otto de la Cruz", "act": "Lunch"}, {"name": "Freddy Monterroso", "act": "Break 2"}, {"name": "Ana Melendez", "act": "Break 2"}, {"name": "Joseth Huerta", "act": "Lunch"}, {"name": "Kathering Santos", "act": "Break 1"}, {"name": "Lynda Escobedo", "act": "Break 1"}, {"name": "Marielys Tejada", "act": "Break 1"}, {"name": "Juan Avedaño", "act": "Break 1"}],
-            "ELD": [{"name": "Sergio Chiguil", "act": "Lunch"}, {"name": "Esvin Gomez", "act": "Break 1"}, {"name": "Sharon Olivares", "act": "Break 2"}, {"name": "Iverth Monterroso", "act": "Break 1"}, {"name": "Kevin Acabal", "act": "Break 2"}, {"name": "Brandon Vasquez", "act": "Lunch"}, {"name": "Benneth Smith", "act": "Break 1"}, {"name": "Kevin Ibarra", "act": "Break 1"}, {"name": "Melanie Garcia", "act": "Break 1"}, {"name": "Jose Rodriguez", "act": "Break 1"}],
-            "LL+": [{"name": "Luis Escobar", "act": "Break 2"}, {"name": "Andy Pineda", "act": "Break 2"}, {"name": "Yossi Martinez", "act": "Break 1"}],
-            "TFX": [{"name": "Fernando Daniel Ramirez", "act": "Lunch"}]
-        },
-        12: {
-            "OBS - Phones": [{"name": "Shanique Kelly", "act": "Lunch"}, {"name": "Alberto Arana", "act": "Lunch"}, {"name": "Stephanie Temple", "act": "Lunch"}, {"name": "Alexander Santamaria", "act": "Lunch"}, {"name": "Leona Wallace", "act": "Lunch"}, {"name": "Vashaun Thompson", "act": "Lunch"}, {"name": "Israel Arias", "act": "Lunch"}, {"name": "Daneil Facey", "act": "Break 1"}, {"name": "Omar Jimenez", "act": "Break 1"}],
-            "OBS - Cases": [{"name": "Diana Orozco", "act": "Break 1"}, {"name": "Lucia Herrera", "act": "Lunch"}, {"name": "Fernando Garcia", "act": "Lunch"}, {"name": "Emilia Chajon", "act": "Break 2"}],
-            "INS": [{"name": "Otto de la Cruz", "act": "Lunch"}, {"name": "Eunice Sir", "act": "Lunch"}, {"name": "Monica Prado", "act": "Lunch"}, {"name": "Gustavo Lopez", "act": "Lunch"}, {"name": "Joseth Huerta", "act": "Lunch"}, {"name": "Dana Redwood", "act": "Lunch"}, {"name": "Ariel Yaegui", "act": "Break 2"}, {"name": "Acsa Esquivel", "act": "Break 2"}, {"name": "Luis Leon", "act": "Lunch"}, {"name": "Michelle Marquez", "act": "Lunch"}, {"name": "Kener Lee", "act": "Break 2"}, {"name": "Cesar Colaj", "act": "Break 1"}],
-            "ELD": [{"name": "Edgar Castillo", "act": "Lunch"}, {"name": "Brandon Vasquez", "act": "Lunch"}, {"name": "Sonia Jimenez", "act": "Lunch"}, {"name": "Froy Gonzalez", "act": "Break 2"}, {"name": "Jesus Rios", "act": "Lunch"}, {"name": "Cesar Larios", "act": "Lunch"}, {"name": "Jorge Najera", "act": "Lunch"}, {"name": "Kevin Williams", "act": "Break 1"}, {"name": "Luis Ajche", "act": "Break 1"}, {"name": "Kia Francis", "act": "Break 1"}, {"name": "Tevin Smallwood", "act": "Break 1"}, {"name": "Shiyan Lee", "act": "Break 1"}],
-            "LL+": [{"name": "Julio Cortez", "act": "Lunch"}, {"name": "Alex Coyote", "act": "Lunch"}, {"name": "Omar Gomez", "act": "Break 2"}, {"name": "Edgar Palomo", "act": "Break 2"}, {"name": "Jonathan Pirir", "act": "Break 2"}],
-            "TFX": [{"name": "Fernando Daniel Ramirez", "act": "Lunch"}, {"name": "Maria Fernanda Saucedo", "act": "Break 1"}]
-        },
-        13: {
-            "OBS - Phones": [{"name": "Lelburn Gordon", "act": "Break 2"}, {"name": "Kellyneth Estrada", "act": "Lunch"}, {"name": "Bruno Rodriguez", "act": "Lunch"}, {"name": "Kevin Durango", "act": "Lunch"}, {"name": "Andrea Gonzalez", "act": "Lunch"}, {"name": "Alexander Jaramillo", "act": "Lunch"}, {"name": "Raul Garcia", "act": "Lunch"}, {"name": "Felix Torres", "act": "Lunch"}, {"name": "Michelle Salmon", "act": "Break 1"}],
-            "OBS - Cases": [{"name": "Pablo Saquilmer", "act": "Lunch"}, {"name": "Lucia Herrera", "act": "Lunch"}, {"name": "Alejandra Manco", "act": "Lunch"}, {"name": "Jorge Saban", "act": "Break 2"}, {"name": "Rudy Herrera", "act": "Break 1"}],
-            "INS": [{"name": "Keyren Fuertes", "act": "Break 2"}, {"name": "Otto de la Cruz", "act": "Break 2"}, {"name": "Freddy Monterroso", "act": "Lunch"}, {"name": "Eunice Sir", "act": "Lunch"}, {"name": "Ana Melendez", "act": "Lunch"}, {"name": "Gustavo Lopez", "act": "Lunch"}, {"name": "Marco Ovalle", "act": "Lunch"}, {"name": "Acsa Esquivel", "act": "Lunch"}, {"name": "Luis Leon", "act": "Lunch"}, {"name": "Michelle Marquez", "act": "Lunch"}, {"name": "Alondra Mendoza", "act": "Lunch"}, {"name": "Lynda Escobedo", "act": "Lunch"}, {"name": "Marielys Tejada", "act": "Lunch"}, {"name": "Kathering Santos", "act": "Break 2"}],
-            "ELD": [{"name": "Sergio Chiguil", "act": "Break 2"}, {"name": "Samantha Chinchilla", "act": "Lunch"}, {"name": "Celina Franco", "act": "Lunch"}, {"name": "Esvin Gomez", "act": "Lunch"}, {"name": "Iverth Monterroso", "act": "Lunch"}, {"name": "Kenford Morris", "act": "Lunch"}, {"name": "Luis Gonzalez", "act": "Break 2"}, {"name": "Melanie Garcia", "act": "Break 2"}, {"name": "Marie Perez", "act": "Lunch"}, {"name": "Danae Castillo", "act": "Lunch"}, {"name": "Cesar Larios", "act": "Lunch"}, {"name": "Benneth Smith", "act": "Lunch"}, {"name": "Daniel Pelayo", "act": "Lunch"}, {"name": "Kevin Williams", "act": "Lunch"}, {"name": "Luis Ajche", "act": "Lunch"}],
-            "LL+": [{"name": "Omar Gomez", "act": "Lunch"}, {"name": "Luis Escobar", "act": "Lunch"}, {"name": "Andy Pineda", "act": "Lunch"}, {"name": "Yossi Martinez", "act": "Break 2"}],
-            "TFX": [{"name": "Fernando Daniel Ramirez", "act": "Break 2"}, {"name": "Mariana Velazquez Cruz", "act": "Lunch"}]
-        },
-        14: {
-            "OBS - Phones": [{"name": "Dean Spencer", "act": "Break 2"}, {"name": "Alberto Arana", "act": "Break 2"}, {"name": "Stephanie Temple", "act": "Break 2"}, {"name": "Leona Wallace", "act": "Break 1"}, {"name": "Zinedine Moscote", "act": "Lunch"}, {"name": "Alex Scarlett", "act": "Lunch"}, {"name": "Omar Jimenez", "act": "Lunch"}],
-            "OBS - Cases": [{"name": "Emely Hernandez", "act": "Break 2"}, {"name": "Pablo Saquilmer", "act": "Break 2"}, {"name": "Lucia Herrera", "act": "Break 2"}, {"name": "Fernando Garcia", "act": "Break 2"}, {"name": "Alejandra Manco", "act": "Lunch"}, {"name": "Galilea Gutierrez", "act": "Lunch"}],
-            "INS": [{"name": "Freddy Monterroso", "act": "Lunch"}, {"name": "Joseth Huerta", "act": "Break 2"}, {"name": "Ariel Yaegui", "act": "Lunch"}, {"name": "Acsa Esquivel", "act": "Lunch"}, {"name": "Kener Lee", "act": "Lunch"}, {"name": "Alondra Mendoza", "act": "Lunch"}, {"name": "Kathering Santos", "act": "Lunch"}, {"name": "Lynda Escobedo", "act": "Lunch"}, {"name": "Cesar Colaj", "act": "Break 2"}, {"name": "Juan Avedaño", "act": "Break 2"}],
-            "ELD": [{"name": "Sharon Olivares", "act": "Lunch"}, {"name": "Kevin Acabal", "act": "Lunch"}, {"name": "Brandon Vasquez", "act": "Break 2"}, {"name": "Josue Sucuc", "act": "Lunch"}, {"name": "Luis Gonzalez", "act": "Lunch"}, {"name": "Froy Gonzalez", "act": "Lunch"}, {"name": "Marie Perez", "act": "Lunch"}, {"name": "Danae Castillo", "act": "Lunch"}, {"name": "Daniel Pelayo", "act": "Lunch"}, {"name": "Kevin Ibarra", "act": "Lunch"}, {"name": "Sebastian Quiñonez", "act": "Lunch"}, {"name": "Jose Rodriguez", "act": "Lunch"}, {"name": "Luis Ajche", "act": "Lunch"}],
-            "LL+": [{"name": "Edgar Palomo", "act": "Lunch"}, {"name": "Jonathan Pirir", "act": "Lunch"}],
-            "TFX": [{"name": "Maria Fernanda Saucedo", "act": "Lunch"}]
-        },
-        15: {
-            "OBS - Phones": [{"name": "Kellyneth Estrada", "act": "Break 2"}, {"name": "Alexander Santamaria", "act": "Break 2"}, {"name": "Israel Arias", "act": "Break 2"}, {"name": "Bruno Rodriguez", "act": "Break 2"}, {"name": "Kevin Durango", "act": "Break 2"}, {"name": "Andrea Gonzalez", "act": "Break 2"}, {"name": "Alexander Jaramillo", "act": "Break 2"}, {"name": "Felix Torres", "act": "Break 2"}, {"name": "Omar Jimenez", "act": "Lunch"}],
-            "OBS - Cases": [{"name": "Diana Orozco", "act": "Break 2"}, {"name": "Emilia Chajon", "act": "Lunch"}, {"name": "Alejandra Manco", "act": "Break 2"}, {"name": "Jorge Saban", "act": "Lunch"}],
-            "INS": [{"name": "Dana Redwood", "act": "Break 2"}, {"name": "Marco Ovalle", "act": "Break 2"}, {"name": "Ariel Yaegui", "act": "Lunch"}, {"name": "Luis Leon", "act": "Break 2"}, {"name": "Michelle Marquez", "act": "Break 2"}, {"name": "Kener Lee", "act": "Lunch"}, {"name": "Alondra Mendoza", "act": "Break 2"}, {"name": "Kathering Santos", "act": "Lunch"}, {"name": "Cesar Colaj", "act": "Lunch"}],
-            "ELD": [{"name": "Samantha Chinchilla", "act": "Break 2"}, {"name": "Celina Franco", "act": "Break 2"}, {"name": "Esvin Gomez", "act": "Break 2"}, {"name": "Iverth Monterroso", "act": "Break 2"}, {"name": "Kevin Acabal", "act": "Lunch"}, {"name": "Sonia Jimenez", "act": "Break 2"}, {"name": "Josue Sucuc", "act": "Break 2"}, {"name": "Melanie Garcia", "act": "Lunch"}, {"name": "Cesar Larios", "act": "Break 2"}, {"name": "Benneth Smith", "act": "Break 2"}, {"name": "Sebastian Quiñonez", "act": "Break 2"}, {"name": "Shiyan Lee", "act": "Lunch"}],
-            "LL+": [{"name": "Yossi Martinez", "act": "Lunch"}],
-            "TFX": [{"name": "Maria Fernanda Saucedo", "act": "Break 2"}, {"name": "Mariana Velazquez Cruz", "act": "Break 2"}]
-        },
-        16: {
-            "OBS - Phones": [{"name": "Zinedine Moscote", "act": "Break 2"}, {"name": "Raul Garcia", "act": "Break 2"}, {"name": "Michelle Salmon", "act": "Lunch"}],
-            "OBS - Cases": [{"name": "Galilea Gutierrez", "act": "Break 2"}, {"name": "Rudy Herrera", "act": "Break 2"}],
-            "INS": [{"name": "Lynda Escobedo", "act": "Break 2"}, {"name": "Marielys Tejada", "act": "Break 2"}, {"name": "Cesar Colaj", "act": "Lunch"}, {"name": "Juan Avedaño", "act": "Lunch"}],
-            "ELD": [{"name": "Marie Perez", "act": "Break 2"}, {"name": "Danae Castillo", "act": "Break 2"}, {"name": "Daniel Pelayo", "act": "Break 2"}, {"name": "Kevin Ibarra", "act": "Break 2"}, {"name": "Jorge Najera", "act": "Break 1"}, {"name": "Kevin Williams", "act": "Break 2"}, {"name": "Kia Francis", "act": "Lunch"}, {"name": "Tevin Smallwood", "act": "Lunch"}]
-        },
-        17: {
-            "OBS - Phones": [{"name": "Omar Jimenez", "act": "Break 2"}],
-            "OBS - Cases": [{"name": "Diana Orozco", "act": "Lunch"}],
-            "INS": [{"name": "Juan Avedaño", "act": "Lunch"}],
-            "ELD": [{"name": "Jose Rodriguez", "act": "Break 2"}, {"name": "Luis Ajche", "act": "Break 2"}, {"name": "Jorge Najera", "act": "Break 2"}]
-        },
-        18: {"OBS - Cases": [{"name": "Rudy Herrera", "act": "Lunch"}]}
+        48: { // 12:00 PM (12 * 4)
+            "OBS - Phones": [{"name": "Shanique Kelly", "act": "Lunch"}, {"name": "Alberto Arana", "act": "Lunch"}],
+            "OBS - Cases": [{"name": "Lucia Herrera", "act": "Lunch"}]
+        }
     };
 
     function buildDefaultMasterAgents() {
         let agentMap = {};
         let idCounter = 1;
-        for (let h = 0; h < 24; h++) {
-            if (defaultRosterPattern[h]) {
+        for (let idx = 0; idx < 96; idx++) {
+            if (defaultRosterPattern[idx]) {
                 for (let d of depts) {
-                    if (defaultRosterPattern[h][d]) {
-                        defaultRosterPattern[h][d].forEach(ag => {
+                    if (defaultRosterPattern[idx][d]) {
+                        defaultRosterPattern[idx][d].forEach(ag => {
                             let key = ag.name + '___' + d;
                             if (!agentMap[key]) {
                                 agentMap[key] = { id: idCounter++, name: ag.name, dept: d, hours: {} };
                             }
-                            agentMap[key].hours[h] = ag.act || "Break/Lunch";
+                            agentMap[key].hours[idx] = ag.act || "Break/Lunch";
                         });
                     }
                 }
@@ -1145,19 +1111,19 @@
     }
 
     function syncPatternFromMasterDB() {
-        for (let h = 0; h < 24; h++) {
-            hourlyDataPattern[h] = {};
-            for (let d of depts) hourlyDataPattern[h][d] = [];
+        for (let idx = 0; idx < 96; idx++) {
+            hourlyDataPattern[idx] = {};
+            for (let d of depts) hourlyDataPattern[idx][d] = [];
         }
 
         masterAgentsDB.forEach(ag => {
             if (ag.hours) {
-                for (let h in ag.hours) {
-                    let hourInt = parseInt(h, 10);
-                    if (hourlyDataPattern[hourInt] && hourlyDataPattern[hourInt][ag.dept]) {
-                        hourlyDataPattern[hourInt][ag.dept].push({
+                for (let idx in ag.hours) {
+                    let slotIdx = parseInt(idx, 10);
+                    if (hourlyDataPattern[slotIdx] && hourlyDataPattern[slotIdx][ag.dept]) {
+                        hourlyDataPattern[slotIdx][ag.dept].push({
                             name: ag.name,
-                            act: ag.hours[h]
+                            act: ag.hours[idx]
                         });
                     }
                 }
@@ -1171,18 +1137,6 @@
 
     let volumeCapacityChartInstance = null;
     let deptDistributionChartInstance = null;
-
-    function generateHourlySlots() {
-        const slots = [];
-        for (let h = 0; h < 24; h++) {
-            const suffix = h >= 12 ? 'PM' : 'AM';
-            let h12 = h % 12;
-            if (h12 === 0) h12 = 12;
-            slots.push({ time12: `${h12}:00 ${suffix}`, h24: h });
-        }
-        return slots;
-    }
-    const hourlySlots = generateHourlySlots();
 
     document.addEventListener("DOMContentLoaded", () => {
         recountRosterFromMasterDB();
@@ -1207,11 +1161,11 @@
         const periodStore = multiPeriodVolumeDB[monthKey][weekKey];
         volumeDataCombined = {};
 
-        for (let h = 0; h < 24; h++) {
+        for (let idx = 0; idx < 96; idx++) {
             let sumAns = 0, sumAbQ = 0, sumAbCSAT = 0, sumAbH = 0;
             ['obs', 'ins', 'eld', 'll', 'tfx'].forEach(t => {
-                if (periodStore[t] && periodStore[t][h]) {
-                    const item = periodStore[t][h];
+                if (periodStore[t] && periodStore[t][idx]) {
+                    const item = periodStore[t][idx];
                     sumAns += item.ans || 0;
                     sumAbQ += item.abQ || 0;
                     sumAbCSAT += item.abCSAT || 0;
@@ -1220,7 +1174,7 @@
             });
 
             const totalVol = sumAns + sumAbQ + sumAbCSAT + sumAbH;
-            volumeDataCombined[h] = {
+            volumeDataCombined[idx] = {
                 ans: sumAns,
                 abQ: sumAbQ,
                 abCSAT: sumAbCSAT,
@@ -1286,7 +1240,7 @@
                 const isVisible = isAll || selectedDepts.has(dept);
                 td.style.display = isVisible ? '' : 'none';
 
-                let agents = (hourlyDataPattern[slot.h24] && hourlyDataPattern[slot.h24][dept]) ? hourlyDataPattern[slot.h24][dept] : [];
+                let agents = (hourlyDataPattern[slot.idx] && hourlyDataPattern[slot.idx][dept]) ? hourlyDataPattern[slot.idx][dept] : [];
                 
                 if (isVisible) {
                     rowTotalAway += agents.length;
@@ -1320,7 +1274,7 @@
         tbody.innerHTML = '';
 
         hourlySlots.forEach(slot => {
-            const v = volumeDataCombined[slot.h24] || { ans:0, abQ:0, abCSAT:0, abH:0, tot:0, max:0 };
+            const v = volumeDataCombined[slot.idx] || { ans:0, abQ:0, abCSAT:0, abH:0, tot:0, max:0 };
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td class="time-col">${slot.time12}</td>
@@ -1341,14 +1295,15 @@
 
         const aht = parseFloat(document.getElementById('ahtInput').value) || 5;
         const occ = (parseFloat(document.getElementById('occInput').value) || 85) / 100;
-        const callsPerHourPerAgent = (60 / aht) * occ;
+        // 15-min capacity = (15 / AHT) * Occ per agent
+        const callsPer15MinPerAgent = (15 / aht) * occ;
 
         hourlySlots.forEach(slot => {
-            const v = volumeDataCombined[slot.h24] || { tot: 0 };
-            const phoneAway = (hourlyDataPattern[slot.h24]["OBS - Phones"]) ? hourlyDataPattern[slot.h24]["OBS - Phones"].length : 0;
+            const v = volumeDataCombined[slot.idx] || { tot: 0 };
+            const phoneAway = (hourlyDataPattern[slot.idx]["OBS - Phones"]) ? hourlyDataPattern[slot.idx]["OBS - Phones"].length : 0;
             const phoneAvail = Math.max(0, deptRosterCounts["OBS - Phones"] - phoneAway);
 
-            const reqAgents = v.tot > 0 ? Math.ceil(v.tot / callsPerHourPerAgent) : 0;
+            const reqAgents = v.tot > 0 ? Math.ceil(v.tot / callsPer15MinPerAgent) : 0;
             const gap = phoneAvail - reqAgents;
 
             let recText = "";
@@ -1379,27 +1334,27 @@
         const week = getActiveWeek();
 
         let maxVol = 0;
-        let peakHour = 9;
+        let peakIdx = 36;
 
-        for (let h = 0; h < 24; h++) {
-            let v = volumeDataCombined[h] ? volumeDataCombined[h].tot : 0;
+        for (let idx = 0; idx < 96; idx++) {
+            let v = volumeDataCombined[idx] ? volumeDataCombined[idx].tot : 0;
             if (v > maxVol) {
                 maxVol = v;
-                peakHour = h;
+                peakIdx = idx;
             }
         }
 
-        let peakSlot = hourlySlots.find(s => s.h24 === peakHour);
-        let timeLabel = peakSlot ? peakSlot.time12 : "Peak Hour";
+        let peakSlot = hourlySlots.find(s => s.idx === peakIdx);
+        let timeLabel = peakSlot ? peakSlot.time12 : "Peak Interval";
 
         container.innerHTML = `
             <div class="recommendation-card">
-                <h3>Peak-Hour Shift & Meal Staggering (${month} - ${week})</h3>
-                <p>For <b>${month} (${week})</b>, overall call volume peaks around <b>${timeLabel}</b> with an average volume of <b>${maxVol.toFixed(1)} calls/hour</b>. Overlapping lunches and breaks reduce available phone capacity during key morning windows. Staggering meal schedules into smaller shifts is essential to maintain queue SLA.</p>
+                <h3>Peak-Interval Shift & Meal Staggering (${month} - ${week})</h3>
+                <p>For <b>${month} (${week})</b>, overall call volume peaks around <b>${timeLabel}</b> with an average volume of <b>${maxVol.toFixed(1)} calls/interval</b>. Overlapping lunches and breaks reduce available phone capacity during key morning windows. Staggering meal schedules into 15-minute staggered shifts is essential to maintain queue SLA.</p>
             </div>
             <div class="recommendation-card">
                 <h3>Cross-Queue Reinforcement & Flex Staffing</h3>
-                <p>When demand spikes above capacity in <i>${month} - ${week}</i>, activate cross-skilling protocols so that agents from non-phone or lower-volume teams support phone queues during high-demand hours.</p>
+                <p>When demand spikes above capacity in <i>${month} - ${week}</i>, activate cross-skilling protocols so that agents from non-phone or lower-volume teams support phone queues during high-demand intervals.</p>
             </div>
         `;
     }
@@ -1416,16 +1371,18 @@
                         data: [],
                         borderColor: '#E6A100',
                         backgroundColor: 'rgba(230, 161, 0, 0.2)',
-                        borderWidth: 3,
+                        borderWidth: 2,
+                        pointRadius: 1,
                         fill: true,
-                        tension: 0.3
+                        tension: 0.2
                     },
                     {
                         label: 'Available Phone Capacity',
                         data: [],
                         borderColor: '#1F4E78',
-                        borderDash: [5, 5],
+                        borderDash: [4, 4],
                         borderWidth: 2,
+                        pointRadius: 1,
                         fill: false
                     }
                 ]
@@ -1445,7 +1402,7 @@
                 labels: depts,
                 datasets: [
                     { label: 'Total Headcount', data: [], backgroundColor: '#1F4E78' },
-                    { label: 'Away Agents in Peak Hour (1:00 PM)', data: [], backgroundColor: '#E6A100' }
+                    { label: 'Away Agents in Peak Interval', data: [], backgroundColor: '#E6A100' }
                 ]
             },
             options: {
@@ -1460,16 +1417,16 @@
     function updateCharts() {
         const aht = parseFloat(document.getElementById('ahtInput').value) || 5;
         const occ = (parseFloat(document.getElementById('occInput').value) || 85) / 100;
-        const callsPerHourPerAgent = (60 / aht) * occ;
+        const callsPer15MinPerAgent = (15 / aht) * occ;
 
         const volumeData = [];
         const capacityData = [];
 
         hourlySlots.forEach(slot => {
-            const v = volumeDataCombined[slot.h24] ? volumeDataCombined[slot.h24].tot : 0;
-            const phoneAway = hourlyDataPattern[slot.h24]["OBS - Phones"] ? hourlyDataPattern[slot.h24]["OBS - Phones"].length : 0;
+            const v = volumeDataCombined[slot.idx] ? volumeDataCombined[slot.idx].tot : 0;
+            const phoneAway = hourlyDataPattern[slot.idx]["OBS - Phones"] ? hourlyDataPattern[slot.idx]["OBS - Phones"].length : 0;
             const phoneAvail = Math.max(0, deptRosterCounts["OBS - Phones"] - phoneAway);
-            const callCapacity = Math.round(phoneAvail * callsPerHourPerAgent);
+            const callCapacity = Math.round(phoneAvail * callsPer15MinPerAgent);
 
             volumeData.push(v);
             capacityData.push(callCapacity);
@@ -1480,7 +1437,7 @@
         volumeCapacityChartInstance.update();
 
         const totalHeadcounts = depts.map(d => deptRosterCounts[d]);
-        const peakAway = depts.map(d => (hourlyDataPattern[13][d] ? hourlyDataPattern[13][d].length : 0));
+        const peakAway = depts.map(d => (hourlyDataPattern[52][d] ? hourlyDataPattern[52][d].length : 0)); // 1:00 PM
 
         deptDistributionChartInstance.data.datasets[0].data = totalHeadcounts;
         deptDistributionChartInstance.data.datasets[1].data = peakAway;
@@ -1534,19 +1491,17 @@
     };
 
     window.deleteSavedPeriod = function(mKey, wKey) {
-        if (confirm(`Are you sure you want to delete period ${mKey} - ${wKey}?`)) {
-            if (multiPeriodVolumeDB[mKey] && multiPeriodVolumeDB[mKey][wKey]) {
-                delete multiPeriodVolumeDB[mKey][wKey];
-                remove(ref(db, `wfm_data/multiPeriodVolumeDB/${mKey}/${wKey}`));
-            }
-            if (rawTextsDB[mKey] && rawTextsDB[mKey][wKey]) {
-                delete rawTextsDB[mKey][wKey];
-                remove(ref(db, `wfm_data/rawTextsDB/${mKey}/${wKey}`));
-            }
-            loadActivePeriodVolume();
-            renderAllUI();
-            renderSavedPeriodsList();
+        if (multiPeriodVolumeDB[mKey] && multiPeriodVolumeDB[mKey][wKey]) {
+            delete multiPeriodVolumeDB[mKey][wKey];
+            remove(ref(db, `wfm_data/multiPeriodVolumeDB/${mKey}/${wKey}`));
         }
+        if (rawTextsDB[mKey] && rawTextsDB[mKey][wKey]) {
+            delete rawTextsDB[mKey][wKey];
+            remove(ref(db, `wfm_data/rawTextsDB/${mKey}/${wKey}`));
+        }
+        loadActivePeriodVolume();
+        renderAllUI();
+        renderSavedPeriodsList();
     };
 
     function requireAuth(callback) {
@@ -1677,7 +1632,7 @@
         }
     }
 
-    // MULTI-DAY EXCEL PARSER (Calculates hourly average across 7 days if pasted)
+    // MULTI-DAY EXCEL PARSER MAPPED TO 96 INTERVALS
     function parsePastedTable(rawText) {
         if (!rawText || !rawText.trim()) return {};
         const result = {};
@@ -1696,25 +1651,29 @@
 
         if (matches.length === 0) return result;
 
-        const hourlyAccumulator = {};
+        const intervalAccumulator = {};
 
         for (let i = 0; i < matches.length; i++) {
             const current = matches[i];
             const nextIndex = (i + 1 < matches.length) ? matches[i + 1].index : rawText.length;
             const numSegment = rawText.substring(current.endIndex, nextIndex).trim();
 
-            let h24 = -1;
-            let hourMatch = current.timeStr.match(/(\d{1,2}):?(\d{2})?:?(\d{2})?\s*(AM|PM)?/i);
+            let slotIdx = -1;
+            let hourMatch = current.timeStr.match(/(\d{1,2}):(\d{2})(?::\d{2})?\s*(AM|PM)?/i);
             if (hourMatch) {
                 let h = parseInt(hourMatch[1], 10);
-                let pm = hourMatch[4] && hourMatch[4].toUpperCase() === 'PM';
-                let am = hourMatch[4] && hourMatch[4].toUpperCase() === 'AM';
+                let m = parseInt(hourMatch[2], 10);
+                let pm = hourMatch[3] && hourMatch[3].toUpperCase() === 'PM';
+                let am = hourMatch[3] && hourMatch[3].toUpperCase() === 'AM';
                 if (pm && h < 12) h += 12;
                 if (am && h === 12) h = 0;
-                if (h >= 0 && h < 24) h24 = h;
+                
+                // Map minutes to nearest 15-min block
+                let mBlock = Math.floor(m / 15);
+                slotIdx = (h * 4) + mBlock;
             }
 
-            if (h24 !== -1) {
+            if (slotIdx >= 0 && slotIdx < 96) {
                 let digits = numSegment.split(/[\t\s\n,]+/).map(v => parseFloat(v)).filter(v => !isNaN(v));
                 if (digits.length === 0 && numSegment.length > 0) {
                     let dMatch = numSegment.match(/\d+/g);
@@ -1726,27 +1685,27 @@
                 let abCSAT = digits[2] || 0;
                 let abH = digits[3] || digits[4] || 0;
 
-                if (!hourlyAccumulator[h24]) {
-                    hourlyAccumulator[h24] = { ansSum: 0, abQSum: 0, abCSATSum: 0, abHSum: 0, count: 0 };
+                if (!intervalAccumulator[slotIdx]) {
+                    intervalAccumulator[slotIdx] = { ansSum: 0, abQSum: 0, abCSATSum: 0, abHSum: 0, count: 0 };
                 }
 
-                hourlyAccumulator[h24].ansSum += ans;
-                hourlyAccumulator[h24].abQSum += abQ;
-                hourlyAccumulator[h24].abCSATSum += abCSAT;
-                hourlyAccumulator[h24].abHSum += abH;
-                hourlyAccumulator[h24].count += 1;
+                intervalAccumulator[slotIdx].ansSum += ans;
+                intervalAccumulator[slotIdx].abQSum += abQ;
+                intervalAccumulator[slotIdx].abCSATSum += abCSAT;
+                intervalAccumulator[slotIdx].abHSum += abH;
+                intervalAccumulator[slotIdx].count += 1;
             }
         }
 
-        for (let h in hourlyAccumulator) {
-            let item = hourlyAccumulator[h];
+        for (let idx in intervalAccumulator) {
+            let item = intervalAccumulator[idx];
             let cnt = item.count || 1;
             let avgAns = item.ansSum / cnt;
             let avgAbQ = item.abQSum / cnt;
             let avgCSAT = item.abCSATSum / cnt;
             let avgAbH = item.abHSum / cnt;
 
-            result[h] = {
+            result[idx] = {
                 ans: avgAns,
                 abQ: avgAbQ,
                 abCSAT: avgCSAT,
@@ -1826,10 +1785,10 @@
             
             let hoursBadges = [];
             if (ag.hours) {
-                for (let h in ag.hours) {
-                    let slot = hourlySlots.find(s => s.h24 == h);
-                    let timeLabel = slot ? slot.time12 : `${h}:00`;
-                    hoursBadges.push(`<span class="badge-act">${timeLabel}: ${ag.hours[h]}</span>`);
+                for (let idx in ag.hours) {
+                    let slot = hourlySlots.find(s => s.idx == idx);
+                    let timeLabel = slot ? slot.time12 : `${idx}`;
+                    hoursBadges.push(`<span class="badge-act">${timeLabel}: ${ag.hours[idx]}</span>`);
                 }
             }
             let hoursStr = hoursBadges.length > 0 ? hoursBadges.join(' ') : '<span style="color:#aaa;">No scheduled away hours</span>';
@@ -1856,7 +1815,7 @@
     window.deleteAgentPrompt = function(agentId) {
         requireAuth(() => {
             const ag = masterAgentsDB.find(a => a.id === agentId);
-            if (ag && confirm(`Are you sure you want to delete agent "${ag.name}"?`)) {
+            if (ag) {
                 masterAgentsDB = masterAgentsDB.filter(a => a.id !== agentId);
                 recountRosterFromMasterDB();
                 syncPatternFromMasterDB();
@@ -1877,21 +1836,21 @@
 
         if (agentId) {
             const ag = masterAgentsDB.find(a => a.id === agentId);
-            document.getElementById('agentFormTitle').textContent = 'Edit Agent & Schedule';
+            document.getElementById('agentFormTitle').textContent = 'Edit Agent & Schedule (15-Min Intervals)';
             document.getElementById('editAgentId').value = ag.id;
             document.getElementById('agentNameInput').value = ag.name;
             document.getElementById('agentDeptInput').value = ag.dept;
 
             hourlySlots.forEach(slot => {
-                const isChecked = ag.hours && ag.hours[slot.h24] !== undefined;
-                const actValue = (ag.hours && ag.hours[slot.h24]) || "Break 1";
+                const isChecked = ag.hours && ag.hours[slot.idx] !== undefined;
+                const actValue = (ag.hours && ag.hours[slot.idx]) || "Break 1";
                 
                 const div = document.createElement('div');
                 div.className = 'chip-checkbox';
                 div.innerHTML = `
-                    <input type="checkbox" value="${slot.h24}" ${isChecked ? 'checked' : ''} onchange="toggleActivitySelect(this, ${slot.h24})">
+                    <input type="checkbox" value="${slot.idx}" ${isChecked ? 'checked' : ''} onchange="toggleActivitySelect(this, ${slot.idx})">
                     <span>${slot.time12}</span>
-                    <select id="act_select_${slot.h24}" style="font-size:0.7rem; ${isChecked ? '' : 'display:none;'}">
+                    <select id="act_select_${slot.idx}" style="font-size:0.7rem; ${isChecked ? '' : 'display:none;'}">
                         <option value="Break 1" ${actValue === 'Break 1' ? 'selected' : ''}>Break 1</option>
                         <option value="Lunch" ${actValue === 'Lunch' ? 'selected' : ''}>Lunch</option>
                         <option value="Break 2" ${actValue === 'Break 2' ? 'selected' : ''}>Break 2</option>
@@ -1901,7 +1860,7 @@
             });
 
         } else {
-            document.getElementById('agentFormTitle').textContent = 'Add New Agent';
+            document.getElementById('agentFormTitle').textContent = 'Add New Agent (15-Min Intervals)';
             document.getElementById('editAgentId').value = '';
             document.getElementById('agentNameInput').value = '';
             document.getElementById('agentDeptInput').value = currentDept;
@@ -1910,9 +1869,9 @@
                 const div = document.createElement('div');
                 div.className = 'chip-checkbox';
                 div.innerHTML = `
-                    <input type="checkbox" value="${slot.h24}" onchange="toggleActivitySelect(this, ${slot.h24})">
+                    <input type="checkbox" value="${slot.idx}" onchange="toggleActivitySelect(this, ${slot.idx})">
                     <span>${slot.time12}</span>
-                    <select id="act_select_${slot.h24}" style="font-size:0.7rem; display:none;">
+                    <select id="act_select_${slot.idx}" style="font-size:0.7rem; display:none;">
                         <option value="Break 1">Break 1</option>
                         <option value="Lunch">Lunch</option>
                         <option value="Break 2">Break 2</option>
@@ -1933,17 +1892,14 @@
         const name = document.getElementById('agentNameInput').value.trim();
         const dept = document.getElementById('agentDeptInput').value;
 
-        if (!name) {
-            alert('Please enter agent name.');
-            return;
-        }
+        if (!name) return;
 
         const hoursObj = {};
         const checkboxes = document.querySelectorAll('#hourChipsContainer input[type="checkbox"]:checked');
         checkboxes.forEach(cb => {
-            const h = parseInt(cb.value, 10);
-            const select = document.getElementById(`act_select_${h}`);
-            hoursObj[h] = select ? select.value : "Break 1";
+            const idx = parseInt(cb.value, 10);
+            const select = document.getElementById(`act_select_${idx}`);
+            hoursObj[idx] = select ? select.value : "Break 1";
         });
 
         if (idVal) {

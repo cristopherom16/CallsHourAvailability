@@ -693,14 +693,14 @@
             <tfoot>
                 <tr>
                     <td>TOTAL ROSTER</td>
-                    <td class="dept-foot" data-dept="OBS - Phones" id="foot-OBS - Phones">21</td>
+                    <td class="dept-foot" data-dept="OBS - Phones" id="foot-OBS - Phones">27</td>
                     <td class="dept-foot" data-dept="OBS - Cases" id="foot-OBS - Cases">10</td>
                     <td class="dept-foot" data-dept="INS" id="foot-INS">21</td>
-                    <td class="dept-foot" data-dept="ELD" id="foot-ELD">30</td>
+                    <td class="dept-foot" data-dept="ELD" id="foot-ELD">29</td>
                     <td class="dept-foot" data-dept="LL+" id="foot-LL+">8</td>
                     <td class="dept-foot" data-dept="TFX" id="foot-TFX">3</td>
-                    <td id="footTotal" style="background-color: var(--accent-yellow); color: black;">93</td>
-                    <td id="footNote" style="text-align: left; font-style: italic;">Selected Headcount Total = 93 Agents</td>
+                    <td id="footTotal" style="background-color: var(--accent-yellow); color: black;">98</td>
+                    <td id="footNote" style="text-align: left; font-style: italic;">Selected Headcount Total = 98 Agents</td>
                 </tr>
             </tfoot>
         </table>
@@ -968,15 +968,14 @@
     const depts = ['OBS - Phones', 'OBS - Cases', 'INS', 'ELD', 'LL+', 'TFX'];
     
     let deptRosterCounts = {
-        'OBS - Phones': 21,
+        'OBS - Phones': 27,
         'OBS - Cases': 10,
         'INS': 21,
-        'ELD': 30,
+        'ELD': 29,
         'LL+': 8,
         'TFX': 3
     };
 
-    // GENERATE 24 HOURLY SLOTS (0 TO 23) FOR DASHBOARD TABLES & CHARTS
     function generate24HourlySlots() {
         const slots = [];
         for (let h = 0; h < 24; h++) {
@@ -992,7 +991,6 @@
     }
     const hourlySlots = generate24HourlySlots();
 
-    // GENERATE 96 INTERVALS OF 15 MINUTES (0 TO 95) ONLY FOR AGENTS FORM
     function generate15MinSlots() {
         const slots = [];
         for (let idx = 0; idx < 96; idx++) {
@@ -1013,47 +1011,129 @@
     }
     const agentSlots15Min = generate15MinSlots();
 
-    const defaultRosterPattern = {
-        8: {
-            "OBS - Phones": [{"name": "Lelburn Gordon", "act": "Break 1"}, {"name": "Dean Spencer", "act": "Break 1"}],
-            "OBS - Cases": [{"name": "Emely Hernandez", "act": "Break 1"}],
-            "INS": [{"name": "Keyren Fuertes", "act": "Break 1"}, {"name": "Otto de la Cruz", "act": "Break 1"}]
-        },
-        9: {
-            "OBS - Phones": [{"name": "Shanique Kelly", "act": "Break 1"}, {"name": "Alberto Arana", "act": "Break 1"}],
-            "OBS - Cases": [{"name": "Lucia Herrera", "act": "Break 1"}]
-        },
-        10: {
-            "OBS - Phones": [{"name": "Daneil Facey", "act": "Lunch"}],
-            "OBS - Cases": [{"name": "Pablo Saquilmer", "act": "Break 1"}]
-        },
-        12: {
-            "OBS - Phones": [{"name": "Shanique Kelly", "act": "Lunch"}, {"name": "Alberto Arana", "act": "Lunch"}],
-            "OBS - Cases": [{"name": "Lucia Herrera", "act": "Lunch"}]
-        }
-    };
+    // FULL UPDATED MASTER ROSTER DATA FROM YOUR TABLES
+    const rawRosterData = [
+        // OBS - Phones (27 agents)
+        { name: "Dean Spencer", dept: "OBS - Phones", hours: { 35: "Break 1", 44: "Lunch", 45: "Lunch", 55: "Break 2" } }, // B1: 8:45, L: 11:00-11:30, B2: 13:45
+        { name: "Daneil Facey", dept: "OBS - Phones", hours: { 40: "Lunch", 41: "Lunch", 42: "Lunch", 51: "Break 2" } }, // L: 10:00-10:45, B2: 12:45
+        { name: "Shanique Kelly", dept: "OBS - Phones", hours: { 36: "Break 1", 49: "Lunch", 50: "Lunch", 51: "Lunch" } }, // B1: 9:00, L: 12:15-13:00
+        { name: "Stephanie Temple", dept: "OBS - Phones", hours: { 39: "Break 1", 48: "Lunch", 49: "Lunch", 59: "Break 2" } }, // B1: 9:45, L: 12:00-12:30, B2: 14:45
+        { name: "Kellyneth Estrada", dept: "OBS - Phones", hours: { 38: "Break 1", 52: "Lunch", 53: "Lunch", 59: "Break 2" } }, // B1: 9:30, L: 13:00-13:30, B2: 14:45
+        { name: "Alexander Santamaria", dept: "OBS - Phones", hours: { 39: "Break 1", 50: "Lunch", 51: "Lunch", 60: "Break 2" } }, // B1: 9:45, L: 12:30-13:00, B2: 15:00
+        { name: "Sonia Jimenez", dept: "OBS - Phones", hours: { 35: "Break 1", 50: "Lunch", 51: "Lunch", 60: "Break 2" } },
+        { name: "Ryan Barber", dept: "OBS - Phones", hours: { 56: "Lunch", 57: "Lunch", 58: "Lunch", 59: "Lunch" } },
+        { name: "Leona Wallace", dept: "OBS - Phones", hours: { 48: "Lunch", 49: "Lunch", 50: "Lunch", 56: "Break 2" } },
+        { name: "Vashaun Thompson", dept: "OBS - Phones", hours: { 40: "Break 1", 50: "Lunch", 51: "Lunch", 52: "Lunch" } },
+        { name: "Israel Arias", dept: "OBS - Phones", hours: { 41: "Break 1", 48: "Lunch", 49: "Lunch", 50: "Lunch", 51: "Lunch", 56: "Break 2" } },
+        { name: "Bruno Rodriguez", dept: "OBS - Phones", hours: { 40: "Break 1", 52: "Lunch", 53: "Lunch", 54: "Lunch", 55: "Lunch", 62: "Break 2" } },
+        { name: "Kevin Durango", dept: "OBS - Phones", hours: { 39: "Break 1", 52: "Lunch", 53: "Lunch", 54: "Lunch", 55: "Lunch", 62: "Break 2" } },
+        { name: "Andrea Gonzalez", dept: "OBS - Phones", hours: { 41: "Break 1", 51: "Lunch", 52: "Lunch", 53: "Lunch", 54: "Lunch", 61: "Break 2" } },
+        { name: "Alexander Jaramillo", dept: "OBS - Phones", hours: { 39: "Break 1", 51: "Lunch", 52: "Lunch", 53: "Lunch", 54: "Lunch", 61: "Break 2" } },
+        { name: "Hannah Castanon", dept: "OBS - Phones", hours: { 52: "Lunch", 53: "Lunch", 54: "Lunch", 55: "Lunch" } },
+        { name: "Julie Nguyen", dept: "OBS - Phones", hours: { 50: "Lunch", 51: "Lunch", 52: "Lunch", 53: "Lunch", 60: "Break 2" } },
+        { name: "Jaedi Morquecho", dept: "OBS - Phones", hours: {} },
+        { name: "Zinedine Moscote", dept: "OBS - Phones", hours: { 44: "Break 1", 56: "Lunch", 57: "Lunch", 64: "Break 2" } },
+        { name: "Fatin Chad", dept: "OBS - Phones", hours: { 56: "Lunch", 57: "Lunch", 58: "Lunch", 59: "Lunch" } },
+        { name: "Kalleb Solomon", dept: "OBS - Phones", hours: {} },
+        { name: "Arine Peace", dept: "OBS - Phones", hours: {} },
+        { name: "Alex Scarlett", dept: "OBS - Phones", hours: { 46: "Break 1", 56: "Lunch", 57: "Lunch", 58: "Lunch" } },
+        { name: "Raul Garcia", dept: "OBS - Phones", hours: { 45: "Break 1", 52: "Lunch", 53: "Lunch", 54: "Lunch", 55: "Lunch", 65: "Break 2" } },
+        { name: "Felix Torres", dept: "OBS - Phones", hours: { 47: "Break 1", 52: "Lunch", 53: "Lunch", 63: "Break 2" } },
+        { name: "Omar Jimenez", dept: "OBS - Phones", hours: { 50: "Break 1", 58: "Lunch", 59: "Lunch", 60: "Lunch", 61: "Lunch", 70: "Break 2" } },
+        { name: "Michelle Salmon", dept: "OBS - Phones", hours: { 54: "Break 1", 65: "Lunch", 66: "Lunch", 67: "Lunch" } },
+
+        // OBS - Cases (10 agents)
+        { name: "Emely Hernandez", dept: "OBS - Cases", hours: { 32: "Break 1", 43: "Lunch", 44: "Lunch", 45: "Lunch", 46: "Lunch", 55: "Break 2" } },
+        { name: "Pablo Saquilmer", dept: "OBS - Cases", hours: { 40: "Break 1", 50: "Lunch", 51: "Lunch", 52: "Lunch", 53: "Lunch", 57: "Break 2" } },
+        { name: "Lucia Herrera", dept: "OBS - Cases", hours: { 35: "Break 1", 50: "Lunch", 51: "Lunch", 52: "Lunch", 53: "Lunch", 57: "Break 2" } },
+        { name: "Fernando Garcia", dept: "OBS - Cases", hours: { 37: "Break 1", 47: "Lunch", 48: "Lunch", 49: "Lunch", 50: "Lunch", 57: "Break 2" } },
+        { name: "Emilia Chajon", dept: "OBS - Cases", hours: { 39: "Break 1", 49: "Lunch", 50: "Lunch", 51: "Lunch", 52: "Lunch", 59: "Break 2" } },
+        { name: "Alejandra Manco", dept: "OBS - Cases", hours: { 35: "Break 1", 53: "Lunch", 54: "Lunch", 55: "Lunch", 56: "Lunch", 60: "Break 2" } },
+        { name: "Galilea Gutierrez", dept: "OBS - Cases", hours: { 41: "Break 1", 54: "Lunch", 55: "Lunch", 56: "Lunch", 57: "Lunch", 63: "Break 2" } },
+        { name: "Jorge Saban", dept: "OBS - Cases", hours: { 42: "Break 1", 53: "Break 2", 59: "Lunch", 60: "Lunch", 61: "Lunch", 62: "Lunch" } },
+        { name: "Diana Orozco", dept: "OBS - Cases", hours: { 48: "Break 1", 60: "Break 2", 67: "Lunch", 68: "Lunch", 69: "Lunch", 70: "Lunch" } },
+        { name: "Rudy Herrera", dept: "OBS - Cases", hours: { 54: "Break 1", 64: "Break 2", 70: "Lunch", 71: "Lunch", 72: "Lunch", 73: "Lunch" } },
+
+        // ELD Team (29 agents)
+        { name: "Sergio Chigüil", dept: "ELD", hours: { 36: "Break 1", 44: "Lunch", 45: "Lunch", 46: "Lunch", 47: "Lunch", 55: "Break 2" } },
+        { name: "Edgar Castillo", dept: "ELD", hours: { 32: "Break 1", 40: "Break 2", 48: "Lunch", 49: "Lunch", 50: "Lunch", 51: "Lunch" } },
+        { name: "Samantha Chinchilla", dept: "ELD", hours: { 40: "Break 1", 52: "Lunch", 53: "Lunch", 54: "Lunch", 55: "Lunch", 60: "Break 2" } },
+        { name: "Celina Franco", dept: "ELD", hours: { 43: "Break 1", 52: "Lunch", 53: "Lunch", 54: "Lunch", 55: "Lunch", 61: "Break 2" } },
+        { name: "Esvin Gomez", dept: "ELD", hours: { 44: "Break 1", 52: "Lunch", 53: "Lunch", 54: "Lunch", 55: "Lunch", 62: "Break 2" } },
+        { name: "Sharon Olivares", dept: "ELD", hours: { 37: "Break 1", 45: "Break 2", 56: "Lunch", 57: "Lunch", 58: "Lunch", 59: "Lunch" } },
+        { name: "Iverth Monterroso", dept: "ELD", hours: { 44: "Break 1", 52: "Lunch", 53: "Lunch", 54: "Lunch", 55: "Lunch", 60: "Break 2" } },
+        { name: "Kevin Acabal", dept: "ELD", hours: { 38: "Break 1", 46: "Break 2", 58: "Lunch", 59: "Lunch", 60: "Lunch", 61: "Lunch" } },
+        { name: "Brandon Vasquez", dept: "ELD", hours: { 40: "Break 1", 46: "Lunch", 47: "Lunch", 48: "Lunch", 49: "Lunch", 58: "Break 2" } },
+        { name: "Kenford Morris", dept: "ELD", hours: { 44: "Break 1", 54: "Lunch", 55: "Lunch", 56: "Lunch" } },
+        { name: "Benneth Smith", dept: "ELD", hours: { 40: "Break 1", 48: "Lunch", 49: "Lunch", 59: "Break 2" } },
+        { name: "Josue Sucuc", dept: "ELD", hours: { 43: "Break 1", 56: "Lunch", 57: "Lunch", 58: "Lunch", 59: "Lunch", 63: "Break 2" } },
+        { name: "Luis Gonzalez", dept: "ELD", hours: { 36: "Break 1", 52: "Break 2", 56: "Lunch", 57: "Lunch", 58: "Lunch", 59: "Lunch" } },
+        { name: "Froy Gonzalez", dept: "ELD", hours: { 40: "Break 1", 50: "Break 2", 56: "Lunch", 57: "Lunch", 58: "Lunch", 59: "Lunch" } },
+        { name: "Melanie Garcia", dept: "ELD", hours: { 46: "Break 1", 54: "Break 2", 60: "Lunch", 61: "Lunch", 62: "Lunch", 63: "Lunch" } },
+        { name: "Sebastian Quiñonez", dept: "ELD", hours: { 40: "Break 1", 56: "Lunch", 57: "Lunch", 58: "Lunch", 59: "Lunch", 63: "Break 2" } },
+        { name: "Danae Castillo", dept: "ELD", hours: { 43: "Break 1", 54: "Lunch", 55: "Lunch", 56: "Lunch", 57: "Lunch", 64: "Break 2" } },
+        { name: "Cesar Larios", dept: "ELD", hours: { 40: "Break 1", 50: "Lunch", 51: "Lunch", 52: "Lunch", 53: "Lunch", 62: "Break 2" } },
+        { name: "Jesus Rios", dept: "ELD", hours: { 38: "Break 1", 48: "Lunch", 49: "Lunch", 59: "Break 2" } },
+        { name: "Marie Perez", dept: "ELD", hours: { 39: "Break 1", 54: "Lunch", 55: "Lunch", 64: "Break 2" } },
+        { name: "Daniel Pelayo", "dept": "ELD", hours: { 42: "Break 1", 53: "Lunch", 54: "Lunch", 55: "Lunch", 56: "Lunch", 65: "Break 2" } },
+        { name: "Kevin Ibarra", dept: "ELD", hours: { 45: "Break 1", 56: "Lunch", 57: "Lunch", 58: "Lunch", 59: "Lunch", 66: "Break 2" } },
+        { name: "Jose Rodriguez", dept: "ELD", hours: { 46: "Break 1", 56: "Lunch", 57: "Lunch", 69: "Break 2" } },
+        { name: "Kevin Williams", dept: "ELD", hours: { 48: "Break 1", 54: "Lunch", 55: "Lunch", 64: "Break 2" } },
+        { name: "Luis Ajche", dept: "ELD", hours: { 48: "Break 1", 55: "Lunch", 56: "Lunch", 57: "Lunch", 58: "Lunch", 68: "Break 2" } },
+        { name: "Jorge Najera", dept: "ELD", hours: { 48: "Lunch", 49: "Lunch", 50: "Lunch", 51: "Lunch", 64: "Break 1", 71: "Break 2" } },
+        { name: "Kia Francis", dept: "ELD", hours: { 51: "Break 1", 64: "Lunch", 65: "Lunch", 66: "Lunch" } },
+        { name: "Tevin Smallwood", dept: "ELD", hours: { 51: "Break 1", 65: "Lunch", 66: "Lunch", 67: "Lunch" } },
+        { name: "Shiyan Lee", dept: "ELD", hours: { 50: "Break 1", 60: "Lunch", 61: "Lunch", 62: "Lunch" } },
+
+        // INS Team (21 agents)
+        { name: "Keyren Fuertes", dept: "INS", hours: { 33: "Break 1", 45: "Lunch", 46: "Lunch", 55: "Break 2" } },
+        { name: "Otto de la Cruz", dept: "INS", hours: { 33: "Break 1", 46: "Lunch", 47: "Lunch", 48: "Lunch", 49: "Lunch", 55: "Break 2" } },
+        { name: "Manfredo Monterroso", dept: "INS", hours: { 37: "Break 1", 46: "Break 2", 54: "Lunch", 55: "Lunch", 56: "Lunch", 57: "Lunch" } },
+        { name: "Eunice Sir", dept: "INS", hours: { 35: "Break 1", 43: "Break 2", 51: "Lunch", 52: "Lunch", 53: "Lunch", 54: "Lunch" } },
+        { name: "Ana Melendez", dept: "INS", hours: { 36: "Break 1", 44: "Break 2", 52: "Lunch", 53: "Lunch", 54: "Lunch", 55: "Lunch" } },
+        { name: "Monica Lopez", dept: "INS", hours: { 37: "Break 1", 48: "Lunch", 49: "Lunch", 50: "Lunch", 51: "Lunch", 59: "Break 2" } },
+        { name: "Gustavo Lopez", dept: "INS", hours: { 35: "Break 1", 43: "Break 2", 50: "Lunch", 51: "Lunch", 52: "Lunch", 53: "Lunch" } },
+        { name: "Joseth Huerta", dept: "INS", hours: { 37: "Break 1", 46: "Lunch", 47: "Lunch", 48: "Lunch", 49: "Lunch", 56: "Break 2" } },
+        { name: "Marco Ovalle", dept: "INS", hours: { 42: "Break 1", 52: "Lunch", 53: "Lunch", 54: "Lunch", 55: "Lunch", 63: "Break 2" } },
+        { name: "Ariel Yaegui", dept: "INS", hours: { 40: "Break 1", 49: "Break 2", 57: "Lunch", 58: "Lunch", 59: "Lunch", 60: "Lunch" } },
+        { name: "Acsa Esquivel", dept: "INS", hours: { 39: "Break 1", 48: "Break 2", 54: "Lunch", 55: "Lunch", 56: "Lunch", 57: "Lunch" } },
+        { name: "Luis Leon", dept: "INS", hours: { 39: "Break 1", 49: "Lunch", 50: "Lunch", 51: "Lunch", 52: "Lunch", 60: "Break 2" } },
+        { name: "Michelle Marquez", dept: "INS", hours: { 40: "Break 1", 50: "Lunch", 51: "Lunch", 52: "Lunch", 53: "Lunch", 61: "Break 2" } },
+        { name: "Kener Lee", dept: "INS", hours: { 41: "Break 1", 49: "Break 2", 58: "Lunch", 59: "Lunch", 60: "Lunch", 61: "Lunch" } },
+        { name: "Dana Redwood", dept: "INS", hours: { 40: "Break 1", 48: "Lunch", 49: "Lunch", 60: "Break 2" } },
+        { name: "Alondra Mendoza", dept: "INS", hours: { 43: "Break 1", 52: "Lunch", 53: "Lunch", 54: "Lunch", 55: "Lunch", 62: "Break 2" } },
+        { name: "Katering Santos", dept: "INS", hours: { 44: "Break 1", 52: "Break 2", 58: "Lunch", 59: "Lunch", 60: "Lunch", 61: "Lunch" } },
+        { name: "Lynda Escobedo", dept: "INS", hours: { 44: "Break 1", 53: "Lunch", 54: "Lunch", 55: "Lunch", 56: "Lunch", 65: "Break 2" } },
+        { name: "Marielys Tejada", dept: "INS", hours: { 47: "Break 1", 54: "Lunch", 55: "Lunch", 65: "Break 2" } },
+        { name: "Cesar Colaj", dept: "INS", hours: { 48: "Break 1", 56: "Break 2", 63: "Lunch", 64: "Lunch", 65: "Lunch", 66: "Lunch" } },
+        { name: "Juan Avedaño", dept: "INS", hours: { 46: "Break 1", 57: "Break 2", 66: "Lunch", 67: "Lunch", 68: "Lunch", 69: "Lunch" } },
+
+        // LL+ Team (8 agents)
+        { name: "Julio Cortez", dept: "LL+", hours: { 32: "Break 1", 40: "Break 2", 48: "Lunch", 49: "Lunch", 50: "Lunch", 51: "Lunch" } },
+        { name: "Alex Coyote", dept: "LL+", hours: { 32: "Break 1", 40: "Break 2", 50: "Lunch", 51: "Lunch", 52: "Lunch", 53: "Lunch" } },
+        { name: "Omar Gomez", dept: "LL+", hours: { 41: "Break 1", 49: "Break 2", 54: "Lunch", 55: "Lunch", 56: "Lunch", 57: "Lunch" } },
+        { name: "Luis Escobar", dept: "LL+", hours: { 36: "Break 1", 45: "Break 2", 53: "Lunch", 54: "Lunch", 55: "Lunch", 56: "Lunch" } },
+        { name: "Andy Pineda", dept: "LL+", hours: { 38: "Break 1", 46: "Break 2", 54: "Lunch", 55: "Lunch", 56: "Lunch", 57: "Lunch" } },
+        { name: "Edgar Palomo", dept: "LL+", hours: { 41: "Break 1", 48: "Break 2", 57: "Lunch", 58: "Lunch", 59: "Lunch", 60: "Lunch" } },
+        { name: "Jonathan Pirir", dept: "LL+", hours: { 40: "Break 1", 48: "Break 2", 58: "Lunch", 59: "Lunch", 60: "Lunch", 61: "Lunch" } },
+        { name: "Yossi Martinez", dept: "LL+", hours: { 46: "Break 1", 52: "Break 2", 60: "Lunch", 61: "Lunch", 62: "Lunch", 63: "Lunch" } },
+
+        // TFX Team (3 agents)
+        { name: "Fernando Ramirez", dept: "TFX", hours: { 38: "Break 1", 46: "Lunch", 47: "Lunch", 48: "Lunch", 49: "Lunch", 54: "Break 2" } },
+        { name: "Maria Saucedo", dept: "TFX", hours: { 50: "Break 1", 56: "Lunch", 57: "Lunch", 58: "Lunch", 59: "Lunch", 63: "Break 2" } },
+        { name: "Mariana Velasquez", dept: "TFX", hours: { 40: "Break 1", 52: "Lunch", 53: "Lunch", 54: "Lunch", 55: "Lunch", 62: "Break 2" } }
+    ];
 
     function buildDefaultMasterAgents() {
-        let agentMap = {};
         let idCounter = 1;
-        for (let h = 0; h < 24; h++) {
-            if (defaultRosterPattern[h]) {
-                for (let d of depts) {
-                    if (defaultRosterPattern[h][d]) {
-                        defaultRosterPattern[h][d].forEach(ag => {
-                            let key = ag.name + '___' + d;
-                            if (!agentMap[key]) {
-                                agentMap[key] = { id: idCounter++, name: ag.name, dept: d, hours: {} };
-                            }
-                            // Store on nearest 15-min index e.g., 8:00 AM -> 32
-                            let slot15Idx = h * 4;
-                            agentMap[key].hours[slot15Idx] = ag.act || "Break/Lunch";
-                        });
-                    }
-                }
-            }
-        }
-        return Object.values(agentMap);
+        return rawRosterData.map(ag => {
+            return {
+                id: idCounter++,
+                name: ag.name,
+                dept: ag.dept,
+                hours: ag.hours || {}
+            };
+        });
     }
 
     let hourlyDataPattern = {};
@@ -1139,7 +1219,6 @@
                     let slot15Idx = parseInt(idx, 10);
                     let hour24 = Math.floor(slot15Idx / 4);
                     if (hour24 >= 0 && hour24 < 24 && hourlyDataPattern[hour24] && hourlyDataPattern[hour24][ag.dept]) {
-                        // Prevent duplicate agent entries in the same hour row
                         let exists = hourlyDataPattern[hour24][ag.dept].some(item => item.name === ag.name);
                         if (!exists) {
                             hourlyDataPattern[hour24][ag.dept].push({

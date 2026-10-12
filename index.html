@@ -891,7 +891,7 @@
     </div>
 </div>
 
-<!-- FIREBASE SDK ES MODULE INTEGRATION -->
+<!-- FIREBASE SDK INTEGRATION -->
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-app.js";
     import { getDatabase, ref, onValue, set } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-database.js";
@@ -1032,6 +1032,10 @@
     let volumeDataCombined = {};
     let masterAgentsDB = buildDefaultMasterAgents();
 
+    function cleanKey(str) {
+        return str ? str.replace(/[^a-zA-Z0-9_]/g, '_') : 'default';
+    }
+
     function initFirebaseListeners() {
         onValue(dbRefVolume, (snapshot) => {
             const data = snapshot.val();
@@ -1148,15 +1152,15 @@
     function getActiveWeek() { return document.getElementById('weekSelect').value; }
 
     function loadActivePeriodVolume() {
-        const month = getActiveMonth();
-        const week = getActiveWeek();
+        const monthKey = cleanKey(getActiveMonth());
+        const weekKey = cleanKey(getActiveWeek());
 
-        if (!multiPeriodVolumeDB[month]) multiPeriodVolumeDB[month] = {};
-        if (!multiPeriodVolumeDB[month][week]) {
-            multiPeriodVolumeDB[month][week] = { obs: {}, ins: {}, eld: {}, ll: {}, tfx: {} };
+        if (!multiPeriodVolumeDB[monthKey]) multiPeriodVolumeDB[monthKey] = {};
+        if (!multiPeriodVolumeDB[monthKey][weekKey]) {
+            multiPeriodVolumeDB[monthKey][weekKey] = { obs: {}, ins: {}, eld: {}, ll: {}, tfx: {} };
         }
 
-        const periodStore = multiPeriodVolumeDB[month][week];
+        const periodStore = multiPeriodVolumeDB[monthKey][weekKey];
         volumeDataCombined = {};
 
         for (let h = 0; h < 24; h++) {
@@ -1182,8 +1186,8 @@
             };
         }
 
-        document.querySelectorAll('.periodLabel').forEach(el => el.textContent = `${month} - ${week}`);
-        document.getElementById('chart1Title').textContent = `Consolidated Call Volume vs. Capacity (${month} - ${week})`;
+        document.querySelectorAll('.periodLabel').forEach(el => el.textContent = `${getActiveMonth()} - ${getActiveWeek()}`);
+        document.getElementById('chart1Title').textContent = `Consolidated Call Volume vs. Capacity (${getActiveMonth()} - ${getActiveWeek()})`;
     }
 
     function renderAllUI() {
@@ -1588,6 +1592,9 @@
                     if (pm && h < 12) h += 12;
                     if (am && h === 12) h = 0;
                     if (h >= 0 && h < 24) h24 = h;
+                } else if (!isNaN(parseInt(hourStr, 10))) {
+                    let h = parseInt(hourStr, 10);
+                    if (h >= 0 && h < 24) h24 = h;
                 }
 
                 if (h24 !== -1) {
@@ -1608,12 +1615,15 @@
         const targetMonth = document.getElementById('importMonthSelect').value;
         const targetWeek = document.getElementById('importWeekSelect').value;
 
-        if (!multiPeriodVolumeDB[targetMonth]) multiPeriodVolumeDB[targetMonth] = {};
-        if (!multiPeriodVolumeDB[targetMonth][targetWeek]) {
-            multiPeriodVolumeDB[targetMonth][targetWeek] = { obs: {}, ins: {}, eld: {}, ll: {}, tfx: {} };
+        const monthKey = cleanKey(targetMonth);
+        const weekKey = cleanKey(targetWeek);
+
+        if (!multiPeriodVolumeDB[monthKey]) multiPeriodVolumeDB[monthKey] = {};
+        if (!multiPeriodVolumeDB[monthKey][weekKey]) {
+            multiPeriodVolumeDB[monthKey][weekKey] = { obs: {}, ins: {}, eld: {}, ll: {}, tfx: {} };
         }
 
-        const periodStore = multiPeriodVolumeDB[targetMonth][targetWeek];
+        const periodStore = multiPeriodVolumeDB[monthKey][weekKey];
 
         const inputs = {
             'obs': document.getElementById('volumeText_obs').value,
@@ -1639,7 +1649,7 @@
         broadcastNavChange(targetMonth, targetWeek);
 
         document.getElementById('importModal').classList.remove('active');
-        alert(`Volume data successfully synced to Firebase for ${targetMonth} (${targetWeek})!`);
+        alert(`Volume data successfully synced for ${targetMonth} (${targetWeek})!`);
     }
 
     function openManagementModal() {

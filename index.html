@@ -8,6 +8,10 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 
+    <!-- Firebase JS SDK (v9 Compat - Direct Global Window Binding) -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
     <style>
         :root {
             --primary-color: #1F4E78;
@@ -891,11 +895,9 @@
     </div>
 </div>
 
-<!-- FIREBASE SDK ES MODULE INTEGRATION -->
-<script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-app.js";
-    import { getDatabase, ref, onValue, set } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-database.js";
-
+<!-- APPLICATION SCRIPT & FIREBASE ENGINE -->
+<script>
+    // FIREBASE INITIALIZATION USING COMPAT V9 ENGINE
     const firebaseConfig = {
         apiKey: "AIzaSyAmB9PhTd_Dz68rTZQZlRS1mcfAy1SQxgo",
         authDomain: "volumevsavailability.firebaseapp.com",
@@ -907,12 +909,14 @@
         measurementId: "G-YDZ8542ENX"
     };
 
-    const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
+    if (!firebase.apps.length) {
+        firebase.initializeApp(firebaseConfig);
+    }
+    const db = firebase.database();
 
-    const dbRefVolume = ref(db, 'wfm_data/multiPeriodVolumeDB');
-    const dbRefAgents = ref(db, 'wfm_data/masterAgentsDB');
-    const dbRefActiveNav = ref(db, 'wfm_data/activeNavigation');
+    const dbRefVolume = db.ref('wfm_data/multiPeriodVolumeDB');
+    const dbRefAgents = db.ref('wfm_data/masterAgentsDB');
+    const dbRefActiveNav = db.ref('wfm_data/activeNavigation');
 
     let isRemoteUpdate = false;
 
@@ -1037,7 +1041,7 @@
     }
 
     function initFirebaseListeners() {
-        onValue(dbRefVolume, (snapshot) => {
+        dbRefVolume.on('value', (snapshot) => {
             const data = snapshot.val();
             if (data) {
                 multiPeriodVolumeDB = data;
@@ -1046,7 +1050,7 @@
             renderAllUI();
         });
 
-        onValue(dbRefAgents, (snapshot) => {
+        dbRefAgents.on('value', (snapshot) => {
             const data = snapshot.val();
             if (data) {
                 let parsed = Array.isArray(data) ? data : Object.values(data);
@@ -1064,7 +1068,7 @@
             }
         });
 
-        onValue(dbRefActiveNav, (snapshot) => {
+        dbRefActiveNav.on('value', (snapshot) => {
             const nav = snapshot.val();
             if (nav && !isRemoteUpdate) {
                 isRemoteUpdate = true;
@@ -1078,16 +1082,16 @@
     }
 
     function saveVolumeDBToFirebase() {
-        set(dbRefVolume, multiPeriodVolumeDB);
+        dbRefVolume.set(multiPeriodVolumeDB);
     }
 
     function saveAgentsDBToFirebase() {
-        set(dbRefAgents, masterAgentsDB);
+        dbRefAgents.set(masterAgentsDB);
     }
 
     function broadcastNavChange(month, week) {
         if (!isRemoteUpdate) {
-            set(dbRefActiveNav, { month: month, week: week });
+            dbRefActiveNav.set({ month: month, week: week });
         }
     }
 
@@ -1570,12 +1574,12 @@
         }
     }
 
-    // ADVANCED PARSER FOR COMPACT EXCEL DATA WITH SECONDS
+    // ADVANCED ADAPTIVE REGEX PARSER FOR UNSPACED EXCEL DATA
     function parsePastedTable(rawText) {
         if (!rawText || !rawText.trim()) return {};
         const result = {};
 
-        // Regex matches 12-hour timestamps with optional seconds e.g. 12:00:00 AM or 12:00 AM
+        // Regex captures timestamps with optional seconds e.g., 12:00:00 AM, 12:00 AM
         const timeRegex = /(\d{1,2}:\d{2}(?::\d{2})?\s*(?:AM|PM)?)/gi;
         const matches = [];
         let match;
@@ -1661,14 +1665,15 @@
         document.getElementById('monthSelect').value = targetMonth;
         document.getElementById('weekSelect').value = targetWeek;
 
+        // Force local sync and instant UI re-render
         loadActivePeriodVolume();
         renderAllUI();
 
+        // Push update to Firebase in background
         saveVolumeDBToFirebase();
         broadcastNavChange(targetMonth, targetWeek);
 
         document.getElementById('importModal').classList.remove('active');
-        alert(`Volume data successfully synced for ${targetMonth} (${targetWeek})!`);
     }
 
     function openManagementModal() {

@@ -891,7 +891,7 @@
     </div>
 </div>
 
-<!-- FIREBASE SDK ES MODULE INTEGRATION -->
+<!-- FIREBASE SDK INTEGRATION -->
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-app.js";
     import { getDatabase, ref, onValue, set } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-database.js";
@@ -1570,44 +1570,65 @@
         }
     }
 
-    function parsePastedTable(text) {
-        if (!text || !text.trim()) return {};
-        const parsed = Papa.parse(text.trim(), { delimiter: "", skipEmptyLines: true });
+    // ADVANCED REGEX PARSER FOR EXCEL UNSPACED DATA
+    function parsePastedTable(rawText) {
+        if (!rawText || !rawText.trim()) return {};
         const result = {};
 
-        parsed.data.forEach((row) => {
-            if (row.length >= 2) {
-                let hourStr = row[0].toString().trim();
-                let ans = parseFloat(row[1]) || 0;
-                let abQ = parseFloat(row[2]) || 0;
-                let abCSAT = parseFloat(row[3]) || 0;
-                let abH = parseFloat(row[4]) || 0;
+        // Regex matches 12-hour timestamps (e.g., 12:00:00 AM, 1:00 AM) or 24-hour timestamps
+        const timeRegex = /(\d{1,2}:\d{2}(?::\d{2})?\s*(?:AM|PM)?)/gi;
+        const matches = [];
+        let match;
 
-                let h24 = -1;
-                let match = hourStr.match(/(\d+):?(\d+)?\s*(AM|PM)?/i);
-                if (match) {
-                    let h = parseInt(match[1], 10);
-                    let pm = match[3] && match[3].toUpperCase() === 'PM';
-                    let am = match[3] && match[3].toUpperCase() === 'AM';
-                    if (pm && h < 12) h += 12;
-                    if (am && h === 12) h = 0;
-                    if (h >= 0 && h < 24) h24 = h;
-                } else if (!isNaN(parseInt(hourStr, 10))) {
-                    let h = parseInt(hourStr, 10);
-                    if (h >= 0 && h < 24) h24 = h;
-                }
+        while ((match = timeRegex.exec(rawText)) !== null) {
+            matches.push({
+                timeStr: match[1],
+                index: match.index,
+                endIndex: match.index + match[1].length
+            });
+        }
 
-                if (h24 !== -1) {
-                    result[h24] = {
-                        ans: ans,
-                        abQ: abQ,
-                        abCSAT: abCSAT,
-                        abH: abH,
-                        tot: ans + abQ + abCSAT + abH
-                    };
-                }
+        if (matches.length === 0) return result;
+
+        for (let i = 0; i < matches.length; i++) {
+            const current = matches[i];
+            const nextIndex = (i + 1 < matches.length) ? matches[i + 1].index : rawText.length;
+            const numSegment = rawText.substring(current.endIndex, nextIndex).trim();
+
+            let h24 = -1;
+            let hourMatch = current.timeStr.match(/(\d{1,2}):?(\d{2})?:?(\d{2})?\s*(AM|PM)?/i);
+            if (hourMatch) {
+                let h = parseInt(hourMatch[1], 10);
+                let pm = hourMatch[4] && hourMatch[4].toUpperCase() === 'PM';
+                let am = hourMatch[4] && hourMatch[4].toUpperCase() === 'AM';
+                if (pm && h < 12) h += 12;
+                if (am && h === 12) h = 0;
+                if (h >= 0 && h < 24) h24 = h;
             }
-        });
+
+            if (h24 !== -1) {
+                // Extract contiguous digits or tabular numbers
+                let digits = numSegment.split(/[\t\s\n,]+/).map(v => parseFloat(v)).filter(v => !isNaN(v));
+                if (digits.length === 0 && numSegment.length > 0) {
+                    // Fallback for compact single digit blocks (e.g., "35200" -> 35, 20, 0)
+                    let dMatch = numSegment.match(/\d+/g);
+                    if (dMatch) digits = dMatch.map(v => parseFloat(v));
+                }
+
+                let ans = digits[0] || 0;
+                let abQ = digits[1] || 0;
+                let abCSAT = digits[2] || 0;
+                let abH = digits[3] || digits[4] || 0;
+
+                result[h24] = {
+                    ans: ans,
+                    abQ: abQ,
+                    abCSAT: abCSAT,
+                    abH: abH,
+                    tot: ans + abQ + abCSAT + abH
+                };
+            }
+        }
         return result;
     }
 

@@ -4,10 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WFM Analytics & Call Volume Analysis Dashboard</title>
-    <!-- Chart.js, PapaParse, and LZ-String for URL State Sharing -->
+    <!-- Chart.js & PapaParse -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/lz-string@1.5.0/libs/lz-string.min.js"></script>
 
     <style>
         :root {
@@ -892,7 +891,31 @@
     </div>
 </div>
 
-<script>
+<!-- FIREBASE SDK ES MODULE INTEGRATION -->
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-app.js";
+    import { getDatabase, ref, onValue, set } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-database.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyAmB9PhTd_Dz68rTZQZlRS1mcfAy1SQxgo",
+        authDomain: "volumevsavailability.firebaseapp.com",
+        databaseURL: "https://volumevsavailability-default-rtdb.firebaseio.com",
+        projectId: "volumevsavailability",
+        storageBucket: "volumevsavailability.firebasestorage.app",
+        messagingSenderId: "536106438860",
+        appId: "1:536106438860:web:a7b62c957028813d9f3269",
+        measurementId: "G-YDZ8542ENX"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    const dbRefVolume = ref(db, 'wfm_data/multiPeriodVolumeDB');
+    const dbRefAgents = ref(db, 'wfm_data/masterAgentsDB');
+    const dbRefActiveNav = ref(db, 'wfm_data/activeNavigation');
+
+    let isRemoteUpdate = false;
+
     const depts = ['OBS - Phones', 'OBS - Cases', 'INS', 'ELD', 'LL+', 'TFX'];
     
     let deptRosterCounts = {
@@ -904,7 +927,6 @@
         'TFX': 3
     };
 
-    // Full 93-Agent Roster Master Backup Pattern
     const defaultRosterPattern = {
         8: {
             "OBS - Phones": [{"name": "Lelburn Gordon", "act": "Break 1"}, {"name": "Dean Spencer", "act": "Break 1"}],
@@ -1010,6 +1032,61 @@
     let volumeDataCombined = {};
     let masterAgentsDB = buildDefaultMasterAgents();
 
+    function initFirebaseListeners() {
+        onValue(dbRefVolume, (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                multiPeriodVolumeDB = data;
+            }
+            loadActivePeriodVolume();
+            renderAllUI();
+        });
+
+        onValue(dbRefAgents, (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                let parsed = Array.isArray(data) ? data : Object.values(data);
+                if (parsed.length > 0) {
+                    masterAgentsDB = parsed;
+                }
+            } else {
+                saveAgentsDBToFirebase();
+            }
+            recountRosterFromMasterDB();
+            syncPatternFromMasterDB();
+            renderAllUI();
+            if (document.getElementById('mgmtModal').classList.contains('active')) {
+                renderMgmtAgentsTable();
+            }
+        });
+
+        onValue(dbRefActiveNav, (snapshot) => {
+            const nav = snapshot.val();
+            if (nav && !isRemoteUpdate) {
+                isRemoteUpdate = true;
+                if (nav.month) document.getElementById('monthSelect').value = nav.month;
+                if (nav.week) document.getElementById('weekSelect').value = nav.week;
+                loadActivePeriodVolume();
+                renderAllUI();
+                isRemoteUpdate = false;
+            }
+        });
+    }
+
+    function saveVolumeDBToFirebase() {
+        set(dbRefVolume, multiPeriodVolumeDB);
+    }
+
+    function saveAgentsDBToFirebase() {
+        set(dbRefAgents, masterAgentsDB);
+    }
+
+    function broadcastNavChange(month, week) {
+        if (!isRemoteUpdate) {
+            set(dbRefActiveNav, { month: month, week: week });
+        }
+    }
+
     function recountRosterFromMasterDB() {
         depts.forEach(d => deptRosterCounts[d] = 0);
         masterAgentsDB.forEach(ag => {
@@ -1040,38 +1117,6 @@
         });
     }
 
-    // URL Compression & State Engine
-    function syncStateToURL() {
-        const payload = {
-            m: getActiveMonth(),
-            w: getActiveWeek(),
-            v: multiPeriodVolumeDB,
-            a: masterAgentsDB
-        };
-        const compressed = LZString.compressToEncodedURIComponent(JSON.stringify(payload));
-        const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname + '?s=' + compressed;
-        window.history.replaceState({ path: newUrl }, '', newUrl);
-    }
-
-    function loadStateFromURL() {
-        const urlParams = new URLSearchParams(window.location.search);
-        const stateParam = urlParams.get('s');
-        if (stateParam) {
-            try {
-                const decompressed = LZString.decompressFromEncodedURIComponent(stateParam);
-                if (decompressed) {
-                    const parsed = JSON.parse(decompressed);
-                    if (parsed.v) multiPeriodVolumeDB = parsed.v;
-                    if (parsed.a) masterAgentsDB = parsed.a;
-                    if (parsed.m) document.getElementById('monthSelect').value = parsed.m;
-                    if (parsed.w) document.getElementById('weekSelect').value = parsed.w;
-                }
-            } catch(e) {
-                console.error("Failed to load URL state", e);
-            }
-        }
-    }
-
     let selectedDepts = new Set(['ALL']);
     let isAuthenticated = false;
     let pendingAction = null;
@@ -1092,13 +1137,11 @@
     const hourlySlots = generateHourlySlots();
 
     document.addEventListener("DOMContentLoaded", () => {
-        loadStateFromURL();
         recountRosterFromMasterDB();
         syncPatternFromMasterDB();
         initCharts();
         setupEventListeners();
-        loadActivePeriodVolume();
-        renderAllUI();
+        initFirebaseListeners();
     });
 
     function getActiveMonth() { return document.getElementById('monthSelect').value; }
@@ -1149,7 +1192,6 @@
         renderComparisonTable();
         renderRecommendations();
         updateCharts();
-        syncStateToURL();
     }
 
     function renderScheduleTable() {
@@ -1412,10 +1454,12 @@
         document.getElementById('monthSelect').addEventListener('change', () => {
             loadActivePeriodVolume();
             renderAllUI();
+            broadcastNavChange(getActiveMonth(), getActiveWeek());
         });
         document.getElementById('weekSelect').addEventListener('change', () => {
             loadActivePeriodVolume();
             renderAllUI();
+            broadcastNavChange(getActiveMonth(), getActiveWeek());
         });
 
         document.getElementById('slicerContainer').addEventListener('click', (e) => {
@@ -1591,8 +1635,11 @@
         loadActivePeriodVolume();
         renderAllUI();
 
+        saveVolumeDBToFirebase();
+        broadcastNavChange(targetMonth, targetWeek);
+
         document.getElementById('importModal').classList.remove('active');
-        alert(`Volume data successfully updated for ${targetMonth} (${targetWeek})!`);
+        alert(`Volume data successfully synced to Firebase for ${targetMonth} (${targetWeek})!`);
     }
 
     function openManagementModal() {
@@ -1651,7 +1698,7 @@
                 masterAgentsDB = masterAgentsDB.filter(a => a.id !== agentId);
                 recountRosterFromMasterDB();
                 syncPatternFromMasterDB();
-                renderAllUI();
+                saveAgentsDBToFirebase();
                 renderMgmtAgentsTable();
             }
         });
@@ -1751,7 +1798,7 @@
 
         recountRosterFromMasterDB();
         syncPatternFromMasterDB();
-        renderAllUI();
+        saveAgentsDBToFirebase();
         renderMgmtAgentsTable();
         document.getElementById('agentFormCard').style.display = 'none';
     }

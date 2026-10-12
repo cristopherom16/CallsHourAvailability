@@ -1011,15 +1011,15 @@
     }
     const agentSlots15Min = generate15MinSlots();
 
-    // FULL UPDATED MASTER ROSTER DATA FROM YOUR TABLES
+    // EXACT MASTER ROSTER DATA PARSED FROM YOUR TABLES
     const rawRosterData = [
         // OBS - Phones (27 agents)
-        { name: "Dean Spencer", dept: "OBS - Phones", hours: { 35: "Break 1", 44: "Lunch", 45: "Lunch", 55: "Break 2" } }, // B1: 8:45, L: 11:00-11:30, B2: 13:45
-        { name: "Daneil Facey", dept: "OBS - Phones", hours: { 40: "Lunch", 41: "Lunch", 42: "Lunch", 51: "Break 2" } }, // L: 10:00-10:45, B2: 12:45
-        { name: "Shanique Kelly", dept: "OBS - Phones", hours: { 36: "Break 1", 49: "Lunch", 50: "Lunch", 51: "Lunch" } }, // B1: 9:00, L: 12:15-13:00
-        { name: "Stephanie Temple", dept: "OBS - Phones", hours: { 39: "Break 1", 48: "Lunch", 49: "Lunch", 59: "Break 2" } }, // B1: 9:45, L: 12:00-12:30, B2: 14:45
-        { name: "Kellyneth Estrada", dept: "OBS - Phones", hours: { 38: "Break 1", 52: "Lunch", 53: "Lunch", 59: "Break 2" } }, // B1: 9:30, L: 13:00-13:30, B2: 14:45
-        { name: "Alexander Santamaria", dept: "OBS - Phones", hours: { 39: "Break 1", 50: "Lunch", 51: "Lunch", 60: "Break 2" } }, // B1: 9:45, L: 12:30-13:00, B2: 15:00
+        { name: "Dean Spencer", dept: "OBS - Phones", hours: { 35: "Break 1", 44: "Lunch", 45: "Lunch", 55: "Break 2" } },
+        { name: "Daneil Facey", dept: "OBS - Phones", hours: { 40: "Lunch", 41: "Lunch", 42: "Lunch", 51: "Break 2" } },
+        { name: "Shanique Kelly", dept: "OBS - Phones", hours: { 36: "Break 1", 49: "Lunch", 50: "Lunch", 51: "Lunch" } },
+        { name: "Stephanie Temple", dept: "OBS - Phones", hours: { 39: "Break 1", 48: "Lunch", 49: "Lunch", 59: "Break 2" } },
+        { name: "Kellyneth Estrada", dept: "OBS - Phones", hours: { 38: "Break 1", 52: "Lunch", 53: "Lunch", 59: "Break 2" } },
+        { name: "Alexander Santamaria", dept: "OBS - Phones", hours: { 39: "Break 1", 50: "Lunch", 51: "Lunch", 60: "Break 2" } },
         { name: "Sonia Jimenez", dept: "OBS - Phones", hours: { 35: "Break 1", 50: "Lunch", 51: "Lunch", 60: "Break 2" } },
         { name: "Ryan Barber", dept: "OBS - Phones", hours: { 56: "Lunch", 57: "Lunch", 58: "Lunch", 59: "Lunch" } },
         { name: "Leona Wallace", dept: "OBS - Phones", hours: { 48: "Lunch", 49: "Lunch", 50: "Lunch", 56: "Break 2" } },
@@ -1075,7 +1075,7 @@
         { name: "Cesar Larios", dept: "ELD", hours: { 40: "Break 1", 50: "Lunch", 51: "Lunch", 52: "Lunch", 53: "Lunch", 62: "Break 2" } },
         { name: "Jesus Rios", dept: "ELD", hours: { 38: "Break 1", 48: "Lunch", 49: "Lunch", 59: "Break 2" } },
         { name: "Marie Perez", dept: "ELD", hours: { 39: "Break 1", 54: "Lunch", 55: "Lunch", 64: "Break 2" } },
-        { name: "Daniel Pelayo", "dept": "ELD", hours: { 42: "Break 1", 53: "Lunch", 54: "Lunch", 55: "Lunch", 56: "Lunch", 65: "Break 2" } },
+        { name: "Daniel Pelayo", dept: "ELD", hours: { 42: "Break 1", 53: "Lunch", 54: "Lunch", 55: "Lunch", 56: "Lunch", 65: "Break 2" } },
         { name: "Kevin Ibarra", dept: "ELD", hours: { 45: "Break 1", 56: "Lunch", 57: "Lunch", 58: "Lunch", 59: "Lunch", 66: "Break 2" } },
         { name: "Jose Rodriguez", dept: "ELD", hours: { 46: "Break 1", 56: "Lunch", 57: "Lunch", 69: "Break 2" } },
         { name: "Kevin Williams", dept: "ELD", hours: { 48: "Break 1", 54: "Lunch", 55: "Lunch", 64: "Break 2" } },

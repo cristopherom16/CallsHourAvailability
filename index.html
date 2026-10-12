@@ -506,6 +506,28 @@
 
         .agent-list-table td { padding: 8px; }
 
+        .agent-row-draggable {
+            cursor: grab;
+            transition: background-color 0.15s;
+        }
+
+        .agent-row-draggable:active {
+            cursor: grabbing;
+        }
+
+        .agent-row-draggable.dragging {
+            opacity: 0.5;
+            background-color: #d1e2f3 !important;
+        }
+
+        .drag-handle {
+            cursor: grab;
+            margin-right: 8px;
+            color: #888;
+            font-weight: bold;
+            user-select: none;
+        }
+
         .badge-dept {
             background: var(--accent-yellow-light);
             color: var(--accent-yellow-dark);
@@ -870,7 +892,7 @@
 <div class="modal-overlay" id="mgmtModal">
     <div class="modal-card" style="max-width: 950px;">
         <div class="modal-header">
-            <h3>Agent Roster & Away Schedules Management (15-Min Intervals)</h3>
+            <h3>Agent Roster & Away Schedules Management (Drag to Reorder)</h3>
             <button class="close-btn" id="btnCloseMgmt">&times;</button>
         </div>
         <div class="modal-body">
@@ -923,6 +945,7 @@
                 <table class="agent-list-table">
                     <thead>
                         <tr>
+                            <th style="width: 30px;"></th>
                             <th>Agent Name</th>
                             <th>Department</th>
                             <th>Away Hours & Activities</th>
@@ -1011,7 +1034,6 @@
     }
     const agentSlots15Min = generate15MinSlots();
 
-    // EXACT MASTER ROSTER DATA PARSED FROM YOUR TABLES
     const rawRosterData = [
         // OBS - Phones (27 agents)
         { name: "Dean Spencer", dept: "OBS - Phones", hours: { 35: "Break 1", 44: "Lunch", 45: "Lunch", 55: "Break 2" } },
@@ -1075,7 +1097,7 @@
         { name: "Cesar Larios", dept: "ELD", hours: { 40: "Break 1", 50: "Lunch", 51: "Lunch", 52: "Lunch", 53: "Lunch", 62: "Break 2" } },
         { name: "Jesus Rios", dept: "ELD", hours: { 38: "Break 1", 48: "Lunch", 49: "Lunch", 59: "Break 2" } },
         { name: "Marie Perez", dept: "ELD", hours: { 39: "Break 1", 54: "Lunch", 55: "Lunch", 64: "Break 2" } },
-        { name: "Daniel Pelayo", dept: "ELD", hours: { 42: "Break 1", 53: "Lunch", 54: "Lunch", 55: "Lunch", 56: "Lunch", 65: "Break 2" } },
+        { name: "Daniel Pelayo", "dept": "ELD", hours: { 42: "Break 1", 53: "Lunch", 54: "Lunch", 55: "Lunch", 56: "Lunch", 65: "Break 2" } },
         { name: "Kevin Ibarra", dept: "ELD", hours: { 45: "Break 1", 56: "Lunch", 57: "Lunch", 58: "Lunch", 59: "Lunch", 66: "Break 2" } },
         { name: "Jose Rodriguez", dept: "ELD", hours: { 46: "Break 1", 56: "Lunch", 57: "Lunch", 69: "Break 2" } },
         { name: "Kevin Williams", dept: "ELD", hours: { 48: "Break 1", 54: "Lunch", 55: "Lunch", 64: "Break 2" } },
@@ -1206,7 +1228,6 @@
         });
     }
 
-    // MAP 15-MIN AGENT HOURS TO 24 HOURLY INTERVALS FOR TABLE 1
     function syncPatternFromMasterDB() {
         for (let h = 0; h < 24; h++) {
             hourlyDataPattern[h] = {};
@@ -1870,13 +1891,16 @@
         const deptAgents = masterAgentsDB.filter(ag => ag.dept === selectedDept);
 
         if (deptAgents.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#999;">No agents registered in this department.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#999;">No agents registered in this department.</td></tr>`;
             return;
         }
 
         deptAgents.forEach(ag => {
             const tr = document.createElement('tr');
-            
+            tr.className = 'agent-row-draggable';
+            tr.setAttribute('draggable', 'true');
+            tr.setAttribute('data-agent-id', ag.id);
+
             let hoursBadges = [];
             if (ag.hours) {
                 for (let idx in ag.hours) {
@@ -1888,6 +1912,7 @@
             let hoursStr = hoursBadges.length > 0 ? hoursBadges.join(' ') : '<span style="color:#aaa;">No scheduled away hours</span>';
 
             tr.innerHTML = `
+                <td><span class="drag-handle">☰</span></td>
                 <td><b>${ag.name}</b></td>
                 <td><span class="badge-dept">${ag.dept}</span></td>
                 <td>${hoursStr}</td>
@@ -1900,6 +1925,72 @@
             `;
             tbody.appendChild(tr);
         });
+
+        initDragAndDrop();
+    }
+
+    // DRAG AND DROP ENGINE FOR AGENT REORDERING
+    function initDragAndDrop() {
+        const tbody = document.getElementById('mgmtAgentsTableBody');
+        const rows = tbody.querySelectorAll('.agent-row-draggable');
+
+        rows.forEach(row => {
+            row.addEventListener('dragstart', (e) => {
+                row.classList.add('dragging');
+                e.dataTransfer.setData('text/plain', row.getAttribute('data-agent-id'));
+            });
+
+            row.addEventListener('dragend', () => {
+                row.classList.remove('dragging');
+                saveNewAgentOrder();
+            });
+        });
+
+        tbody.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            const draggingRow = tbody.querySelector('.dragging');
+            const afterElement = getDragAfterElement(tbody, e.clientY);
+            if (afterElement == null) {
+                tbody.appendChild(draggingRow);
+            } else {
+                tbody.insertBefore(draggingRow, afterElement);
+            }
+        });
+    }
+
+    function getDragAfterElement(container, y) {
+        const draggableElements = [...container.querySelectorAll('.agent-row-draggable:not(.dragging)')];
+        return draggableElements.reduce((closest, child) => {
+            const box = child.getBoundingClientRect();
+            const offset = y - box.top - box.height / 2;
+            if (offset < 0 && offset > closest.offset) {
+                return { offset: offset, element: child };
+            } else {
+                return closest;
+            }
+        }, { offset: Number.NEGATIVE_INFINITY }).element;
+    }
+
+    function saveNewAgentOrder() {
+        const tbody = document.getElementById('mgmtAgentsTableBody');
+        const selectedDept = document.getElementById('mgmtDeptSelect').value;
+        const rows = tbody.querySelectorAll('.agent-row-draggable');
+
+        const newDeptAgents = [];
+        rows.forEach(row => {
+            const id = parseInt(row.getAttribute('data-agent-id'), 10);
+            const ag = masterAgentsDB.find(a => a.id === id);
+            if (ag) newDeptAgents.push(ag);
+        });
+
+        // Reinsert ordered agents back into master DB
+        const otherAgents = masterAgentsDB.filter(a => a.dept !== selectedDept);
+        masterAgentsDB = [...otherAgents, ...newDeptAgents];
+
+        recountRosterFromMasterDB();
+        syncPatternFromMasterDB();
+        saveAgentsDBToFirebase();
+        renderAllUI();
     }
 
     window.editAgentPrompt = function(agentId) {

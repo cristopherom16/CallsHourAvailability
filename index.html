@@ -10,18 +10,18 @@
 
     <style>
         :root {
-            --primary-color: #1F4E78;
-            --primary-dark: #002060;
-            --accent-yellow: #E6A100;
-            --accent-yellow-light: #FFF8E1;
-            --accent-yellow-dark: #B37D00;
-            --bg-light: #F4F7FA;
-            --card-bg: #FFFFFF;
-            --border-color: #D9D9D9;
-            --success-color: #2e7d32;
-            --warning-color: #f57c00;
-            --danger-color: #d32f2f;
-            --text-main: #333333;
+            --primary-color: #0b2545;       /* Azul oscuro profundo */
+            --primary-dark: #031021;        /* Azul medianoche */
+            --accent-yellow: #ffb703;      /* Ámbar vibrante */
+            --accent-yellow-light: #fff3d1;/* Ámbar claro para selecciones/saldos */
+            --accent-yellow-dark: #b67d00; /* Ámbar oscuro para bordes y texto */
+            --bg-light: #08121e;           /* Fondo principal oscuro */
+            --card-bg: #0f2b48;            /* Fondo de tarjetas y paneles */
+            --border-color: #ffb703;        /* Bordes en Amarillo Ámbar */
+            --success-color: #00e676;
+            --warning-color: #ff9100;
+            --danger-color: #ff5252;
+            --text-main: #ffffff;           /* Texto claro para legibilidad */
         }
 
         body {
@@ -38,7 +38,8 @@
             background: var(--card-bg);
             padding: 25px;
             border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            border: 2px solid var(--accent-yellow);
         }
 
         .header {
@@ -55,11 +56,43 @@
             border-bottom: 4px solid var(--accent-yellow);
         }
 
+        .header-branding {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        /* LOGO CON LA "H" AMARILLA INCLINADA HACIA ATRÁS */
+        .logo-circle {
+            width: 52px;
+            height: 52px;
+            border-radius: 50%;
+            background-color: #232a36;
+            border: 2px solid var(--accent-yellow);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 10px rgba(255, 183, 3, 0.4);
+            flex-shrink: 0;
+        }
+
+        .logo-h {
+            color: var(--accent-yellow);
+            font-family: 'Arial Black', Impact, sans-serif;
+            font-size: 2rem;
+            font-weight: 900;
+            line-height: 1;
+            transform: skewX(-15deg); /* Inclinación hacia atrás exactamente como la imagen */
+            display: inline-block;
+            user-select: none;
+        }
+
         .header h1 {
             margin: 0;
             font-size: 1.5rem;
             text-transform: uppercase;
             letter-spacing: 0.5px;
+            color: var(--accent-yellow);
         }
 
         .header-actions {
@@ -95,11 +128,11 @@
         .btn-secondary {
             background-color: #ffffff;
             color: var(--primary-dark);
-            border: 1px solid #ffffff;
+            border: 1px solid var(--accent-yellow);
         }
 
         .btn-secondary:hover {
-            background-color: #e0e8f5;
+            background-color: var(--accent-yellow-light);
         }
 
         .btn-danger {
@@ -113,17 +146,17 @@
 
         .btn-outline {
             background-color: transparent;
-            border: 1px solid var(--primary-color);
-            color: var(--primary-color);
+            border: 1.5px solid var(--accent-yellow);
+            color: var(--accent-yellow);
         }
 
         .btn-outline:hover {
-            background-color: var(--primary-color);
-            color: #ffffff;
+            background-color: var(--accent-yellow);
+            color: #000000;
         }
 
         h2.section-title {
-            color: var(--primary-dark);
+            color: var(--accent-yellow);
             font-size: 1.2rem;
             border-bottom: 2px solid var(--accent-yellow);
             padding-bottom: 8px;
@@ -136,8 +169,8 @@
         }
 
         .controls-panel {
-            background-color: #F1F4F8;
-            border: 1px solid var(--border-color);
+            background-color: var(--primary-dark);
+            border: 2px solid var(--accent-yellow);
             border-radius: 8px;
             padding: 15px 20px;
             margin-bottom: 25px;
@@ -156,7 +189,7 @@
 
         .controls-title {
             font-weight: bold;
-            color: var(--primary-color);
+            color: var(--accent-yellow);
             font-size: 0.85rem;
             text-transform: uppercase;
         }
@@ -168,9 +201,9 @@
         }
 
         .btn-slicer {
-            background-color: #ffffff;
-            border: 1px solid var(--primary-color);
-            color: var(--primary-color);
+            background-color: var(--primary-color);
+            border: 1.5px solid var(--accent-yellow);
+            color: var(--accent-yellow);
             padding: 7px 14px;
             border-radius: 20px;
             cursor: pointer;
@@ -180,30 +213,33 @@
         }
 
         .btn-slicer:hover {
-            background-color: #E2E9F3;
+            background-color: var(--accent-yellow);
+            color: #000000;
         }
 
         .btn-slicer.active {
-            background-color: var(--primary-color);
-            color: #ffffff;
-            box-shadow: 0 2px 5px rgba(31,78,120,0.3);
+            background-color: var(--accent-yellow);
+            color: #000000;
+            box-shadow: 0 2px 8px rgba(255, 183, 3, 0.4);
+            border-color: #ffffff;
         }
 
         .btn-slicer.all-btn {
-            border-color: #555;
-            color: #333;
+            border-color: var(--accent-yellow);
+            color: var(--accent-yellow);
         }
 
         .btn-slicer.all-btn.active {
-            background-color: #333;
-            color: #fff;
+            background-color: var(--accent-yellow);
+            color: #000000;
         }
 
         .input-select, .input-number, .input-text {
             padding: 8px 12px;
             border-radius: 6px;
-            border: 1px solid var(--border-color);
-            background-color: #ffffff;
+            border: 1.5px solid var(--accent-yellow);
+            background-color: var(--primary-color);
+            color: #ffffff;
             font-size: 0.9rem;
             outline: none;
         }
@@ -216,16 +252,16 @@
         }
 
         .chart-card {
-            background: #ffffff;
-            border: 1px solid var(--border-color);
+            background: var(--primary-dark);
+            border: 2px solid var(--accent-yellow);
             border-radius: 8px;
             padding: 15px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
         }
 
         .chart-card h3 {
             margin-top: 0;
-            color: var(--primary-dark);
+            color: var(--accent-yellow);
             font-size: 1rem;
             text-align: center;
             margin-bottom: 15px;
@@ -240,10 +276,10 @@
         .table-responsive {
             max-height: 480px;
             overflow-y: auto;
-            border: 1px solid var(--border-color);
+            border: 2px solid var(--accent-yellow);
             border-radius: 8px;
             margin-bottom: 25px;
-            background: #ffffff;
+            background: var(--primary-dark);
         }
 
         table {
@@ -257,86 +293,93 @@
             position: sticky;
             top: 0;
             background-color: var(--primary-color);
-            color: #ffffff;
+            color: var(--accent-yellow);
             padding: 12px 8px;
             font-weight: 600;
-            border: 1px solid #163856;
+            border: 1.5px solid var(--accent-yellow);
             z-index: 10;
         }
 
         thead th.col-total {
             background-color: var(--accent-yellow);
             color: #000000;
-            border-color: var(--accent-yellow-dark);
+            border-color: #ffffff;
         }
         
-        thead th.col-details { background-color: #315B7D; }
+        thead th.col-details { background-color: #14365d; }
 
         tfoot tr td {
             font-weight: bold;
-            background-color: #E2E9F3;
+            background-color: var(--primary-color);
+            color: #ffffff;
             padding: 10px;
-            border: 1px solid var(--border-color);
+            border: 1.5px solid var(--accent-yellow);
         }
 
-        tbody tr:nth-child(even) { background-color: #F9FBFD; }
-        tbody tr:hover { background-color: #EBF2FA; }
+        tbody tr:nth-child(even) { background-color: rgba(255, 255, 255, 0.03); }
+        tbody tr:hover { background-color: rgba(255, 183, 3, 0.15); }
 
         td {
             padding: 8px 6px;
-            border: 1px solid var(--border-color);
+            border: 1.5px solid var(--accent-yellow);
+            color: #ffffff;
         }
 
         td.time-col {
             font-weight: bold;
-            background-color: #F1F4F8;
-            color: var(--primary-dark);
+            background-color: var(--primary-dark);
+            color: var(--accent-yellow);
             position: sticky;
             left: 0;
             z-index: 5;
             white-space: nowrap;
+            border-right: 2px solid var(--accent-yellow);
         }
 
         td.total-col {
-            background-color: var(--accent-yellow-light);
-            color: var(--accent-yellow-dark);
+            background-color: rgba(255, 183, 3, 0.2);
+            color: var(--accent-yellow);
             font-weight: bold;
         }
 
         td.details-col {
             text-align: left;
             font-size: 0.82rem;
-            color: #333;
+            color: #e0e0e0;
             max-width: 500px;
         }
 
         .count-badge {
             display: inline-block;
-            background-color: #E2E9F3;
-            color: var(--primary-dark);
+            background-color: var(--accent-yellow);
+            color: #000000;
             font-weight: bold;
             padding: 2px 8px;
             border-radius: 12px;
         }
 
-        .zero-count { color: #ccc; }
-        .none-text { color: #999; font-style: italic; }
+        .zero-count { color: #666; }
+        .none-text { color: #888; font-style: italic; }
 
         .status-ok { color: var(--success-color); font-weight: bold; }
         .status-deficit { color: var(--danger-color); font-weight: bold; }
         .status-tight { color: var(--warning-color); font-weight: bold; }
 
         .recommendation-card {
-            background-color: #FFFDE7;
+            background-color: var(--primary-dark);
             border-left: 5px solid var(--accent-yellow);
+            border-top: 1px solid var(--accent-yellow);
+            border-right: 1px solid var(--accent-yellow);
+            border-bottom: 1px solid var(--accent-yellow);
             padding: 15px;
             margin-bottom: 15px;
             border-radius: 0 8px 8px 0;
+            color: #ffffff;
         }
 
         .recommendation-card h3 {
             margin: 0 0 8px 0;
-            color: var(--primary-dark);
+            color: var(--accent-yellow);
             font-size: 1rem;
         }
 
@@ -352,7 +395,7 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(0,0,0,0.5);
+            background: rgba(0,0,0,0.8);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -368,15 +411,16 @@
         }
 
         .modal-card {
-            background: #ffffff;
+            background: var(--card-bg);
             border-radius: 10px;
             width: 90%;
             max-width: 950px;
             max-height: 90vh;
             display: flex;
             flex-direction: column;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
             overflow: hidden;
+            border: 2px solid var(--accent-yellow);
         }
 
         .modal-header {
@@ -392,18 +436,20 @@
         .modal-header h3 {
             margin: 0;
             font-size: 1.1rem;
+            color: var(--accent-yellow);
         }
 
         .modal-body {
             padding: 20px;
             overflow-y: auto;
             flex-grow: 1;
+            color: #ffffff;
         }
 
         .modal-footer {
             padding: 15px 20px;
-            background: #f1f4f8;
-            border-top: 1px solid var(--border-color);
+            background: var(--primary-dark);
+            border-top: 2px solid var(--accent-yellow);
             display: flex;
             justify-content: flex-end;
             gap: 10px;
@@ -412,7 +458,7 @@
         .close-btn {
             background: transparent;
             border: none;
-            color: #ffffff;
+            color: var(--accent-yellow);
             font-size: 1.5rem;
             cursor: pointer;
         }
@@ -420,16 +466,16 @@
         .tab-buttons {
             display: flex;
             gap: 5px;
-            border-bottom: 2px solid var(--border-color);
+            border-bottom: 2px solid var(--accent-yellow);
             margin-bottom: 15px;
             overflow-x: auto;
         }
 
         .tab-btn {
             padding: 8px 16px;
-            border: none;
-            background: #E2E9F3;
-            color: var(--primary-dark);
+            border: 1px solid var(--accent-yellow);
+            background: var(--primary-dark);
+            color: var(--accent-yellow);
             font-weight: bold;
             font-size: 0.85rem;
             cursor: pointer;
@@ -446,8 +492,8 @@
         .tab-content.active { display: block; }
 
         .saved-weeks-panel {
-            background: #EBF2FA;
-            border: 1px solid var(--primary-color);
+            background: var(--primary-dark);
+            border: 1.5px solid var(--accent-yellow);
             border-radius: 8px;
             padding: 12px;
             margin-bottom: 15px;
@@ -461,20 +507,21 @@
         }
 
         .saved-week-chip {
-            background: #ffffff;
-            border: 1px solid var(--primary-color);
+            background: var(--primary-color);
+            border: 1px solid var(--accent-yellow);
             padding: 4px 10px;
             border-radius: 15px;
             font-size: 0.8rem;
             display: flex;
             align-items: center;
             gap: 6px;
+            color: #ffffff;
         }
 
         .saved-week-chip button {
             background: none;
             border: none;
-            color: var(--primary-color);
+            color: var(--accent-yellow);
             font-weight: bold;
             cursor: pointer;
             padding: 0 2px;
@@ -500,11 +547,12 @@
 
         .agent-list-table th {
             background-color: var(--primary-color);
-            color: #fff;
+            color: var(--accent-yellow);
             padding: 8px;
+            border: 1.5px solid var(--accent-yellow);
         }
 
-        .agent-list-table td { padding: 8px; }
+        .agent-list-table td { padding: 8px; border: 1.5px solid var(--accent-yellow); }
 
         .agent-row-draggable {
             cursor: grab;
@@ -517,28 +565,30 @@
 
         .agent-row-draggable.dragging {
             opacity: 0.5;
-            background-color: #d1e2f3 !important;
+            background-color: rgba(255, 183, 3, 0.3) !important;
         }
 
         .drag-handle {
             cursor: grab;
             margin-right: 8px;
-            color: #888;
+            color: var(--accent-yellow);
             font-weight: bold;
             user-select: none;
         }
 
         .badge-dept {
-            background: var(--accent-yellow-light);
-            color: var(--accent-yellow-dark);
+            background: rgba(255, 183, 3, 0.2);
+            color: var(--accent-yellow);
             padding: 3px 8px;
             border-radius: 4px;
             font-weight: bold;
+            border: 1px solid var(--accent-yellow);
         }
 
         .badge-act {
-            background: #e2e9f3;
-            color: var(--primary-dark);
+            background: var(--primary-color);
+            color: #ffffff;
+            border: 1px solid var(--accent-yellow);
             padding: 2px 6px;
             border-radius: 4px;
             font-size: 0.8rem;
@@ -576,7 +626,7 @@
         .form-group label {
             font-weight: bold;
             font-size: 0.8rem;
-            color: var(--primary-dark);
+            color: var(--accent-yellow);
         }
 
         .hour-chips {
@@ -585,10 +635,10 @@
             gap: 6px;
             max-height: 180px;
             overflow-y: auto;
-            border: 1px solid var(--border-color);
+            border: 1.5px solid var(--accent-yellow);
             padding: 8px;
             border-radius: 6px;
-            background: #fafafa;
+            background: var(--primary-dark);
         }
 
         .chip-checkbox {
@@ -597,11 +647,12 @@
             justify-content: space-between;
             gap: 4px;
             font-size: 0.75rem;
-            background: #fff;
-            border: 1px solid #ccc;
+            background: var(--primary-color);
+            border: 1px solid var(--accent-yellow);
             padding: 3px 6px;
             border-radius: 4px;
             cursor: pointer;
+            color: #ffffff;
         }
 
         .chip-checkbox input { cursor: pointer; }
@@ -612,13 +663,18 @@
 
 <div class="container">
     <div class="header">
-        <div>
-            <h1>WFM Capacity & Volume Dashboard</h1>
-            <small style="opacity: 0.85;">Workforce Management, Hourly Analytics & 15-Min Agent Schedules</small>
+        <div class="header-branding">
+            <div class="logo-circle">
+                <span class="logo-h">H</span>
+            </div>
+            <div>
+                <h1>CAPACITY &amp; VOLUME DASHBOARD</h1>
+                <small style="opacity: 0.85;">Workforce Management, Hourly Analytics &amp; 15-Min Agent Schedules</small>
+            </div>
         </div>
         <div class="header-actions">
             <button class="btn btn-secondary" id="btnOpenImport">Paste Team Data Tables</button>
-            <button class="btn btn-yellow" id="btnOpenMgmt">Manage Agents & Schedules</button>
+            <button class="btn btn-yellow" id="btnOpenMgmt">Manage Agents &amp; Schedules</button>
         </div>
     </div>
 
@@ -668,9 +724,9 @@
         <div class="control-group">
             <span class="controls-title">Staffing Parameters</span>
             <div style="display: flex; gap: 10px; align-items: center;">
-                <label style="font-size: 0.8rem; font-weight: bold;">AHT (min):</label>
+                <label style="font-size: 0.8rem; font-weight: bold; color: var(--accent-yellow);">AHT (min):</label>
                 <input type="number" id="ahtInput" class="input-number" value="5" min="1" max="60" style="width: 55px;">
-                <label style="font-size: 0.8rem; font-weight: bold;">Occ (%):</label>
+                <label style="font-size: 0.8rem; font-weight: bold; color: var(--accent-yellow);">Occ (%):</label>
                 <input type="number" id="occInput" class="input-number" value="85" min="50" max="100" style="width: 55px;">
             </div>
         </div>
@@ -708,7 +764,7 @@
                     <th class="dept-col" data-dept="LL+">LL+</th>
                     <th class="dept-col" data-dept="TFX">TFX</th>
                     <th class="col-total">Total Away Agents</th>
-                    <th class="col-details">Away Agents & Activity Details</th>
+                    <th class="col-details">Away Agents &amp; Activity Details</th>
                 </tr>
             </thead>
             <tbody id="scheduleTableBody"></tbody>
@@ -751,7 +807,7 @@
 
     <!-- Table 3: Capacity & Staffing Gap -->
     <h2 class="section-title">
-        <span>3. Staffing Requirements & Coverage Gap (<span class="periodLabel">September - Week 1</span>)</span>
+        <span>3. Staffing Requirements &amp; Coverage Gap (<span class="periodLabel">September - Week 1</span>)</span>
     </h2>
     <div class="table-responsive">
         <table>
@@ -770,7 +826,7 @@
     </div>
 
     <!-- Section 4: Operational Recommendations -->
-    <h2 class="section-title">4. Operational Recommendations & Staffing Insights</h2>
+    <h2 class="section-title">4. Operational Recommendations &amp; Staffing Insights</h2>
     <div id="recommendationsContainer"></div>
 </div>
 
@@ -778,19 +834,19 @@
 <div class="modal-overlay" id="importModal">
     <div class="modal-card">
         <div class="modal-header">
-            <h3>Paste Call Volume Tables & Period Manager</h3>
+            <h3>Paste Call Volume Tables &amp; Period Manager</h3>
             <button class="close-btn" id="btnCloseImport">&times;</button>
         </div>
         <div class="modal-body">
             <div class="saved-weeks-panel">
-                <span style="font-weight:bold; font-size:0.85rem; color:var(--primary-dark);">Saved Periods in Database:</span>
+                <span style="font-weight:bold; font-size:0.85rem; color:var(--accent-yellow);">Saved Periods in Database:</span>
                 <div class="saved-weeks-list" id="savedPeriodsContainer">
-                    <span style="font-size:0.8rem; color:#666;">No periods saved yet.</span>
+                    <span style="font-size:0.8rem; color:#aaa;">No periods saved yet.</span>
                 </div>
             </div>
 
-            <div style="display:flex; gap:15px; margin-bottom:15px; background:#f1f4f8; padding:10px; border-radius:6px; align-items:center;">
-                <label style="font-weight:bold; font-size:0.85rem;">Target Month:</label>
+            <div style="display:flex; gap:15px; margin-bottom:15px; background:var(--primary-dark); padding:10px; border-radius:6px; align-items:center; border: 1.5px solid var(--accent-yellow);">
+                <label style="font-weight:bold; font-size:0.85rem; color: var(--accent-yellow);">Target Month:</label>
                 <select id="importMonthSelect" class="input-select">
                     <option value="January">January</option>
                     <option value="February">February</option>
@@ -806,7 +862,7 @@
                     <option value="December">December</option>
                 </select>
 
-                <label style="font-weight:bold; font-size:0.85rem;">Target Week:</label>
+                <label style="font-weight:bold; font-size:0.85rem; color: var(--accent-yellow);">Target Week:</label>
                 <select id="importWeekSelect" class="input-select">
                     <option value="Week 1" selected>Week 1</option>
                     <option value="Week 2">Week 2</option>
@@ -816,7 +872,7 @@
                 </select>
             </div>
 
-            <p style="font-size:0.85rem; color:#555; margin-top:0;">Paste data directly from Excel for each queue tab below.</p>
+            <p style="font-size:0.85rem; color:#ccc; margin-top:0;">Paste data directly from Excel for each queue tab below.</p>
             
             <div class="tab-buttons" id="teamImportTabs">
                 <button class="tab-btn active" data-tab="tab-obs">OBS Phones</button>
@@ -863,7 +919,7 @@
         </div>
         <div class="modal-footer">
             <button class="btn btn-outline" id="btnCancelImport">Cancel</button>
-            <button class="btn btn-yellow" id="btnApplyImport">Save & Update Dashboard</button>
+            <button class="btn btn-yellow" id="btnApplyImport">Save &amp; Update Dashboard</button>
         </div>
     </div>
 </div>
@@ -892,13 +948,13 @@
 <div class="modal-overlay" id="mgmtModal">
     <div class="modal-card" style="max-width: 950px;">
         <div class="modal-header">
-            <h3>Agent Roster & Away Schedules Management (Drag to Reorder)</h3>
+            <h3>Agent Roster &amp; Away Schedules Management (Drag to Reorder)</h3>
             <button class="close-btn" id="btnCloseMgmt">&times;</button>
         </div>
         <div class="modal-body">
             <div class="mgmt-toolbar">
                 <div style="display:flex; gap:10px; align-items:center;">
-                    <label style="font-weight:bold; font-size:0.85rem;">Select Department:</label>
+                    <label style="font-weight:bold; font-size:0.85rem; color: var(--accent-yellow);">Select Department:</label>
                     <select id="mgmtDeptSelect" class="input-select">
                         <option value="OBS - Phones">OBS - Phones</option>
                         <option value="OBS - Cases">OBS - Cases</option>
@@ -911,8 +967,8 @@
                 <button class="btn btn-yellow btn-sm" id="btnAddNewAgentForm">+ Add New Agent</button>
             </div>
 
-            <div id="agentFormCard" style="display:none; background:#f8f9fa; border:1px solid var(--border-color); padding:15px; border-radius:8px; margin-bottom:15px;">
-                <h4 id="agentFormTitle" style="margin-top:0; margin-bottom:10px; color:var(--primary-dark);">Add Agent</h4>
+            <div id="agentFormCard" style="display:none; background:var(--primary-dark); border:1.5px solid var(--accent-yellow); padding:15px; border-radius:8px; margin-bottom:15px;">
+                <h4 id="agentFormTitle" style="margin-top:0; margin-bottom:10px; color:var(--accent-yellow);">Add Agent</h4>
                 <input type="hidden" id="editAgentId" value="">
                 <div class="form-grid">
                     <div class="form-group">
@@ -948,7 +1004,7 @@
                             <th style="width: 30px;"></th>
                             <th>Agent Name</th>
                             <th>Department</th>
-                            <th>Away Hours & Activities</th>
+                            <th>Away Hours &amp; Activities</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -1404,7 +1460,7 @@
                 <td>${v.abQ.toFixed(1)}</td>
                 <td>${v.abCSAT.toFixed(1)}</td>
                 <td>${v.abH.toFixed(1)}</td>
-                <td style="background-color: var(--accent-yellow-light); font-weight: bold; color: var(--accent-yellow-dark);"><b>${v.tot.toFixed(1)}</b></td>
+                <td style="background-color: rgba(255, 183, 3, 0.25); font-weight: bold; color: var(--accent-yellow);"><b>${v.tot.toFixed(1)}</b></td>
                 <td>${v.max}</td>
             `;
             tbody.appendChild(tr);
@@ -1439,7 +1495,7 @@
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td class="time-col">${slot.time12}</td>
-                <td style="background-color: var(--accent-yellow-light);"><b>${v.tot.toFixed(1)}</b></td>
+                <td style="background-color: rgba(255, 183, 3, 0.25); color: var(--accent-yellow);"><b>${v.tot.toFixed(1)}</b></td>
                 <td>${phoneAvail} of ${deptRosterCounts["OBS - Phones"]}</td>
                 <td>${reqAgents}</td>
                 <td>${gap >= 0 ? '+' + gap : gap}</td>
@@ -1470,11 +1526,11 @@
 
         container.innerHTML = `
             <div class="recommendation-card">
-                <h3>Peak-Hour Shift & Meal Staggering (${month} - ${week})</h3>
+                <h3>Peak-Hour Shift &amp; Meal Staggering (${month} - ${week})</h3>
                 <p>For <b>${month} (${week})</b>, overall call volume peaks around <b>${timeLabel}</b> with an average volume of <b>${maxVol.toFixed(1)} calls/hour</b>. Overlapping lunches and breaks reduce available phone capacity during key morning windows. Staggering meal schedules into smaller shifts is essential to maintain queue SLA.</p>
             </div>
             <div class="recommendation-card">
-                <h3>Cross-Queue Reinforcement & Flex Staffing</h3>
+                <h3>Cross-Queue Reinforcement &amp; Flex Staffing</h3>
                 <p>When demand spikes above capacity in <i>${month} - ${week}</i>, activate cross-skilling protocols so that agents from non-phone or lower-volume teams support phone queues during high-demand hours.</p>
             </div>
         `;
@@ -1490,8 +1546,8 @@
                     {
                         label: 'Total Call Volume',
                         data: [],
-                        borderColor: '#E6A100',
-                        backgroundColor: 'rgba(230, 161, 0, 0.2)',
+                        borderColor: '#ffb703',
+                        backgroundColor: 'rgba(255, 183, 3, 0.25)',
                         borderWidth: 3,
                         fill: true,
                         tension: 0.3
@@ -1499,7 +1555,7 @@
                     {
                         label: 'Available Phone Capacity',
                         data: [],
-                        borderColor: '#1F4E78',
+                        borderColor: '#ffffff',
                         borderDash: [5, 5],
                         borderWidth: 2,
                         fill: false
@@ -1509,8 +1565,18 @@
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: { legend: { position: 'top' } },
-                scales: { y: { beginAtZero: true } }
+                plugins: { legend: { labels: { color: '#ffb703' }, position: 'top' } },
+                scales: { 
+                    y: { 
+                        beginAtZero: true, 
+                        grid: { color: 'rgba(255, 183, 3, 0.4)', lineWidth: 1.5 },
+                        ticks: { color: '#ffffff' }
+                    },
+                    x: {
+                        grid: { color: 'rgba(255, 183, 3, 0.4)', lineWidth: 1.5 },
+                        ticks: { color: '#ffffff' }
+                    }
+                }
             }
         });
 
@@ -1520,15 +1586,25 @@
             data: {
                 labels: depts,
                 datasets: [
-                    { label: 'Total Headcount', data: [], backgroundColor: '#1F4E78' },
-                    { label: 'Away Agents in Peak Hour (1:00 PM)', data: [], backgroundColor: '#E6A100' }
+                    { label: 'Total Headcount', data: [], backgroundColor: '#0b2545', borderColor: '#ffb703', borderWidth: 1.5 },
+                    { label: 'Away Agents in Peak Hour (1:00 PM)', data: [], backgroundColor: '#ffb703', borderColor: '#ffffff', borderWidth: 1.5 }
                 ]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: { legend: { position: 'top' } },
-                scales: { y: { beginAtZero: true } }
+                plugins: { legend: { labels: { color: '#ffb703' }, position: 'top' } },
+                scales: { 
+                    y: { 
+                        beginAtZero: true, 
+                        grid: { color: 'rgba(255, 183, 3, 0.4)', lineWidth: 1.5 },
+                        ticks: { color: '#ffffff' }
+                    },
+                    x: {
+                        grid: { color: 'rgba(255, 183, 3, 0.4)', lineWidth: 1.5 },
+                        ticks: { color: '#ffffff' }
+                    }
+                }
             }
         });
     }
@@ -1594,7 +1670,7 @@
         }
 
         if (count === 0) {
-            container.innerHTML = `<span style="font-size:0.8rem; color:#666;">No periods saved yet.</span>`;
+            container.innerHTML = `<span style="font-size:0.8rem; color:#aaa;">No periods saved yet.</span>`;
         }
     }
 
@@ -1891,7 +1967,7 @@
         const deptAgents = masterAgentsDB.filter(ag => ag.dept === selectedDept);
 
         if (deptAgents.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#999;">No agents registered in this department.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#aaa;">No agents registered in this department.</td></tr>`;
             return;
         }
 

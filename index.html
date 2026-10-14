@@ -7,6 +7,8 @@
     <!-- Chart.js & PapaParse -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <style>
         :root {
@@ -62,7 +64,7 @@
             gap: 15px;
         }
 
-        /* LOGO CON LA "H" AMARILLA INCLINADA HACIA ATRÁS */
+        /* ICONO DE COMPARACIÓN DE REPORTES */
         .logo-circle {
             width: 52px;
             height: 52px;
@@ -76,14 +78,12 @@
             flex-shrink: 0;
         }
 
-        .logo-h {
+        .logo-icon {
             color: var(--accent-yellow);
-            font-family: 'Arial Black', Impact, sans-serif;
-            font-size: 2rem;
-            font-weight: 900;
-            line-height: 1;
-            transform: skewX(-15deg); /* Inclinación hacia atrás exactamente como la imagen */
-            display: inline-block;
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             user-select: none;
         }
 
@@ -665,7 +665,7 @@
     <div class="header">
         <div class="header-branding">
             <div class="logo-circle">
-                <span class="logo-h">H</span>
+                <i class="fa-solid fa-chart-sim logo-icon"></i>
             </div>
             <div>
                 <h1>CAPACITY &amp; VOLUME DASHBOARD</h1>

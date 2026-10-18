@@ -111,7 +111,6 @@
             gap: 15px;
         }
 
-        /* LOGO CIRCLE CON SVG DIBUJADO EXACTAMENTE COMO LA IMAGEN */
         .logo-circle {
             width: 54px;
             height: 54px;
@@ -702,7 +701,6 @@
         .chip-checkbox input { cursor: pointer; }
         .auth-card { max-width: 400px; text-align: center; }
 
-        /* COMPACT FLOATING THEME TOGGLE BUTTON */
         .theme-toggle-btn {
             position: fixed;
             bottom: 20px;
@@ -725,11 +723,34 @@
             transform: scale(1.1);
             background-color: #d49400;
         }
+
+        .mode-selector {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            background: var(--primary-color);
+            padding: 6px;
+            border-radius: 8px;
+            border: 1px solid var(--accent-yellow);
+        }
+        .mode-btn {
+            flex: 1;
+            padding: 8px;
+            border: none;
+            background: transparent;
+            color: #fff;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 6px;
+        }
+        .mode-btn.active {
+            background: var(--accent-yellow);
+            color: #000;
+        }
     </style>
 </head>
 <body>
 
-<!-- FLOATING THEME TOGGLE BUTTON (BOTTOM-LEFT) -->
 <button class="theme-toggle-btn" onclick="toggleTheme()" title="Toggle Light/Dark Mode">
     <i id="themeIcon" class="fa-solid fa-sun" style="font-size: 1.1rem;"></i>
 </button>
@@ -739,23 +760,16 @@
         <div class="header-branding">
             <div class="logo-circle">
                 <svg class="logo-svg" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <!-- Flecha superior -->
                     <path d="M 20 20 C 40 5, 75 5, 80 20" stroke="#ffb703" stroke-width="6" stroke-linecap="round"/>
                     <path d="M 20 20 L 30 10 M 20 20 L 32 24" stroke="#ffb703" stroke-width="6" stroke-linecap="round"/>
-                    
-                    <!-- Flecha inferior -->
                     <path d="M 80 80 C 60 95, 25 95, 20 80" stroke="#ffb703" stroke-width="6" stroke-linecap="round"/>
                     <path d="M 80 80 L 70 90 M 80 80 L 68 76" stroke="#ffb703" stroke-width="6" stroke-linecap="round"/>
-
-                    <!-- Hoja Izquierda (Pie Chart) -->
                     <rect x="12" y="24" width="34" height="48" rx="3" stroke="#ffb703" stroke-width="5" fill="#232a36"/>
                     <path d="M 40 24 L 46 30 L 40 30 Z" fill="#ffb703"/>
                     <circle cx="29" cy="42" r="9" stroke="#ffb703" stroke-width="4"/>
                     <path d="M 29 42 L 29 33 M 29 42 L 36 38" stroke="#ffb703" stroke-width="4"/>
                     <line x1="18" y1="58" x2="40" y2="58" stroke="#ffb703" stroke-width="4" stroke-linecap="round"/>
                     <line x1="18" y1="64" x2="34" y2="64" stroke="#ffb703" stroke-width="4" stroke-linecap="round"/>
-
-                    <!-- Hoja Derecha (Line Chart) -->
                     <rect x="54" y="24" width="34" height="48" rx="3" stroke="#ffb703" stroke-width="5" fill="#232a36"/>
                     <path d="M 82 24 L 88 30 L 82 30 Z" fill="#ffb703"/>
                     <path d="M 60 46 L 67 38 L 73 44 L 82 36" stroke="#ffb703" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
@@ -814,8 +828,10 @@
                 <button class="btn-slicer all-btn active" data-dept="ALL">All Departments</button>
                 <button class="btn-slicer" data-dept="OBS - Phones">OBS - Phones</button>
                 <button class="btn-slicer" data-dept="OBS - Cases">OBS - Cases</button>
-                <button class="btn-slicer" data-dept="INS">INS</button>
-                <button class="btn-slicer" data-dept="ELD">ELD</button>
+                <button class="btn-slicer" data-dept="INS - Phones">INS - Phones</button>
+                <button class="btn-slicer" data-dept="INS - Cases">INS - Cases</button>
+                <button class="btn-slicer" data-dept="ELD - Phones">ELD - Phones</button>
+                <button class="btn-slicer" data-dept="ELD - Cases">ELD - Cases</button>
                 <button class="btn-slicer" data-dept="LL+">LL+</button>
                 <button class="btn-slicer" data-dept="TFX">TFX</button>
             </div>
@@ -859,8 +875,10 @@
                     <th>Time Slot</th>
                     <th class="dept-col" data-dept="OBS - Phones">OBS - Phones</th>
                     <th class="dept-col" data-dept="OBS - Cases">OBS - Cases</th>
-                    <th class="dept-col" data-dept="INS">INS</th>
-                    <th class="dept-col" data-dept="ELD">ELD</th>
+                    <th class="dept-col" data-dept="INS - Phones">INS - Phones</th>
+                    <th class="dept-col" data-dept="INS - Cases">INS - Cases</th>
+                    <th class="dept-col" data-dept="ELD - Phones">ELD - Phones</th>
+                    <th class="dept-col" data-dept="ELD - Cases">ELD - Cases</th>
                     <th class="dept-col" data-dept="LL+">LL+</th>
                     <th class="dept-col" data-dept="TFX">TFX</th>
                     <th class="col-total">Total Away Agents</th>
@@ -873,8 +891,10 @@
                     <td>TOTAL ROSTER</td>
                     <td class="dept-foot" data-dept="OBS - Phones" id="foot-OBS - Phones">27</td>
                     <td class="dept-foot" data-dept="OBS - Cases" id="foot-OBS - Cases">10</td>
-                    <td class="dept-foot" data-dept="INS" id="foot-INS">21</td>
-                    <td class="dept-foot" data-dept="ELD" id="foot-ELD">29</td>
+                    <td class="dept-foot" data-dept="INS - Phones" id="foot-INS - Phones">21</td>
+                    <td class="dept-foot" data-dept="INS - Cases" id="foot-INS - Cases">0</td>
+                    <td class="dept-foot" data-dept="ELD - Phones" id="foot-ELD - Phones">29</td>
+                    <td class="dept-foot" data-dept="ELD - Cases" id="foot-ELD - Cases">0</td>
                     <td class="dept-foot" data-dept="LL+" id="foot-LL+">8</td>
                     <td class="dept-foot" data-dept="TFX" id="foot-TFX">3</td>
                     <td id="footTotal" style="background-color: var(--accent-yellow); color: black;">98</td>
@@ -886,7 +906,7 @@
 
     <!-- Table 2: Call Volume Metrics -->
     <h2 class="section-title">
-        <span>2. Consolidated Call Volume Metrics (<span class="periodLabel">September - Week 1</span>)</span>
+        <span>2. Consolidated Volume Metrics (<span class="periodLabel">September - Week 1</span>)</span>
     </h2>
     <div class="table-responsive">
         <table>
@@ -934,7 +954,7 @@
 <div class="modal-overlay" id="importModal">
     <div class="modal-card">
         <div class="modal-header">
-            <h3>Paste Call Volume Tables &amp; Period Manager</h3>
+            <h3>Paste Call / Cases Volume Tables &amp; Period Manager</h3>
             <button class="close-btn" id="btnCloseImport">&times;</button>
         </div>
         <div class="modal-body">
@@ -943,6 +963,12 @@
                 <div class="saved-weeks-list" id="savedPeriodsContainer">
                     <span style="font-size:0.8rem; color:#aaa;">No periods saved yet.</span>
                 </div>
+            </div>
+
+            <!-- MODE SELECTOR: PHONES VS CASES -->
+            <div class="mode-selector">
+                <button class="mode-btn active" id="btnModePhone" onclick="switchImportMode('phone')">Phone Support Data</button>
+                <button class="mode-btn" id="btnModeCases" onclick="switchImportMode('cases')">Cases / Messaging Data</button>
             </div>
 
             <div style="display:flex; gap:15px; margin-bottom:15px; background:var(--primary-dark); padding:10px; border-radius:6px; align-items:center; border: 1.5px solid var(--accent-yellow);">
@@ -972,50 +998,62 @@
                 </select>
             </div>
 
-            <p style="font-size:0.85rem; color:#ccc; margin-top:0;">Paste data directly from Excel for each queue tab below.</p>
-            
-            <div class="tab-buttons" id="teamImportTabs">
-                <button class="tab-btn active" data-tab="tab-obs">OBS Phones</button>
-                <button class="tab-btn" data-tab="tab-ins">INS Phones</button>
-                <button class="tab-btn" data-tab="tab-eld">ELD Phones</button>
-                <button class="tab-btn" data-tab="tab-ll">LL+</button>
-                <button class="tab-btn" data-tab="tab-tfx">TFX</button>
-            </div>
+            <!-- SECTION FOR PHONE MODE -->
+            <div id="phoneImportSection">
+                <p style="font-size:0.85rem; color:#ccc; margin-top:0;">Paste data directly from Excel for each hourly phone queue tab below.</p>
+                <div class="tab-buttons" id="teamImportTabs">
+                    <button class="tab-btn active" data-tab="tab-obs">OBS Phones</button>
+                    <button class="tab-btn" data-tab="tab-ins-p">INS Phones</button>
+                    <button class="tab-btn" data-tab="tab-eld-p">ELD Phones</button>
+                    <button class="tab-btn" data-tab="tab-ll">LL+</button>
+                    <button class="tab-btn" data-tab="tab-tfx">TFX</button>
+                </div>
 
-            <div class="tab-content active" id="tab-obs">
-                <div class="form-group">
-                    <label>OBS Phones Volume Data:</label>
-                    <textarea class="input-text team-volume-input" id="volumeText_obs" style="height: 180px; font-family: monospace; font-size:0.8rem;"></textarea>
+                <div class="tab-content active" id="tab-obs">
+                    <div class="form-group">
+                        <label>OBS Phones Volume Data:</label>
+                        <textarea class="input-text team-volume-input" id="volumeText_obs" style="height: 180px; font-family: monospace; font-size:0.8rem;"></textarea>
+                    </div>
+                </div>
+
+                <div class="tab-content" id="tab-ins-p">
+                    <div class="form-group">
+                        <label>INS Phones Volume Data:</label>
+                        <textarea class="input-text team-volume-input" id="volumeText_ins_p" style="height: 180px; font-family: monospace; font-size:0.8rem;"></textarea>
+                    </div>
+                </div>
+
+                <div class="tab-content" id="tab-eld-p">
+                    <div class="form-group">
+                        <label>ELD Phones Volume Data:</label>
+                        <textarea class="input-text team-volume-input" id="volumeText_eld_p" style="height: 180px; font-family: monospace; font-size:0.8rem;"></textarea>
+                    </div>
+                </div>
+
+                <div class="tab-content" id="tab-ll">
+                    <div class="form-group">
+                        <label>LL+ Volume Data:</label>
+                        <textarea class="input-text team-volume-input" id="volumeText_ll" style="height: 180px; font-family: monospace; font-size:0.8rem;"></textarea>
+                    </div>
+                </div>
+
+                <div class="tab-content" id="tab-tfx">
+                    <div class="form-group">
+                        <label>TFX Volume Data:</label>
+                        <textarea class="input-text team-volume-input" id="volumeText_tfx" style="height: 180px; font-family: monospace; font-size:0.8rem;"></textarea>
+                    </div>
                 </div>
             </div>
 
-            <div class="tab-content" id="tab-ins">
+            <!-- SECTION FOR CASES MODE -->
+            <div id="casesImportSection" style="display: none;">
+                <p style="font-size:0.85rem; color:#ccc; margin-top:0;">Paste raw Cases table (Teammate | assignedConversations | replied to | Closed conversations):</p>
                 <div class="form-group">
-                    <label>INS Phones Volume Data:</label>
-                    <textarea class="input-text team-volume-input" id="volumeText_ins" style="height: 180px; font-family: monospace; font-size:0.8rem;"></textarea>
+                    <label>Cases / Messaging Data Table:</label>
+                    <textarea class="input-text" id="casesRawText" placeholder="Teammate assignedConversations assignedConversations replied to Closed conversations..." style="height: 220px; font-family: monospace; font-size:0.8rem;"></textarea>
                 </div>
             </div>
 
-            <div class="tab-content" id="tab-eld">
-                <div class="form-group">
-                    <label>ELD Phones Volume Data:</label>
-                    <textarea class="input-text team-volume-input" id="volumeText_eld" style="height: 180px; font-family: monospace; font-size:0.8rem;"></textarea>
-                </div>
-            </div>
-
-            <div class="tab-content" id="tab-ll">
-                <div class="form-group">
-                    <label>LL+ Volume Data:</label>
-                    <textarea class="input-text team-volume-input" id="volumeText_ll" style="height: 180px; font-family: monospace; font-size:0.8rem;"></textarea>
-                </div>
-            </div>
-
-            <div class="tab-content" id="tab-tfx">
-                <div class="form-group">
-                    <label>TFX Volume Data:</label>
-                    <textarea class="input-text team-volume-input" id="volumeText_tfx" style="height: 180px; font-family: monospace; font-size:0.8rem;"></textarea>
-                </div>
-            </div>
         </div>
         <div class="modal-footer">
             <button class="btn btn-outline" id="btnCancelImport">Cancel</button>
@@ -1058,8 +1096,10 @@
                     <select id="mgmtDeptSelect" class="input-select">
                         <option value="OBS - Phones">OBS - Phones</option>
                         <option value="OBS - Cases">OBS - Cases</option>
-                        <option value="INS">INS</option>
-                        <option value="ELD">ELD</option>
+                        <option value="INS - Phones">INS - Phones</option>
+                        <option value="INS - Cases">INS - Cases</option>
+                        <option value="ELD - Phones">ELD - Phones</option>
+                        <option value="ELD - Cases">ELD - Cases</option>
                         <option value="LL+">LL+</option>
                         <option value="TFX">TFX</option>
                     </select>
@@ -1080,8 +1120,10 @@
                         <select id="agentDeptInput" class="input-select">
                             <option value="OBS - Phones">OBS - Phones</option>
                             <option value="OBS - Cases">OBS - Cases</option>
-                            <option value="INS">INS</option>
-                            <option value="ELD">ELD</option>
+                            <option value="INS - Phones">INS - Phones</option>
+                            <option value="INS - Cases">INS - Cases</option>
+                            <option value="ELD - Phones">ELD - Phones</option>
+                            <option value="ELD - Cases">ELD - Cases</option>
                             <option value="LL+">LL+</option>
                             <option value="TFX">TFX</option>
                         </select>
@@ -1144,13 +1186,21 @@
 
     let isRemoteUpdate = false;
 
-    const depts = ['OBS - Phones', 'OBS - Cases', 'INS', 'ELD', 'LL+', 'TFX'];
+    // LISTA ACTUALIZADA DE DEPARTAMENTOS CON PHONE Y CASES
+    const depts = [
+        'OBS - Phones', 'OBS - Cases', 
+        'INS - Phones', 'INS - Cases', 
+        'ELD - Phones', 'ELD - Cases', 
+        'LL+', 'TFX'
+    ];
     
     let deptRosterCounts = {
         'OBS - Phones': 27,
         'OBS - Cases': 10,
-        'INS': 21,
-        'ELD': 29,
+        'INS - Phones': 21,
+        'INS - Cases': 0,
+        'ELD - Phones': 29,
+        'ELD - Cases': 0,
         'LL+': 8,
         'TFX': 3
     };
@@ -1161,10 +1211,7 @@
             let suffix = h >= 12 ? 'PM' : 'AM';
             let h12 = h % 12;
             if (h12 === 0) h12 = 12;
-            slots.push({
-                time12: `${h12}:00 ${suffix}`,
-                h24: h
-            });
+            slots.push({ time12: `${h12}:00 ${suffix}`, h24: h });
         }
         return slots;
     }
@@ -1180,18 +1227,14 @@
             let h12 = h % 12;
             if (h12 === 0) h12 = 12;
             let mStr = m < 10 ? '0' + m : m;
-            slots.push({
-                time12: `${h12}:${mStr} ${suffix}`,
-                idx: idx,
-                h24: h
-            });
+            slots.push({ time12: `${h12}:${mStr} ${suffix}`, idx: idx, h24: h });
         }
         return slots;
     }
     const agentSlots15Min = generate15MinSlots();
 
     const rawRosterData = [
-        // OBS - Phones (27 agents)
+        // OBS - Phones
         { name: "Dean Spencer", dept: "OBS - Phones", hours: { 35: "Break 1", 44: "Lunch", 45: "Lunch", 55: "Break 2" } },
         { name: "Daneil Facey", dept: "OBS - Phones", hours: { 40: "Lunch", 41: "Lunch", 42: "Lunch", 51: "Break 2" } },
         { name: "Shanique Kelly", dept: "OBS - Phones", hours: { 36: "Break 1", 49: "Lunch", 50: "Lunch", 51: "Lunch" } },
@@ -1220,7 +1263,7 @@
         { name: "Omar Jimenez", dept: "OBS - Phones", hours: { 50: "Break 1", 58: "Lunch", 59: "Lunch", 60: "Lunch", 61: "Lunch", 70: "Break 2" } },
         { name: "Michelle Salmon", dept: "OBS - Phones", hours: { 54: "Break 1", 65: "Lunch", 66: "Lunch", 67: "Lunch" } },
 
-        // OBS - Cases (10 agents)
+        // OBS - Cases
         { name: "Emely Hernandez", dept: "OBS - Cases", hours: { 32: "Break 1", 43: "Lunch", 44: "Lunch", 45: "Lunch", 46: "Lunch", 55: "Break 2" } },
         { name: "Pablo Saquilmer", dept: "OBS - Cases", hours: { 40: "Break 1", 50: "Lunch", 51: "Lunch", 52: "Lunch", 53: "Lunch", 57: "Break 2" } },
         { name: "Lucia Herrera", dept: "OBS - Cases", hours: { 35: "Break 1", 50: "Lunch", 51: "Lunch", 52: "Lunch", 53: "Lunch", 57: "Break 2" } },
@@ -1232,61 +1275,61 @@
         { name: "Diana Orozco", dept: "OBS - Cases", hours: { 48: "Break 1", 60: "Break 2", 67: "Lunch", 68: "Lunch", 69: "Lunch", 70: "Lunch" } },
         { name: "Rudy Herrera", dept: "OBS - Cases", hours: { 54: "Break 1", 64: "Break 2", 70: "Lunch", 71: "Lunch", 72: "Lunch", 73: "Lunch" } },
 
-        // ELD Team (29 agents)
-        { name: "Sergio Chigüil", dept: "ELD", hours: { 36: "Break 1", 44: "Lunch", 45: "Lunch", 46: "Lunch", 47: "Lunch", 55: "Break 2" } },
-        { name: "Edgar Castillo", dept: "ELD", hours: { 32: "Break 1", 40: "Break 2", 48: "Lunch", 49: "Lunch", 50: "Lunch", 51: "Lunch" } },
-        { name: "Samantha Chinchilla", dept: "ELD", hours: { 40: "Break 1", 52: "Lunch", 53: "Lunch", 54: "Lunch", 55: "Lunch", 60: "Break 2" } },
-        { name: "Celina Franco", dept: "ELD", hours: { 43: "Break 1", 52: "Lunch", 53: "Lunch", 54: "Lunch", 55: "Lunch", 61: "Break 2" } },
-        { name: "Esvin Gomez", dept: "ELD", hours: { 44: "Break 1", 52: "Lunch", 53: "Lunch", 54: "Lunch", 55: "Lunch", 62: "Break 2" } },
-        { name: "Sharon Olivares", dept: "ELD", hours: { 37: "Break 1", 45: "Break 2", 56: "Lunch", 57: "Lunch", 58: "Lunch", 59: "Lunch" } },
-        { name: "Iverth Monterroso", dept: "ELD", hours: { 44: "Break 1", 52: "Lunch", 53: "Lunch", 54: "Lunch", 55: "Lunch", 60: "Break 2" } },
-        { name: "Kevin Acabal", dept: "ELD", hours: { 38: "Break 1", 46: "Break 2", 58: "Lunch", 59: "Lunch", 60: "Lunch", 61: "Lunch" } },
-        { name: "Brandon Vasquez", dept: "ELD", hours: { 40: "Break 1", 46: "Lunch", 47: "Lunch", 48: "Lunch", 49: "Lunch", 58: "Break 2" } },
-        { name: "Kenford Morris", dept: "ELD", hours: { 44: "Break 1", 54: "Lunch", 55: "Lunch", 56: "Lunch" } },
-        { name: "Benneth Smith", dept: "ELD", hours: { 40: "Break 1", 48: "Lunch", 49: "Lunch", 59: "Break 2" } },
-        { name: "Josue Sucuc", dept: "ELD", hours: { 43: "Break 1", 56: "Lunch", 57: "Lunch", 58: "Lunch", 59: "Lunch", 63: "Break 2" } },
-        { name: "Luis Gonzalez", dept: "ELD", hours: { 36: "Break 1", 52: "Break 2", 56: "Lunch", 57: "Lunch", 58: "Lunch", 59: "Lunch" } },
-        { name: "Froy Gonzalez", dept: "ELD", hours: { 40: "Break 1", 50: "Break 2", 56: "Lunch", 57: "Lunch", 58: "Lunch", 59: "Lunch" } },
-        { name: "Melanie Garcia", dept: "ELD", hours: { 46: "Break 1", 54: "Break 2", 60: "Lunch", 61: "Lunch", 62: "Lunch", 63: "Lunch" } },
-        { name: "Sebastian Quiñonez", dept: "ELD", hours: { 40: "Break 1", 56: "Lunch", 57: "Lunch", 58: "Lunch", 59: "Lunch", 63: "Break 2" } },
-        { name: "Danae Castillo", dept: "ELD", hours: { 43: "Break 1", 54: "Lunch", 55: "Lunch", 56: "Lunch", 57: "Lunch", 64: "Break 2" } },
-        { name: "Cesar Larios", dept: "ELD", hours: { 40: "Break 1", 50: "Lunch", 51: "Lunch", 52: "Lunch", 53: "Lunch", 62: "Break 2" } },
-        { name: "Jesus Rios", dept: "ELD", hours: { 38: "Break 1", 48: "Lunch", 49: "Lunch", 59: "Break 2" } },
-        { name: "Marie Perez", dept: "ELD", hours: { 39: "Break 1", 54: "Lunch", 55: "Lunch", 64: "Break 2" } },
-        { name: "Daniel Pelayo", "dept": "ELD", hours: { 42: "Break 1", 53: "Lunch", 54: "Lunch", 55: "Lunch", 56: "Lunch", 65: "Break 2" } },
-        { name: "Kevin Ibarra", dept: "ELD", hours: { 45: "Break 1", 56: "Lunch", 57: "Lunch", 58: "Lunch", 59: "Lunch", 66: "Break 2" } },
-        { name: "Jose Rodriguez", dept: "ELD", hours: { 46: "Break 1", 56: "Lunch", 57: "Lunch", 69: "Break 2" } },
-        { name: "Kevin Williams", dept: "ELD", hours: { 48: "Break 1", 54: "Lunch", 55: "Lunch", 64: "Break 2" } },
-        { name: "Luis Ajche", dept: "ELD", hours: { 48: "Break 1", 55: "Lunch", 56: "Lunch", 57: "Lunch", 58: "Lunch", 68: "Break 2" } },
-        { name: "Jorge Najera", dept: "ELD", hours: { 48: "Lunch", 49: "Lunch", 50: "Lunch", 51: "Lunch", 64: "Break 1", 71: "Break 2" } },
-        { name: "Kia Francis", dept: "ELD", hours: { 51: "Break 1", 64: "Lunch", 65: "Lunch", 66: "Lunch" } },
-        { name: "Tevin Smallwood", dept: "ELD", hours: { 51: "Break 1", 65: "Lunch", 66: "Lunch", 67: "Lunch" } },
-        { name: "Shiyan Lee", dept: "ELD", hours: { 50: "Break 1", 60: "Lunch", 61: "Lunch", 62: "Lunch" } },
+        // ELD - Phones
+        { name: "Sergio Chigüil", dept: "ELD - Phones", hours: { 36: "Break 1", 44: "Lunch", 45: "Lunch", 46: "Lunch", 47: "Lunch", 55: "Break 2" } },
+        { name: "Edgar Castillo", dept: "ELD - Phones", hours: { 32: "Break 1", 40: "Break 2", 48: "Lunch", 49: "Lunch", 50: "Lunch", 51: "Lunch" } },
+        { name: "Samantha Chinchilla", dept: "ELD - Phones", hours: { 40: "Break 1", 52: "Lunch", 53: "Lunch", 54: "Lunch", 55: "Lunch", 60: "Break 2" } },
+        { name: "Celina Franco", dept: "ELD - Phones", hours: { 43: "Break 1", 52: "Lunch", 53: "Lunch", 54: "Lunch", 55: "Lunch", 61: "Break 2" } },
+        { name: "Esvin Gomez", dept: "ELD - Phones", hours: { 44: "Break 1", 52: "Lunch", 53: "Lunch", 54: "Lunch", 55: "Lunch", 62: "Break 2" } },
+        { name: "Sharon Olivares", dept: "ELD - Phones", hours: { 37: "Break 1", 45: "Break 2", 56: "Lunch", 57: "Lunch", 58: "Lunch", 59: "Lunch" } },
+        { name: "Iverth Monterroso", dept: "ELD - Phones", hours: { 44: "Break 1", 52: "Lunch", 53: "Lunch", 54: "Lunch", 55: "Lunch", 60: "Break 2" } },
+        { name: "Kevin Acabal", dept: "ELD - Phones", hours: { 38: "Break 1", 46: "Break 2", 58: "Lunch", 59: "Lunch", 60: "Lunch", 61: "Lunch" } },
+        { name: "Brandon Vasquez", dept: "ELD - Phones", hours: { 40: "Break 1", 46: "Lunch", 47: "Lunch", 48: "Lunch", 49: "Lunch", 58: "Break 2" } },
+        { name: "Kenford Morris", dept: "ELD - Phones", hours: { 44: "Break 1", 54: "Lunch", 55: "Lunch", 56: "Lunch" } },
+        { name: "Benneth Smith", dept: "ELD - Phones", hours: { 40: "Break 1", 48: "Lunch", 49: "Lunch", 59: "Break 2" } },
+        { name: "Josue Sucuc", dept: "ELD - Phones", hours: { 43: "Break 1", 56: "Lunch", 57: "Lunch", 58: "Lunch", 59: "Lunch", 63: "Break 2" } },
+        { name: "Luis Gonzalez", dept: "ELD - Phones", hours: { 36: "Break 1", 52: "Break 2", 56: "Lunch", 57: "Lunch", 58: "Lunch", 59: "Lunch" } },
+        { name: "Froy Gonzalez", dept: "ELD - Phones", hours: { 40: "Break 1", 50: "Break 2", 56: "Lunch", 57: "Lunch", 58: "Lunch", 59: "Lunch" } },
+        { name: "Melanie Garcia", dept: "ELD - Phones", hours: { 46: "Break 1", 54: "Break 2", 60: "Lunch", 61: "Lunch", 62: "Lunch", 63: "Lunch" } },
+        { name: "Sebastian Quiñonez", dept: "ELD - Phones", hours: { 40: "Break 1", 56: "Lunch", 57: "Lunch", 58: "Lunch", 59: "Lunch", 63: "Break 2" } },
+        { name: "Danae Castillo", dept: "ELD - Phones", hours: { 43: "Break 1", 54: "Lunch", 55: "Lunch", 56: "Lunch", 57: "Lunch", 64: "Break 2" } },
+        { name: "Cesar Larios", dept: "ELD - Phones", hours: { 40: "Break 1", 50: "Lunch", 51: "Lunch", 52: "Lunch", 53: "Lunch", 62: "Break 2" } },
+        { name: "Jesus Rios", dept: "ELD - Phones", hours: { 38: "Break 1", 48: "Lunch", 49: "Lunch", 59: "Break 2" } },
+        { name: "Marie Perez", dept: "ELD - Phones", hours: { 39: "Break 1", 54: "Lunch", 55: "Lunch", 64: "Break 2" } },
+        { name: "Daniel Pelayo", dept: "ELD - Phones", hours: { 42: "Break 1", 53: "Lunch", 54: "Lunch", 55: "Lunch", 56: "Lunch", 65: "Break 2" } },
+        { name: "Kevin Ibarra", dept: "ELD - Phones", hours: { 45: "Break 1", 56: "Lunch", 57: "Lunch", 58: "Lunch", 59: "Lunch", 66: "Break 2" } },
+        { name: "Jose Rodriguez", dept: "ELD - Phones", hours: { 46: "Break 1", 56: "Lunch", 57: "Lunch", 69: "Break 2" } },
+        { name: "Kevin Williams", dept: "ELD - Phones", hours: { 48: "Break 1", 54: "Lunch", 55: "Lunch", 64: "Break 2" } },
+        { name: "Luis Ajche", dept: "ELD - Phones", hours: { 48: "Break 1", 55: "Lunch", 56: "Lunch", 57: "Lunch", 58: "Lunch", 68: "Break 2" } },
+        { name: "Jorge Najera", dept: "ELD - Phones", hours: { 48: "Lunch", 49: "Lunch", 50: "Lunch", 51: "Lunch", 64: "Break 1", 71: "Break 2" } },
+        { name: "Kia Francis", dept: "ELD - Phones", hours: { 51: "Break 1", 64: "Lunch", 65: "Lunch", 66: "Lunch" } },
+        { name: "Tevin Smallwood", dept: "ELD - Phones", hours: { 51: "Break 1", 65: "Lunch", 66: "Lunch", 67: "Lunch" } },
+        { name: "Shiyan Lee", dept: "ELD - Phones", hours: { 50: "Break 1", 60: "Lunch", 61: "Lunch", 62: "Lunch" } },
 
-        // INS Team (21 agents)
-        { name: "Keyren Fuertes", dept: "INS", hours: { 33: "Break 1", 45: "Lunch", 46: "Lunch", 55: "Break 2" } },
-        { name: "Otto de la Cruz", dept: "INS", hours: { 33: "Break 1", 46: "Lunch", 47: "Lunch", 48: "Lunch", 49: "Lunch", 55: "Break 2" } },
-        { name: "Manfredo Monterroso", dept: "INS", hours: { 37: "Break 1", 46: "Break 2", 54: "Lunch", 55: "Lunch", 56: "Lunch", 57: "Lunch" } },
-        { name: "Eunice Sir", dept: "INS", hours: { 35: "Break 1", 43: "Break 2", 51: "Lunch", 52: "Lunch", 53: "Lunch", 54: "Lunch" } },
-        { name: "Ana Melendez", dept: "INS", hours: { 36: "Break 1", 44: "Break 2", 52: "Lunch", 53: "Lunch", 54: "Lunch", 55: "Lunch" } },
-        { name: "Monica Lopez", dept: "INS", hours: { 37: "Break 1", 48: "Lunch", 49: "Lunch", 50: "Lunch", 51: "Lunch", 59: "Break 2" } },
-        { name: "Gustavo Lopez", dept: "INS", hours: { 35: "Break 1", 43: "Break 2", 50: "Lunch", 51: "Lunch", 52: "Lunch", 53: "Lunch" } },
-        { name: "Joseth Huerta", dept: "INS", hours: { 37: "Break 1", 46: "Lunch", 47: "Lunch", 48: "Lunch", 49: "Lunch", 56: "Break 2" } },
-        { name: "Marco Ovalle", dept: "INS", hours: { 42: "Break 1", 52: "Lunch", 53: "Lunch", 54: "Lunch", 55: "Lunch", 63: "Break 2" } },
-        { name: "Ariel Yaegui", dept: "INS", hours: { 40: "Break 1", 49: "Break 2", 57: "Lunch", 58: "Lunch", 59: "Lunch", 60: "Lunch" } },
-        { name: "Acsa Esquivel", dept: "INS", hours: { 39: "Break 1", 48: "Break 2", 54: "Lunch", 55: "Lunch", 56: "Lunch", 57: "Lunch" } },
-        { name: "Luis Leon", dept: "INS", hours: { 39: "Break 1", 49: "Lunch", 50: "Lunch", 51: "Lunch", 52: "Lunch", 60: "Break 2" } },
-        { name: "Michelle Marquez", dept: "INS", hours: { 40: "Break 1", 50: "Lunch", 51: "Lunch", 52: "Lunch", 53: "Lunch", 61: "Break 2" } },
-        { name: "Kener Lee", dept: "INS", hours: { 41: "Break 1", 49: "Break 2", 58: "Lunch", 59: "Lunch", 60: "Lunch", 61: "Lunch" } },
-        { name: "Dana Redwood", dept: "INS", hours: { 40: "Break 1", 48: "Lunch", 49: "Lunch", 60: "Break 2" } },
-        { name: "Alondra Mendoza", dept: "INS", hours: { 43: "Break 1", 52: "Lunch", 53: "Lunch", 54: "Lunch", 55: "Lunch", 62: "Break 2" } },
-        { name: "Katering Santos", dept: "INS", hours: { 44: "Break 1", 52: "Break 2", 58: "Lunch", 59: "Lunch", 60: "Lunch", 61: "Lunch" } },
-        { name: "Lynda Escobedo", dept: "INS", hours: { 44: "Break 1", 53: "Lunch", 54: "Lunch", 55: "Lunch", 56: "Lunch", 65: "Break 2" } },
-        { name: "Marielys Tejada", dept: "INS", hours: { 47: "Break 1", 54: "Lunch", 55: "Lunch", 65: "Break 2" } },
-        { name: "Cesar Colaj", dept: "INS", hours: { 48: "Break 1", 56: "Break 2", 63: "Lunch", 64: "Lunch", 65: "Lunch", 66: "Lunch" } },
-        { name: "Juan Avedaño", dept: "INS", hours: { 46: "Break 1", 57: "Break 2", 66: "Lunch", 67: "Lunch", 68: "Lunch", 69: "Lunch" } },
+        // INS - Phones
+        { name: "Keyren Fuertes", dept: "INS - Phones", hours: { 33: "Break 1", 45: "Lunch", 46: "Lunch", 55: "Break 2" } },
+        { name: "Otto de la Cruz", dept: "INS - Phones", hours: { 33: "Break 1", 46: "Lunch", 47: "Lunch", 48: "Lunch", 49: "Lunch", 55: "Break 2" } },
+        { name: "Manfredo Monterroso", dept: "INS - Phones", hours: { 37: "Break 1", 46: "Break 2", 54: "Lunch", 55: "Lunch", 56: "Lunch", 57: "Lunch" } },
+        { name: "Eunice Sir", dept: "INS - Phones", hours: { 35: "Break 1", 43: "Break 2", 51: "Lunch", 52: "Lunch", 53: "Lunch", 54: "Lunch" } },
+        { name: "Ana Melendez", dept: "INS - Phones", hours: { 36: "Break 1", 44: "Break 2", 52: "Lunch", 53: "Lunch", 54: "Lunch", 55: "Lunch" } },
+        { name: "Monica Lopez", dept: "INS - Phones", hours: { 37: "Break 1", 48: "Lunch", 49: "Lunch", 50: "Lunch", 51: "Lunch", 59: "Break 2" } },
+        { name: "Gustavo Lopez", dept: "INS - Phones", hours: { 35: "Break 1", 43: "Break 2", 50: "Lunch", 51: "Lunch", 52: "Lunch", 53: "Lunch" } },
+        { name: "Joseth Huerta", dept: "INS - Phones", hours: { 37: "Break 1", 46: "Lunch", 47: "Lunch", 48: "Lunch", 49: "Lunch", 56: "Break 2" } },
+        { name: "Marco Ovalle", dept: "INS - Phones", hours: { 42: "Break 1", 52: "Lunch", 53: "Lunch", 54: "Lunch", 55: "Lunch", 63: "Break 2" } },
+        { name: "Ariel Yaegui", dept: "INS - Phones", hours: { 40: "Break 1", 49: "Break 2", 57: "Lunch", 58: "Lunch", 59: "Lunch", 60: "Lunch" } },
+        { name: "Acsa Esquivel", dept: "INS - Phones", hours: { 39: "Break 1", 48: "Break 2", 54: "Lunch", 55: "Lunch", 56: "Lunch", 57: "Lunch" } },
+        { name: "Luis Leon", dept: "INS - Phones", hours: { 39: "Break 1", 49: "Lunch", 50: "Lunch", 51: "Lunch", 52: "Lunch", 60: "Break 2" } },
+        { name: "Michelle Marquez", dept: "INS - Phones", hours: { 40: "Break 1", 50: "Lunch", 51: "Lunch", 52: "Lunch", 53: "Lunch", 61: "Break 2" } },
+        { name: "Kener Lee", dept: "INS - Phones", hours: { 41: "Break 1", 49: "Break 2", 58: "Lunch", 59: "Lunch", 60: "Lunch", 61: "Lunch" } },
+        { name: "Dana Redwood", dept: "INS - Phones", hours: { 40: "Break 1", 48: "Lunch", 49: "Lunch", 60: "Break 2" } },
+        { name: "Alondra Mendoza", dept: "INS - Phones", hours: { 43: "Break 1", 52: "Lunch", 53: "Lunch", 54: "Lunch", 55: "Lunch", 62: "Break 2" } },
+        { name: "Katering Santos", dept: "INS - Phones", hours: { 44: "Break 1", 52: "Break 2", 58: "Lunch", 59: "Lunch", 60: "Lunch", 61: "Lunch" } },
+        { name: "Lynda Escobedo", dept: "INS - Phones", hours: { 44: "Break 1", 53: "Lunch", 54: "Lunch", 55: "Lunch", 56: "Lunch", 65: "Break 2" } },
+        { name: "Marielys Tejada", dept: "INS - Phones", hours: { 47: "Break 1", 54: "Lunch", 55: "Lunch", 65: "Break 2" } },
+        { name: "Cesar Colaj", dept: "INS - Phones", hours: { 48: "Break 1", 56: "Break 2", 63: "Lunch", 64: "Lunch", 65: "Lunch", 66: "Lunch" } },
+        { name: "Juan Avedaño", dept: "INS - Phones", hours: { 46: "Break 1", 57: "Break 2", 66: "Lunch", 67: "Lunch", 68: "Lunch", 69: "Lunch" } },
 
-        // LL+ Team (8 agents)
+        // LL+ Team
         { name: "Julio Cortez", dept: "LL+", hours: { 32: "Break 1", 40: "Break 2", 48: "Lunch", 49: "Lunch", 50: "Lunch", 51: "Lunch" } },
         { name: "Alex Coyote", dept: "LL+", hours: { 32: "Break 1", 40: "Break 2", 50: "Lunch", 51: "Lunch", 52: "Lunch", 53: "Lunch" } },
         { name: "Omar Gomez", dept: "LL+", hours: { 41: "Break 1", 49: "Break 2", 54: "Lunch", 55: "Lunch", 56: "Lunch", 57: "Lunch" } },
@@ -1296,7 +1339,7 @@
         { name: "Jonathan Pirir", dept: "LL+", hours: { 40: "Break 1", 48: "Break 2", 58: "Lunch", 59: "Lunch", 60: "Lunch", 61: "Lunch" } },
         { name: "Yossi Martinez", dept: "LL+", hours: { 46: "Break 1", 52: "Break 2", 60: "Lunch", 61: "Lunch", 62: "Lunch", 63: "Lunch" } },
 
-        // TFX Team (3 agents)
+        // TFX Team
         { name: "Fernando Ramirez", dept: "TFX", hours: { 38: "Break 1", 46: "Lunch", 47: "Lunch", 48: "Lunch", 49: "Lunch", 54: "Break 2" } },
         { name: "Maria Saucedo", dept: "TFX", hours: { 50: "Break 1", 56: "Lunch", 57: "Lunch", 58: "Lunch", 59: "Lunch", 63: "Break 2" } },
         { name: "Mariana Velasquez", dept: "TFX", hours: { 40: "Break 1", 52: "Lunch", 53: "Lunch", 54: "Lunch", 55: "Lunch", 62: "Break 2" } }
@@ -1327,9 +1370,7 @@
     function initFirebaseListeners() {
         onValue(dbRefVolume, (snapshot) => {
             const data = snapshot.val();
-            if (data) {
-                multiPeriodVolumeDB = data;
-            }
+            if (data) multiPeriodVolumeDB = data;
             loadActivePeriodVolume();
             renderAllUI();
             renderSavedPeriodsList();
@@ -1416,7 +1457,6 @@
     let volumeCapacityChartInstance = null;
     let deptDistributionChartInstance = null;
 
-    // TOGGLE LIGHT/DARK MODE
     window.toggleTheme = function() {
         const body = document.body;
         const icon = document.getElementById('themeIcon');
@@ -1462,7 +1502,7 @@
 
         if (!multiPeriodVolumeDB[monthKey]) multiPeriodVolumeDB[monthKey] = {};
         if (!multiPeriodVolumeDB[monthKey][weekKey]) {
-            multiPeriodVolumeDB[monthKey][weekKey] = { obs: {}, ins: {}, eld: {}, ll: {}, tfx: {} };
+            multiPeriodVolumeDB[monthKey][weekKey] = { obs: {}, ins_p: {}, eld_p: {}, ll: {}, tfx: {}, cases: {} };
         }
 
         const periodStore = multiPeriodVolumeDB[monthKey][weekKey];
@@ -1470,7 +1510,7 @@
 
         for (let h = 0; h < 24; h++) {
             let sumAns = 0, sumAbQ = 0, sumAbCSAT = 0, sumAbH = 0;
-            ['obs', 'ins', 'eld', 'll', 'tfx'].forEach(t => {
+            ['obs', 'ins_p', 'eld_p', 'll', 'tfx', 'cases'].forEach(t => {
                 if (periodStore[t] && periodStore[t][h]) {
                     const item = periodStore[t][h];
                     sumAns += item.ans || 0;
@@ -1492,7 +1532,7 @@
         }
 
         document.querySelectorAll('.periodLabel').forEach(el => el.textContent = `${getActiveMonth()} - ${getActiveWeek()}`);
-        document.getElementById('chart1Title').textContent = `Consolidated Call Volume vs. Capacity (${getActiveMonth()} - ${getActiveWeek()})`;
+        document.getElementById('chart1Title').textContent = `Consolidated Call / Case Volume vs. Capacity (${getActiveMonth()} - ${getActiveWeek()})`;
     }
 
     function renderAllUI() {
@@ -1604,10 +1644,16 @@
         const occ = (parseFloat(document.getElementById('occInput').value) || 85) / 100;
         const callsPerHourPerAgent = (60 / aht) * occ;
 
+        const totalPhoneRoster = (deptRosterCounts["OBS - Phones"] || 0) + (deptRosterCounts["INS - Phones"] || 0) + (deptRosterCounts["ELD - Phones"] || 0);
+
         hourlySlots.forEach(slot => {
             const v = volumeDataCombined[slot.h24] || { tot: 0 };
-            const phoneAway = (hourlyDataPattern[slot.h24]["OBS - Phones"]) ? hourlyDataPattern[slot.h24]["OBS - Phones"].length : 0;
-            const phoneAvail = Math.max(0, deptRosterCounts["OBS - Phones"] - phoneAway);
+            const obsAway = (hourlyDataPattern[slot.h24]["OBS - Phones"]) ? hourlyDataPattern[slot.h24]["OBS - Phones"].length : 0;
+            const insAway = (hourlyDataPattern[slot.h24]["INS - Phones"]) ? hourlyDataPattern[slot.h24]["INS - Phones"].length : 0;
+            const eldAway = (hourlyDataPattern[slot.h24]["ELD - Phones"]) ? hourlyDataPattern[slot.h24]["ELD - Phones"].length : 0;
+            
+            const totalPhoneAway = obsAway + insAway + eldAway;
+            const phoneAvail = Math.max(0, totalPhoneRoster - totalPhoneAway);
 
             const reqAgents = v.tot > 0 ? Math.ceil(v.tot / callsPerHourPerAgent) : 0;
             const gap = phoneAvail - reqAgents;
@@ -1625,7 +1671,7 @@
             tr.innerHTML = `
                 <td class="time-col">${slot.time12}</td>
                 <td style="background-color: rgba(255, 183, 3, 0.25); color: var(--accent-yellow);"><b>${v.tot.toFixed(1)}</b></td>
-                <td>${phoneAvail} of ${deptRosterCounts["OBS - Phones"]}</td>
+                <td>${phoneAvail} of ${totalPhoneRoster}</td>
                 <td>${reqAgents}</td>
                 <td>${gap >= 0 ? '+' + gap : gap}</td>
                 <td>${recText}</td>
@@ -1656,11 +1702,11 @@
         container.innerHTML = `
             <div class="recommendation-card">
                 <h3>Peak-Hour Shift &amp; Meal Staggering (${month} - ${week})</h3>
-                <p>For <b>${month} (${week})</b>, overall call volume peaks around <b>${timeLabel}</b> with an average volume of <b>${maxVol.toFixed(1)} calls/hour</b>. Overlapping lunches and breaks reduce available phone capacity during key morning windows. Staggering meal schedules into smaller shifts is essential to maintain queue SLA.</p>
+                <p>For <b>${month} (${week})</b>, overall volume peaks around <b>${timeLabel}</b> with an average volume of <b>${maxVol.toFixed(1)} interactions/hour</b>. Overlapping lunches and breaks reduce available capacity during key windows. Staggering meal schedules into smaller shifts is essential to maintain queue SLA.</p>
             </div>
             <div class="recommendation-card">
                 <h3>Cross-Queue Reinforcement &amp; Flex Staffing</h3>
-                <p>When demand spikes above capacity in <i>${month} - ${week}</i>, activate cross-skilling protocols so that agents from non-phone or lower-volume teams support phone queues during high-demand hours.</p>
+                <p>When demand spikes above capacity in <i>${month} - ${week}</i>, activate cross-skilling protocols so that agents from non-phone or lower-volume teams support phone/case queues during high-demand hours.</p>
             </div>
         `;
     }
@@ -1673,7 +1719,7 @@
                 labels: hourlySlots.map(s => s.time12),
                 datasets: [
                     {
-                        label: 'Total Call Volume',
+                        label: 'Total Volume',
                         data: [],
                         borderColor: '#ffb703',
                         backgroundColor: 'rgba(255, 183, 3, 0.25)',
@@ -1746,10 +1792,16 @@
         const volumeData = [];
         const capacityData = [];
 
+        const totalPhoneRoster = (deptRosterCounts["OBS - Phones"] || 0) + (deptRosterCounts["INS - Phones"] || 0) + (deptRosterCounts["ELD - Phones"] || 0);
+
         hourlySlots.forEach(slot => {
             const v = volumeDataCombined[slot.h24] ? volumeDataCombined[slot.h24].tot : 0;
-            const phoneAway = hourlyDataPattern[slot.h24]["OBS - Phones"] ? hourlyDataPattern[slot.h24]["OBS - Phones"].length : 0;
-            const phoneAvail = Math.max(0, deptRosterCounts["OBS - Phones"] - phoneAway);
+            const obsAway = hourlyDataPattern[slot.h24]["OBS - Phones"] ? hourlyDataPattern[slot.h24]["OBS - Phones"].length : 0;
+            const insAway = hourlyDataPattern[slot.h24]["INS - Phones"] ? hourlyDataPattern[slot.h24]["INS - Phones"].length : 0;
+            const eldAway = hourlyDataPattern[slot.h24]["ELD - Phones"] ? hourlyDataPattern[slot.h24]["ELD - Phones"].length : 0;
+            
+            const totalPhoneAway = obsAway + insAway + eldAway;
+            const phoneAvail = Math.max(0, totalPhoneRoster - totalPhoneAway);
             const callCapacity = Math.round(phoneAvail * callsPerHourPerAgent);
 
             volumeData.push(v);
@@ -1807,10 +1859,11 @@
         if (rawTextsDB[mKey] && rawTextsDB[mKey][wKey]) {
             const raw = rawTextsDB[mKey][wKey];
             document.getElementById('volumeText_obs').value = raw.obs || '';
-            document.getElementById('volumeText_ins').value = raw.ins || '';
-            document.getElementById('volumeText_eld').value = raw.eld || '';
+            document.getElementById('volumeText_ins_p').value = raw.ins_p || '';
+            document.getElementById('volumeText_eld_p').value = raw.eld_p || '';
             document.getElementById('volumeText_ll').value = raw.ll || '';
             document.getElementById('volumeText_tfx').value = raw.tfx || '';
+            document.getElementById('casesRawText').value = raw.casesText || '';
         }
     };
 
@@ -1838,6 +1891,25 @@
             document.getElementById('authModal').classList.add('active');
         }
     }
+
+    window.switchImportMode = function(mode) {
+        const btnPhone = document.getElementById('btnModePhone');
+        const btnCases = document.getElementById('btnModeCases');
+        const secPhone = document.getElementById('phoneImportSection');
+        const secCases = document.getElementById('casesImportSection');
+
+        if (mode === 'phone') {
+            btnPhone.classList.add('active');
+            btnCases.classList.remove('active');
+            secPhone.style.display = 'block';
+            secCases.style.display = 'none';
+        } else {
+            btnCases.classList.add('active');
+            btnPhone.classList.remove('active');
+            secCases.style.display = 'block';
+            secPhone.style.display = 'none';
+        }
+    };
 
     function setupEventListeners() {
         document.getElementById('monthSelect').addEventListener('change', () => {
@@ -1916,8 +1988,8 @@
 
         document.getElementById('teamImportTabs').addEventListener('click', (e) => {
             if (!e.target.classList.contains('tab-btn')) return;
-            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.querySelectorAll('#teamImportTabs .tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('#phoneImportSection .tab-content').forEach(c => c.classList.remove('active'));
 
             e.target.classList.add('active');
             const targetTab = e.target.getAttribute('data-tab');
@@ -1956,7 +2028,6 @@
         }
     }
 
-    // MULTI-DAY PARSER MAPS TO 24 HOURLY INTERVALS FOR DASHBOARD TABLES/CHARTS
     function parsePastedTable(rawText) {
         if (!rawText || !rawText.trim()) return {};
         const result = {};
@@ -2037,6 +2108,45 @@
         return result;
     }
 
+    // PARSER PARADIGMA TABLA DE CASES Y CONVERSACIONES (FORMATO TEAMMATE)
+    function parseCasesTable(rawText) {
+        if (!rawText || !rawText.trim()) return {};
+        const lines = rawText.split('\n');
+        let totalAssigned = 0;
+        let totalReplied = 0;
+        let totalClosed = 0;
+
+        const regex = /([A-Za-z\s]+?)\s*(\d+)\s*(\d+)\s*(\d+)/;
+
+        lines.forEach(line => {
+            const match = line.match(regex);
+            if (match) {
+                totalAssigned += parseInt(match[2], 10) || 0;
+                totalReplied += parseInt(match[3], 10) || 0;
+                totalClosed += parseInt(match[4], 10) || 0;
+            }
+        });
+
+        const hourlyResult = {};
+        const activeHours = [9, 10, 11, 12, 13, 14, 15, 16, 17];
+        const hourlyAns = totalClosed / activeHours.length;
+
+        for (let h = 0; h < 24; h++) {
+            if (activeHours.includes(h)) {
+                hourlyResult[h] = {
+                    ans: hourlyAns,
+                    abQ: 0,
+                    abCSAT: 0,
+                    abH: 0,
+                    tot: hourlyAns
+                };
+            } else {
+                hourlyResult[h] = { ans: 0, abQ: 0, abCSAT: 0, abH: 0, tot: 0 };
+            }
+        }
+        return hourlyResult;
+    }
+
     function processTeamTabsData() {
         const targetMonth = document.getElementById('importMonthSelect').value;
         const targetWeek = document.getElementById('importWeekSelect').value;
@@ -2046,7 +2156,7 @@
 
         if (!multiPeriodVolumeDB[monthKey]) multiPeriodVolumeDB[monthKey] = {};
         if (!multiPeriodVolumeDB[monthKey][weekKey]) {
-            multiPeriodVolumeDB[monthKey][weekKey] = { obs: {}, ins: {}, eld: {}, ll: {}, tfx: {} };
+            multiPeriodVolumeDB[monthKey][weekKey] = { obs: {}, ins_p: {}, eld_p: {}, ll: {}, tfx: {}, cases: {} };
         }
 
         if (!rawTextsDB[monthKey]) rawTextsDB[monthKey] = {};
@@ -2055,20 +2165,26 @@
         const periodStore = multiPeriodVolumeDB[monthKey][weekKey];
         const rawStore = rawTextsDB[monthKey][weekKey];
 
-        const inputs = {
+        const phoneInputs = {
             'obs': document.getElementById('volumeText_obs').value,
-            'ins': document.getElementById('volumeText_ins').value,
-            'eld': document.getElementById('volumeText_eld').value,
+            'ins_p': document.getElementById('volumeText_ins_p').value,
+            'eld_p': document.getElementById('volumeText_eld_p').value,
             'll':  document.getElementById('volumeText_ll').value,
             'tfx': document.getElementById('volumeText_tfx').value
         };
 
-        Object.keys(inputs).forEach(key => {
-            if (inputs[key] && inputs[key].trim().length > 0) {
-                rawStore[key] = inputs[key];
-                periodStore[key] = parsePastedTable(inputs[key]);
+        Object.keys(phoneInputs).forEach(key => {
+            if (phoneInputs[key] && phoneInputs[key].trim().length > 0) {
+                rawStore[key] = phoneInputs[key];
+                periodStore[key] = parsePastedTable(phoneInputs[key]);
             }
         });
+
+        const casesRaw = document.getElementById('casesRawText').value;
+        if (casesRaw && casesRaw.trim().length > 0) {
+            rawStore['casesText'] = casesRaw;
+            periodStore['cases'] = parseCasesTable(casesRaw);
+        }
 
         document.getElementById('monthSelect').value = targetMonth;
         document.getElementById('weekSelect').value = targetWeek;
@@ -2134,7 +2250,6 @@
         initDragAndDrop();
     }
 
-    // DRAG AND DROP ENGINE FOR AGENT REORDERING
     function initDragAndDrop() {
         const tbody = document.getElementById('mgmtAgentsTableBody');
         const rows = tbody.querySelectorAll('.agent-row-draggable');
@@ -2188,7 +2303,6 @@
             if (ag) newDeptAgents.push(ag);
         });
 
-        // Reinsert ordered agents back into master DB
         const otherAgents = masterAgentsDB.filter(a => a.dept !== selectedDept);
         masterAgentsDB = [...otherAgents, ...newDeptAgents];
 

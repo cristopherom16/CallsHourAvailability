@@ -26,12 +26,59 @@
             --text-main: #ffffff;           /* Texto claro para legibilidad */
         }
 
+        /* LIGHT MODE OVERRIDES */
+        body.light-mode {
+            --bg-light: #f8fafc;
+            --card-bg: #ffffff;
+            --primary-dark: #e2e8f0;
+            --primary-color: #cbd5e1;
+            --text-main: #0f172a;
+            --accent-yellow-light: #fef3c7;
+        }
+
+        body.light-mode .header,
+        body.light-mode .controls-panel,
+        body.light-mode .chart-card,
+        body.light-mode .table-responsive,
+        body.light-mode .modal-card,
+        body.light-mode .modal-header,
+        body.light-mode .modal-footer,
+        body.light-mode .saved-weeks-panel,
+        body.light-mode #agentFormCard,
+        body.light-mode .recommendation-card {
+            background-color: #ffffff !important;
+            color: #0f172a !important;
+        }
+
+        body.light-mode td,
+        body.light-mode td.details-col,
+        body.light-mode .recommendation-card p,
+        body.light-mode .modal-body,
+        body.light-mode .saved-week-chip {
+            color: #0f172a !important;
+        }
+
+        body.light-mode td.time-col {
+            background-color: #f1f5f9 !important;
+            color: #b67d00 !important;
+        }
+
+        body.light-mode input.input-select,
+        body.light-mode select.input-select,
+        body.light-mode input.input-number,
+        body.light-mode textarea.input-text,
+        body.light-mode input.input-text {
+            background-color: #f8fafc !important;
+            color: #0f172a !important;
+        }
+
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: var(--bg-light);
             margin: 0;
             padding: 20px;
             color: var(--text-main);
+            transition: background-color 0.3s, color 0.3s;
         }
 
         .container {
@@ -654,9 +701,38 @@
 
         .chip-checkbox input { cursor: pointer; }
         .auth-card { max-width: 400px; text-align: center; }
+
+        /* COMPACT FLOATING THEME TOGGLE BUTTON */
+        .theme-toggle-btn {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            z-index: 999;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: var(--accent-yellow);
+            color: #000000;
+            border: 2px solid var(--accent-yellow);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            transition: transform 0.2s, background-color 0.2s;
+        }
+        .theme-toggle-btn:hover {
+            transform: scale(1.1);
+            background-color: #d49400;
+        }
     </style>
 </head>
 <body>
+
+<!-- FLOATING THEME TOGGLE BUTTON (BOTTOM-LEFT) -->
+<button class="theme-toggle-btn" onclick="toggleTheme()" title="Toggle Light/Dark Mode">
+    <i id="themeIcon" class="fa-solid fa-sun" style="font-size: 1.1rem;"></i>
+</button>
 
 <div class="container">
     <div class="header">
@@ -1340,7 +1416,36 @@
     let volumeCapacityChartInstance = null;
     let deptDistributionChartInstance = null;
 
+    // TOGGLE LIGHT/DARK MODE
+    window.toggleTheme = function() {
+        const body = document.body;
+        const icon = document.getElementById('themeIcon');
+        const isLight = body.classList.toggle('light-mode');
+
+        if (isLight) {
+            icon.className = 'fa-solid fa-moon';
+            localStorage.setItem('capacity_dashboard_theme', 'light');
+        } else {
+            icon.className = 'fa-solid fa-sun';
+            localStorage.setItem('capacity_dashboard_theme', 'dark');
+        }
+    };
+
+    function initTheme() {
+        const savedTheme = localStorage.getItem('capacity_dashboard_theme') || 'dark';
+        const icon = document.getElementById('themeIcon');
+
+        if (savedTheme === 'light') {
+            document.body.classList.add('light-mode');
+            if (icon) icon.className = 'fa-solid fa-moon';
+        } else {
+            document.body.classList.remove('light-mode');
+            if (icon) icon.className = 'fa-solid fa-sun';
+        }
+    }
+
     document.addEventListener("DOMContentLoaded", () => {
+        initTheme();
         recountRosterFromMasterDB();
         syncPatternFromMasterDB();
         initCharts();

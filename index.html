@@ -76,7 +76,6 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: var(--bg-light);
             margin: 0;
-            /* Margen horizontal exactamente a 1mm (~4px) del icono toggle flotante (40px width + 16px left + 4px = 60px padding-left) */
             padding: 10px 10px 10px 60px;
             color: var(--text-main);
             transition: background-color 0.3s, color 0.3s;
@@ -1252,7 +1251,7 @@
     }
     const agentSlots15Min = generate15MinSlots();
 
-    // Roster Base con Clock In (32 = 8:00 AM) y Clock Out (68 = 5:00 PM) por defecto
+    // Roster Base
     const rawRosterData = [
         // OBS - Phones
         { name: "Dean Spencer", dept: "OBS - Phones", clockIn: 32, clockOut: 68, hours: { 35: "Break 1", 44: "Lunch", 45: "Lunch", 55: "Break 2" } },
@@ -1574,12 +1573,24 @@
         const periodStore = multiPeriodVolumeDB[monthKey][weekKey];
         volumeDataCombined = { phones: {}, cases: {} };
 
+        // Departamentos seleccionados según filtro
+        const activeDepts = getActiveVisibleDepts();
+
         for (let h = 0; h < 24; h++) {
             // PHONES VOLUMES
             let pAns = 0, pAbCSAT = 0, pAbQ = 0, pAbH = 0, pAbR = 0;
-            ['obs', 'ins_p', 'eld_p', 'll', 'tfx'].forEach(t => {
-                if (periodStore[t] && periodStore[t][h]) {
-                    const item = periodStore[t][h];
+            const phoneMap = {
+                'OBS - Phones': 'obs',
+                'INS - Phones': 'ins_p',
+                'ELD - Phones': 'eld_p',
+                'LL+': 'll',
+                'TFX': 'tfx'
+            };
+
+            activeDepts.forEach(dept => {
+                const key = phoneMap[dept];
+                if (key && periodStore[key] && periodStore[key][h]) {
+                    const item = periodStore[key][h];
                     pAns += item.ans || 0;
                     pAbCSAT += item.abCSAT || 0;
                     pAbQ += item.abQ || 0;
@@ -1587,6 +1598,7 @@
                     pAbR += item.abR || 0;
                 }
             });
+
             const pTot = Math.round(pAns + pAbCSAT + pAbQ + pAbH + pAbR);
             volumeDataCombined.phones[h] = {
                 ans: Math.round(pAns), abCSAT: Math.round(pAbCSAT), abQ: Math.round(pAbQ), abH: Math.round(pAbH), abR: Math.round(pAbR),
@@ -1595,10 +1607,22 @@
 
             // CASES VOLUMES
             let cAns = 0;
-            if (periodStore.cases && periodStore.cases[h]) {
-                const item = periodStore.cases[h];
-                cAns += item.ans || 0;
+            if (periodStore.cases) {
+                if (selectedDeptFilter === 'ALL_CHANNEL') {
+                    // Sumar todos los casos importados
+                    for (let deptKey in periodStore.cases) {
+                        if (periodStore.cases[deptKey] && periodStore.cases[deptKey][h]) {
+                            cAns += periodStore.cases[deptKey][h].ans || 0;
+                        }
+                    }
+                } else if (periodStore.cases[selectedDeptFilter] && periodStore.cases[selectedDeptFilter][h]) {
+                    cAns = periodStore.cases[selectedDeptFilter][h].ans || 0;
+                } else if (periodStore.cases[h]) {
+                    // Fallback para estructuras planas
+                    cAns = periodStore.cases[h].ans || 0;
+                }
             }
+
             const cTot = Math.round(cAns);
             volumeDataCombined.cases[h] = {
                 ans: cTot, abCSAT: 0, abQ: 0, abH: 0, abR: 0,
@@ -1751,11 +1775,9 @@
                     let cIn = ag.clockIn !== undefined ? ag.clockIn : 32;
                     let cOut = ag.clockOut !== undefined ? ag.clockOut : 68;
 
-                    // Calcular qué fracción de la hora está el agente en su Turno
                     for (let sIdx = hourStartSlot; sIdx < hourEndSlot; sIdx++) {
                         if (sIdx >= cIn && sIdx < cOut) {
-                            scheduledAgentsCount += 0.25; // Suma 15 min de turno activo
-                            // Si tiene away en esta fracción de 15m, restar 0.25h
+                            scheduledAgentsCount += 0.25;
                             if (ag.hours && ag.hours[sIdx] !== undefined) {
                                 awayEquivalentHours += 0.25;
                             }
@@ -1766,7 +1788,6 @@
 
             const activeVol = currentVolSet[slot.h24] ? currentVolSet[slot.h24].tot : 0;
 
-            // Agentes Disponibles Netos en Llamadas / Casos
             const availAgents = Math.max(0, Number((scheduledAgentsCount - awayEquivalentHours).toFixed(2)));
             const reqAgents = activeVol > 0 ? Math.ceil(activeVol / itemsPerHourPerAgent) : 0;
             const gap = Number((availAgents - reqAgents).toFixed(1));
@@ -2150,11 +2171,9 @@
             const trimmed = line.trim();
             if (!trimmed) return;
 
-            // Ignorar filas de encabezados y totales
             const lower = trimmed.toLowerCase();
             if (lower.includes('total') || lower.includes('date') || lower.includes('answered') || lower.includes('teammate')) return;
 
-            // Extraer hora (ej. "8:00 AM", "09:00", "13:00")
             const timeMatch = trimmed.match(/(\d{1,2}):(\d{2})(?::\d{2})?\s*(AM|PM)?/i);
             if (!timeMatch) return;
 
@@ -2166,8 +2185,6 @@
 
             if (h < 0 || h >= 24) return;
 
-            // Extraer valores numéricos.
-            // Regla Anti-40k: Ignorar números >= 800 (descarta Años como 2025/2026, IDs de llamada y sumatorios totales)
             const restOfLine = trimmed.substring(timeMatch.index + timeMatch[0].length);
             let digits = restOfLine.split(/[\t\s,]+/)
                 .map(v => parseFloat(v))
@@ -2193,7 +2210,6 @@
             }
         });
 
-        // Promediar por franja horaria para evitar acumulación errónea
         for (let h in hourlyAccumulator) {
             let item = hourlyAccumulator[h];
             let cnt = item.count || 1;
@@ -2211,41 +2227,51 @@
         return result;
     }
 
-    // PARSER RIGUROSO PARA CASES
+    // PARSER MEJORADO PARA CASOS CON ASIGNACIÓN DE DEPARTAMENTO
     function parseCasesTable(rawText) {
         if (!rawText || !rawText.trim()) return {};
         
         const lines = rawText.split(/\r?\n/);
-        let totalClosedCases = 0;
-        let countRows = 0;
+        const deptCasesAcc = {
+            'OBS - Cases': {},
+            'INS - Cases': {},
+            'ELD - Cases': {}
+        };
+
+        casesDepts.forEach(d => {
+            for (let h = 0; h < 24; h++) deptCasesAcc[d][h] = { ans: 0 };
+        });
 
         lines.forEach(line => {
             const trimmed = line.trim();
             if (!trimmed || trimmed.toLowerCase().includes('teammate') || trimmed.toLowerCase().includes('total')) return;
 
+            // Extraer números
             const numbers = trimmed.split(/[\s\t,]+/)
                 .map(n => parseInt(n, 10))
                 .filter(n => !isNaN(n) && n >= 0 && n < 800);
 
             if (numbers.length >= 1) {
-                let closedVal = numbers[numbers.length - 1]; // Tomar el valor cerrado
-                totalClosedCases += closedVal;
-                countRows++;
+                let closedVal = numbers[numbers.length - 1]; // Casos cerrados
+                
+                // Mapear agente a departamento según Master DB
+                let matchedAgent = masterAgentsDB.find(ag => trimmed.toLowerCase().includes(ag.name.toLowerCase()));
+                let targetDept = matchedAgent ? matchedAgent.dept : 'OBS - Cases';
+
+                if (!deptCasesAcc[targetDept]) deptCasesAcc[targetDept] = {};
+
+                // Distribuir equitativamente en horario operativo activo (8 AM - 4 PM)
+                const activeHours = [8, 9, 10, 11, 12, 13, 14, 15, 16];
+                const hourlyVal = Math.round(closedVal / activeHours.length);
+
+                activeHours.forEach(h => {
+                    if (!deptCasesAcc[targetDept][h]) deptCasesAcc[targetDept][h] = { ans: 0 };
+                    deptCasesAcc[targetDept][h].ans += hourlyVal;
+                });
             }
         });
 
-        const hourlyResult = {};
-        const activeHours = [8, 9, 10, 11, 12, 13, 14, 15, 16];
-        const hourlyAns = activeHours.length > 0 ? Math.round(totalClosedCases / activeHours.length) : 0;
-
-        for (let h = 0; h < 24; h++) {
-            if (activeHours.includes(h)) {
-                hourlyResult[h] = { ans: hourlyAns, abCSAT: 0, abQ: 0, abH: 0, abR: 0, tot: hourlyAns };
-            } else {
-                hourlyResult[h] = { ans: 0, abCSAT: 0, abQ: 0, abH: 0, abR: 0, tot: 0 };
-            }
-        }
-        return hourlyResult;
+        return deptCasesAcc;
     }
 
     function processTeamTabsData() {

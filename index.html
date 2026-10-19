@@ -76,8 +76,7 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: var(--bg-light);
             margin: 0;
-            /* El botón toggle mide 40px y tiene left: 16px. Su borde derecho está en 56px.
-               Con padding-left: 60px el contenedor queda exactamente a 4px (1 mm) del icono */
+            /* Margen horizontal a 1mm (~4px) del icono toggle flotante (40px width + 16px left + 4px = 60px padding-left) */
             padding: 10px 10px 10px 60px;
             color: var(--text-main);
             transition: background-color 0.3s, color 0.3s;
@@ -942,7 +941,8 @@
                 <tr>
                     <th>Time Slot</th>
                     <th style="background-color: var(--accent-yellow); color: #000;">Avg Volume</th>
-                    <th>Available Agents</th>
+                    <th>Scheduled Agents (Shift Active)</th>
+                    <th>Available Agents (Net On Calls)</th>
                     <th>Required Agents</th>
                     <th>Net Gap / Coverage</th>
                     <th>Recommended Action</th>
@@ -1093,7 +1093,7 @@
 <div class="modal-overlay" id="mgmtModal">
     <div class="modal-card" style="max-width: 950px;">
         <div class="modal-header">
-            <h3>Agent Roster &amp; Away Schedules Management (Drag to Reorder)</h3>
+            <h3>Agent Roster &amp; Shift Management (Clock-In / Clock-Out)</h3>
             <button class="close-btn" id="btnCloseMgmt">&times;</button>
         </div>
         <div class="modal-body">
@@ -1135,8 +1135,19 @@
                             <option value="TFX">TFX</option>
                         </select>
                     </div>
+
+                    <!-- CONFIGURACIÓN DE CLOCK IN Y CLOCK OUT -->
+                    <div class="form-group">
+                        <label style="color:var(--accent-yellow); font-weight:bold;">Clock In (Inicio de Turno):</label>
+                        <select id="clockInSelect" class="input-select"></select>
+                    </div>
+                    <div class="form-group">
+                        <label style="color:var(--accent-yellow); font-weight:bold;">Clock Out (Fin de Turno):</label>
+                        <select id="clockOutSelect" class="input-select"></select>
+                    </div>
+
                     <div class="form-group full">
-                        <label>Select Away Intervals (15-Min Granularity):</label>
+                        <label>Select Away Intervals during Shift (Breaks / Lunch):</label>
                         <div class="hour-chips" id="hourChipsContainer"></div>
                     </div>
                 </div>
@@ -1153,6 +1164,7 @@
                             <th style="width: 30px;"></th>
                             <th>Agent Name</th>
                             <th>Department</th>
+                            <th>Shift (Clock In - Out)</th>
                             <th>Away Hours &amp; Activities</th>
                             <th>Actions</th>
                         </tr>
@@ -1198,8 +1210,8 @@
     const casesDepts = ['OBS - Cases', 'INS - Cases', 'ELD - Cases'];
     const depts = [...phoneDepts, ...casesDepts];
 
-    let activeChannel = 'PHONES'; // 'PHONES' o 'CASES'
-    let selectedDeptFilter = 'ALL_CHANNEL'; // Filtra los equipos dentro del canal activo
+    let activeChannel = 'PHONES';
+    let selectedDeptFilter = 'ALL_CHANNEL';
 
     let deptRosterCounts = {
         'OBS - Phones': 27,
@@ -1240,116 +1252,117 @@
     }
     const agentSlots15Min = generate15MinSlots();
 
+    // Roster Base con Clock In (32 = 8:00 AM) y Clock Out (68 = 5:00 PM) por defecto
     const rawRosterData = [
         // OBS - Phones
-        { name: "Dean Spencer", dept: "OBS - Phones", hours: { 35: "Break 1", 44: "Lunch", 45: "Lunch", 55: "Break 2" } },
-        { name: "Daneil Facey", dept: "OBS - Phones", hours: { 40: "Lunch", 41: "Lunch", 42: "Lunch", 51: "Break 2" } },
-        { name: "Shanique Kelly", dept: "OBS - Phones", hours: { 36: "Break 1", 49: "Lunch", 50: "Lunch", 51: "Lunch" } },
-        { name: "Stephanie Temple", dept: "OBS - Phones", hours: { 39: "Break 1", 48: "Lunch", 49: "Lunch", 59: "Break 2" } },
-        { name: "Kellyneth Estrada", dept: "OBS - Phones", hours: { 38: "Break 1", 52: "Lunch", 53: "Lunch", 59: "Break 2" } },
-        { name: "Alexander Santamaria", dept: "OBS - Phones", hours: { 39: "Break 1", 50: "Lunch", 51: "Lunch", 60: "Break 2" } },
-        { name: "Sonia Jimenez", dept: "OBS - Phones", hours: { 35: "Break 1", 50: "Lunch", 51: "Lunch", 60: "Break 2" } },
-        { name: "Ryan Barber", dept: "OBS - Phones", hours: { 56: "Lunch", 57: "Lunch", 58: "Lunch", 59: "Lunch" } },
-        { name: "Leona Wallace", dept: "OBS - Phones", hours: { 48: "Lunch", 49: "Lunch", 50: "Lunch", 56: "Break 2" } },
-        { name: "Vashaun Thompson", dept: "OBS - Phones", hours: { 40: "Break 1", 50: "Lunch", 51: "Lunch", 52: "Lunch" } },
-        { name: "Israel Arias", dept: "OBS - Phones", hours: { 41: "Break 1", 48: "Lunch", 49: "Lunch", 50: "Lunch", 51: "Lunch", 56: "Break 2" } },
-        { name: "Bruno Rodriguez", dept: "OBS - Phones", hours: { 40: "Break 1", 52: "Lunch", 53: "Lunch", 54: "Lunch", 55: "Lunch", 62: "Break 2" } },
-        { name: "Kevin Durango", dept: "OBS - Phones", hours: { 39: "Break 1", 52: "Lunch", 53: "Lunch", 54: "Lunch", 55: "Lunch", 62: "Break 2" } },
-        { name: "Andrea Gonzalez", dept: "OBS - Phones", hours: { 41: "Break 1", 51: "Lunch", 52: "Lunch", 53: "Lunch", 54: "Lunch", 61: "Break 2" } },
-        { name: "Alexander Jaramillo", dept: "OBS - Phones", hours: { 39: "Break 1", 51: "Lunch", 52: "Lunch", 53: "Lunch", 54: "Lunch", 61: "Break 2" } },
-        { name: "Hannah Castanon", dept: "OBS - Phones", hours: { 52: "Lunch", 53: "Lunch", 54: "Lunch", 55: "Lunch" } },
-        { name: "Julie Nguyen", dept: "OBS - Phones", hours: { 50: "Lunch", 51: "Lunch", 52: "Lunch", 53: "Lunch", 60: "Break 2" } },
-        { name: "Jaedi Morquecho", dept: "OBS - Phones", hours: {} },
-        { name: "Zinedine Moscote", dept: "OBS - Phones", hours: { 44: "Break 1", 56: "Lunch", 57: "Lunch", 64: "Break 2" } },
-        { name: "Fatin Chad", dept: "OBS - Phones", hours: { 56: "Lunch", 57: "Lunch", 58: "Lunch", 59: "Lunch" } },
-        { name: "Kalleb Solomon", dept: "OBS - Phones", hours: {} },
-        { name: "Arine Peace", dept: "OBS - Phones", hours: {} },
-        { name: "Alex Scarlett", dept: "OBS - Phones", hours: { 46: "Break 1", 56: "Lunch", 57: "Lunch", 58: "Lunch" } },
-        { name: "Raul Garcia", dept: "OBS - Phones", hours: { 45: "Break 1", 52: "Lunch", 53: "Lunch", 54: "Lunch", 55: "Lunch", 65: "Break 2" } },
-        { name: "Felix Torres", dept: "OBS - Phones", hours: { 47: "Break 1", 52: "Lunch", 53: "Lunch", 63: "Break 2" } },
-        { name: "Omar Jimenez", dept: "OBS - Phones", hours: { 50: "Break 1", 58: "Lunch", 59: "Lunch", 60: "Lunch", 61: "Lunch", 70: "Break 2" } },
-        { name: "Michelle Salmon", dept: "OBS - Phones", hours: { 54: "Break 1", 65: "Lunch", 66: "Lunch", 67: "Lunch" } },
+        { name: "Dean Spencer", dept: "OBS - Phones", clockIn: 32, clockOut: 68, hours: { 35: "Break 1", 44: "Lunch", 45: "Lunch", 55: "Break 2" } },
+        { name: "Daneil Facey", dept: "OBS - Phones", clockIn: 32, clockOut: 68, hours: { 40: "Lunch", 41: "Lunch", 42: "Lunch", 51: "Break 2" } },
+        { name: "Shanique Kelly", dept: "OBS - Phones", clockIn: 32, clockOut: 68, hours: { 36: "Break 1", 49: "Lunch", 50: "Lunch", 51: "Lunch" } },
+        { name: "Stephanie Temple", dept: "OBS - Phones", clockIn: 32, clockOut: 68, hours: { 39: "Break 1", 48: "Lunch", 49: "Lunch", 59: "Break 2" } },
+        { name: "Kellyneth Estrada", dept: "OBS - Phones", clockIn: 32, clockOut: 68, hours: { 38: "Break 1", 52: "Lunch", 53: "Lunch", 59: "Break 2" } },
+        { name: "Alexander Santamaria", dept: "OBS - Phones", clockIn: 32, clockOut: 68, hours: { 39: "Break 1", 50: "Lunch", 51: "Lunch", 60: "Break 2" } },
+        { name: "Sonia Jimenez", dept: "OBS - Phones", clockIn: 32, clockOut: 68, hours: { 35: "Break 1", 50: "Lunch", 51: "Lunch", 60: "Break 2" } },
+        { name: "Ryan Barber", dept: "OBS - Phones", clockIn: 36, clockOut: 72, hours: { 56: "Lunch", 57: "Lunch", 58: "Lunch", 59: "Lunch" } },
+        { name: "Leona Wallace", dept: "OBS - Phones", clockIn: 32, clockOut: 68, hours: { 48: "Lunch", 49: "Lunch", 50: "Lunch", 56: "Break 2" } },
+        { name: "Vashaun Thompson", dept: "OBS - Phones", clockIn: 32, clockOut: 68, hours: { 40: "Break 1", 50: "Lunch", 51: "Lunch", 52: "Lunch" } },
+        { name: "Israel Arias", dept: "OBS - Phones", clockIn: 32, clockOut: 68, hours: { 41: "Break 1", 48: "Lunch", 49: "Lunch", 50: "Lunch", 51: "Lunch", 56: "Break 2" } },
+        { name: "Bruno Rodriguez", dept: "OBS - Phones", clockIn: 32, clockOut: 68, hours: { 40: "Break 1", 52: "Lunch", 53: "Lunch", 54: "Lunch", 55: "Lunch", 62: "Break 2" } },
+        { name: "Kevin Durango", dept: "OBS - Phones", clockIn: 32, clockOut: 68, hours: { 39: "Break 1", 52: "Lunch", 53: "Lunch", 54: "Lunch", 55: "Lunch", 62: "Break 2" } },
+        { name: "Andrea Gonzalez", dept: "OBS - Phones", clockIn: 32, clockOut: 68, hours: { 41: "Break 1", 51: "Lunch", 52: "Lunch", 53: "Lunch", 54: "Lunch", 61: "Break 2" } },
+        { name: "Alexander Jaramillo", dept: "OBS - Phones", clockIn: 32, clockOut: 68, hours: { 39: "Break 1", 51: "Lunch", 52: "Lunch", 53: "Lunch", 54: "Lunch", 61: "Break 2" } },
+        { name: "Hannah Castanon", dept: "OBS - Phones", clockIn: 36, clockOut: 72, hours: { 52: "Lunch", 53: "Lunch", 54: "Lunch", 55: "Lunch" } },
+        { name: "Julie Nguyen", dept: "OBS - Phones", clockIn: 32, clockOut: 68, hours: { 50: "Lunch", 51: "Lunch", 52: "Lunch", 53: "Lunch", 60: "Break 2" } },
+        { name: "Jaedi Morquecho", dept: "OBS - Phones", clockIn: 32, clockOut: 68, hours: {} },
+        { name: "Zinedine Moscote", dept: "OBS - Phones", clockIn: 36, clockOut: 72, hours: { 44: "Break 1", 56: "Lunch", 57: "Lunch", 64: "Break 2" } },
+        { name: "Fatin Chad", dept: "OBS - Phones", clockIn: 36, clockOut: 72, hours: { 56: "Lunch", 57: "Lunch", 58: "Lunch", 59: "Lunch" } },
+        { name: "Kalleb Solomon", dept: "OBS - Phones", clockIn: 32, clockOut: 68, hours: {} },
+        { name: "Arine Peace", dept: "OBS - Phones", clockIn: 32, clockOut: 68, hours: {} },
+        { name: "Alex Scarlett", dept: "OBS - Phones", clockIn: 36, clockOut: 72, hours: { 46: "Break 1", 56: "Lunch", 57: "Lunch", 58: "Lunch" } },
+        { name: "Raul Garcia", dept: "OBS - Phones", clockIn: 36, clockOut: 72, hours: { 45: "Break 1", 52: "Lunch", 53: "Lunch", 54: "Lunch", 55: "Lunch", 65: "Break 2" } },
+        { name: "Felix Torres", dept: "OBS - Phones", clockIn: 36, clockOut: 72, hours: { 47: "Break 1", 52: "Lunch", 53: "Lunch", 63: "Break 2" } },
+        { name: "Omar Jimenez", dept: "OBS - Phones", clockIn: 40, clockOut: 76, hours: { 50: "Break 1", 58: "Lunch", 59: "Lunch", 60: "Lunch", 61: "Lunch", 70: "Break 2" } },
+        { name: "Michelle Salmon", dept: "OBS - Phones", clockIn: 40, clockOut: 76, hours: { 54: "Break 1", 65: "Lunch", 66: "Lunch", 67: "Lunch" } },
 
         // OBS - Cases
-        { name: "Emely Hernandez", dept: "OBS - Cases", hours: { 32: "Break 1", 43: "Lunch", 44: "Lunch", 45: "Lunch", 46: "Lunch", 55: "Break 2" } },
-        { name: "Pablo Saquilmer", dept: "OBS - Cases", hours: { 40: "Break 1", 50: "Lunch", 51: "Lunch", 52: "Lunch", 53: "Lunch", 57: "Break 2" } },
-        { name: "Lucia Herrera", dept: "OBS - Cases", hours: { 35: "Break 1", 50: "Lunch", 51: "Lunch", 52: "Lunch", 53: "Lunch", 57: "Break 2" } },
-        { name: "Fernando Garcia", dept: "OBS - Cases", hours: { 37: "Break 1", 47: "Lunch", 48: "Lunch", 49: "Lunch", 50: "Lunch", 57: "Break 2" } },
-        { name: "Emilia Chajon", dept: "OBS - Cases", hours: { 39: "Break 1", 49: "Lunch", 50: "Lunch", 51: "Lunch", 52: "Lunch", 59: "Break 2" } },
-        { name: "Alejandra Manco", dept: "OBS - Cases", hours: { 35: "Break 1", 53: "Lunch", 54: "Lunch", 55: "Lunch", 56: "Lunch", 60: "Break 2" } },
-        { name: "Galilea Gutierrez", dept: "OBS - Cases", hours: { 41: "Break 1", 54: "Lunch", 55: "Lunch", 56: "Lunch", 57: "Lunch", 63: "Break 2" } },
-        { name: "Jorge Saban", dept: "OBS - Cases", hours: { 42: "Break 1", 53: "Break 2", 59: "Lunch", 60: "Lunch", 61: "Lunch", 62: "Lunch" } },
-        { name: "Diana Orozco", dept: "OBS - Cases", hours: { 48: "Break 1", 60: "Break 2", 67: "Lunch", 68: "Lunch", 69: "Lunch", 70: "Lunch" } },
-        { name: "Rudy Herrera", dept: "OBS - Cases", hours: { 54: "Break 1", 64: "Break 2", 70: "Lunch", 71: "Lunch", 72: "Lunch", 73: "Lunch" } },
+        { name: "Emely Hernandez", dept: "OBS - Cases", clockIn: 32, clockOut: 68, hours: { 32: "Break 1", 43: "Lunch", 44: "Lunch", 45: "Lunch", 46: "Lunch", 55: "Break 2" } },
+        { name: "Pablo Saquilmer", dept: "OBS - Cases", clockIn: 32, clockOut: 68, hours: { 40: "Break 1", 50: "Lunch", 51: "Lunch", 52: "Lunch", 53: "Lunch", 57: "Break 2" } },
+        { name: "Lucia Herrera", dept: "OBS - Cases", clockIn: 32, clockOut: 68, hours: { 35: "Break 1", 50: "Lunch", 51: "Lunch", 52: "Lunch", 53: "Lunch", 57: "Break 2" } },
+        { name: "Fernando Garcia", dept: "OBS - Cases", clockIn: 32, clockOut: 68, hours: { 37: "Break 1", 47: "Lunch", 48: "Lunch", 49: "Lunch", 50: "Lunch", 57: "Break 2" } },
+        { name: "Emilia Chajon", dept: "OBS - Cases", clockIn: 32, clockOut: 68, hours: { 39: "Break 1", 49: "Lunch", 50: "Lunch", 51: "Lunch", 52: "Lunch", 59: "Break 2" } },
+        { name: "Alejandra Manco", dept: "OBS - Cases", clockIn: 32, clockOut: 68, hours: { 35: "Break 1", 53: "Lunch", 54: "Lunch", 55: "Lunch", 56: "Lunch", 60: "Break 2" } },
+        { name: "Galilea Gutierrez", dept: "OBS - Cases", clockIn: 36, clockOut: 72, hours: { 41: "Break 1", 54: "Lunch", 55: "Lunch", 56: "Lunch", 57: "Lunch", 63: "Break 2" } },
+        { name: "Jorge Saban", dept: "OBS - Cases", clockIn: 36, clockOut: 72, hours: { 42: "Break 1", 53: "Break 2", 59: "Lunch", 60: "Lunch", 61: "Lunch", 62: "Lunch" } },
+        { name: "Diana Orozco", dept: "OBS - Cases", clockIn: 40, clockOut: 76, hours: { 48: "Break 1", 60: "Break 2", 67: "Lunch", 68: "Lunch", 69: "Lunch", 70: "Lunch" } },
+        { name: "Rudy Herrera", dept: "OBS - Cases", clockIn: 40, clockOut: 76, hours: { 54: "Break 1", 64: "Break 2", 70: "Lunch", 71: "Lunch", 72: "Lunch", 73: "Lunch" } },
 
         // ELD - Phones
-        { name: "Sergio Chigüil", dept: "ELD - Phones", hours: { 36: "Break 1", 44: "Lunch", 45: "Lunch", 46: "Lunch", 47: "Lunch", 55: "Break 2" } },
-        { name: "Edgar Castillo", dept: "ELD - Phones", hours: { 32: "Break 1", 40: "Break 2", 48: "Lunch", 49: "Lunch", 50: "Lunch", 51: "Lunch" } },
-        { name: "Samantha Chinchilla", dept: "ELD - Phones", hours: { 40: "Break 1", 52: "Lunch", 53: "Lunch", 54: "Lunch", 55: "Lunch", 60: "Break 2" } },
-        { name: "Celina Franco", dept: "ELD - Phones", hours: { 43: "Break 1", 52: "Lunch", 53: "Lunch", 54: "Lunch", 55: "Lunch", 61: "Break 2" } },
-        { name: "Esvin Gomez", dept: "ELD - Phones", hours: { 44: "Break 1", 52: "Lunch", 53: "Lunch", 54: "Lunch", 55: "Lunch", 62: "Break 2" } },
-        { name: "Sharon Olivares", dept: "ELD - Phones", hours: { 37: "Break 1", 45: "Break 2", 56: "Lunch", 57: "Lunch", 58: "Lunch", 59: "Lunch" } },
-        { name: "Iverth Monterroso", dept: "ELD - Phones", hours: { 44: "Break 1", 52: "Lunch", 53: "Lunch", 54: "Lunch", 55: "Lunch", 60: "Break 2" } },
-        { name: "Kevin Acabal", dept: "ELD - Phones", hours: { 38: "Break 1", 46: "Break 2", 58: "Lunch", 59: "Lunch", 60: "Lunch", 61: "Lunch" } },
-        { name: "Brandon Vasquez", dept: "ELD - Phones", hours: { 40: "Break 1", 46: "Lunch", 47: "Lunch", 48: "Lunch", 49: "Lunch", 58: "Break 2" } },
-        { name: "Kenford Morris", dept: "ELD - Phones", hours: { 44: "Break 1", 54: "Lunch", 55: "Lunch", 56: "Lunch" } },
-        { name: "Benneth Smith", dept: "ELD - Phones", hours: { 40: "Break 1", 48: "Lunch", 49: "Lunch", 59: "Break 2" } },
-        { name: "Josue Sucuc", dept: "ELD - Phones", hours: { 43: "Break 1", 56: "Lunch", 57: "Lunch", 58: "Lunch", 59: "Lunch", 63: "Break 2" } },
-        { name: "Luis Gonzalez", dept: "ELD - Phones", hours: { 36: "Break 1", 52: "Break 2", 56: "Lunch", 57: "Lunch", 58: "Lunch", 59: "Lunch" } },
-        { name: "Froy Gonzalez", dept: "ELD - Phones", hours: { 40: "Break 1", 50: "Break 2", 56: "Lunch", 57: "Lunch", 58: "Lunch", 59: "Lunch" } },
-        { name: "Melanie Garcia", dept: "ELD - Phones", hours: { 46: "Break 1", 54: "Break 2", 60: "Lunch", 61: "Lunch", 62: "Lunch", 63: "Lunch" } },
-        { name: "Sebastian Quiñonez", dept: "ELD - Phones", hours: { 40: "Break 1", 56: "Lunch", 57: "Lunch", 58: "Lunch", 59: "Lunch", 63: "Break 2" } },
-        { name: "Danae Castillo", dept: "ELD - Phones", hours: { 43: "Break 1", 54: "Lunch", 55: "Lunch", 56: "Lunch", 57: "Lunch", 64: "Break 2" } },
-        { name: "Cesar Larios", dept: "ELD - Phones", hours: { 40: "Break 1", 50: "Lunch", 51: "Lunch", 52: "Lunch", 53: "Lunch", 62: "Break 2" } },
-        { name: "Jesus Rios", dept: "ELD - Phones", hours: { 38: "Break 1", 48: "Lunch", 49: "Lunch", 59: "Break 2" } },
-        { name: "Marie Perez", dept: "ELD - Phones", hours: { 39: "Break 1", 54: "Lunch", 55: "Lunch", 64: "Break 2" } },
-        { name: "Daniel Pelayo", dept: "ELD - Phones", hours: { 42: "Break 1", 53: "Lunch", 54: "Lunch", 55: "Lunch", 56: "Lunch", 65: "Break 2" } },
-        { name: "Kevin Ibarra", dept: "ELD - Phones", hours: { 45: "Break 1", 56: "Lunch", 57: "Lunch", 58: "Lunch", 59: "Lunch", 66: "Break 2" } },
-        { name: "Jose Rodriguez", dept: "ELD - Phones", hours: { 46: "Break 1", 56: "Lunch", 57: "Lunch", 69: "Break 2" } },
-        { name: "Kevin Williams", dept: "ELD - Phones", hours: { 48: "Break 1", 54: "Lunch", 55: "Lunch", 64: "Break 2" } },
-        { name: "Luis Ajche", dept: "ELD - Phones", hours: { 48: "Break 1", 55: "Lunch", 56: "Lunch", 57: "Lunch", 58: "Lunch", 68: "Break 2" } },
-        { name: "Jorge Najera", dept: "ELD - Phones", hours: { 48: "Lunch", 49: "Lunch", 50: "Lunch", 51: "Lunch", 64: "Break 1", 71: "Break 2" } },
-        { name: "Kia Francis", dept: "ELD - Phones", hours: { 51: "Break 1", 64: "Lunch", 65: "Lunch", 66: "Lunch" } },
-        { name: "Tevin Smallwood", dept: "ELD - Phones", hours: { 51: "Break 1", 65: "Lunch", 66: "Lunch", 67: "Lunch" } },
-        { name: "Shiyan Lee", dept: "ELD - Phones", hours: { 50: "Break 1", 60: "Lunch", 61: "Lunch", 62: "Lunch" } },
+        { name: "Sergio Chigüil", dept: "ELD - Phones", clockIn: 32, clockOut: 68, hours: { 36: "Break 1", 44: "Lunch", 45: "Lunch", 46: "Lunch", 47: "Lunch", 55: "Break 2" } },
+        { name: "Edgar Castillo", dept: "ELD - Phones", clockIn: 32, clockOut: 68, hours: { 32: "Break 1", 40: "Break 2", 48: "Lunch", 49: "Lunch", 50: "Lunch", 51: "Lunch" } },
+        { name: "Samantha Chinchilla", dept: "ELD - Phones", clockIn: 32, clockOut: 68, hours: { 40: "Break 1", 52: "Lunch", 53: "Lunch", 54: "Lunch", 55: "Lunch", 60: "Break 2" } },
+        { name: "Celina Franco", dept: "ELD - Phones", clockIn: 32, clockOut: 68, hours: { 43: "Break 1", 52: "Lunch", 53: "Lunch", 54: "Lunch", 55: "Lunch", 61: "Break 2" } },
+        { name: "Esvin Gomez", dept: "ELD - Phones", clockIn: 32, clockOut: 68, hours: { 44: "Break 1", 52: "Lunch", 53: "Lunch", 54: "Lunch", 55: "Lunch", 62: "Break 2" } },
+        { name: "Sharon Olivares", dept: "ELD - Phones", clockIn: 32, clockOut: 68, hours: { 37: "Break 1", 45: "Break 2", 56: "Lunch", 57: "Lunch", 58: "Lunch", 59: "Lunch" } },
+        { name: "Iverth Monterroso", dept: "ELD - Phones", clockIn: 32, clockOut: 68, hours: { 44: "Break 1", 52: "Lunch", 53: "Lunch", 54: "Lunch", 55: "Lunch", 60: "Break 2" } },
+        { name: "Kevin Acabal", dept: "ELD - Phones", clockIn: 32, clockOut: 68, hours: { 38: "Break 1", 46: "Break 2", 58: "Lunch", 59: "Lunch", 60: "Lunch", 61: "Lunch" } },
+        { name: "Brandon Vasquez", dept: "ELD - Phones", clockIn: 32, clockOut: 68, hours: { 40: "Break 1", 46: "Lunch", 47: "Lunch", 48: "Lunch", 49: "Lunch", 58: "Break 2" } },
+        { name: "Kenford Morris", dept: "ELD - Phones", clockIn: 36, clockOut: 72, hours: { 44: "Break 1", 54: "Lunch", 55: "Lunch", 56: "Lunch" } },
+        { name: "Benneth Smith", dept: "ELD - Phones", clockIn: 32, clockOut: 68, hours: { 40: "Break 1", 48: "Lunch", 49: "Lunch", 59: "Break 2" } },
+        { name: "Josue Sucuc", dept: "ELD - Phones", clockIn: 36, clockOut: 72, hours: { 43: "Break 1", 56: "Lunch", 57: "Lunch", 58: "Lunch", 59: "Lunch", 63: "Break 2" } },
+        { name: "Luis Gonzalez", dept: "ELD - Phones", clockIn: 32, clockOut: 68, hours: { 36: "Break 1", 52: "Break 2", 56: "Lunch", 57: "Lunch", 58: "Lunch", 59: "Lunch" } },
+        { name: "Froy Gonzalez", dept: "ELD - Phones", clockIn: 32, clockOut: 68, hours: { 40: "Break 1", 50: "Break 2", 56: "Lunch", 57: "Lunch", 58: "Lunch", 59: "Lunch" } },
+        { name: "Melanie Garcia", dept: "ELD - Phones", clockIn: 36, clockOut: 72, hours: { 46: "Break 1", 54: "Break 2", 60: "Lunch", 61: "Lunch", 62: "Lunch", 63: "Lunch" } },
+        { name: "Sebastian Quiñonez", dept: "ELD - Phones", clockIn: 36, clockOut: 72, hours: { 40: "Break 1", 56: "Lunch", 57: "Lunch", 58: "Lunch", 59: "Lunch", 63: "Break 2" } },
+        { name: "Danae Castillo", dept: "ELD - Phones", clockIn: 36, clockOut: 72, hours: { 43: "Break 1", 54: "Lunch", 55: "Lunch", 56: "Lunch", 57: "Lunch", 64: "Break 2" } },
+        { name: "Cesar Larios", dept: "ELD - Phones", clockIn: 32, clockOut: 68, hours: { 40: "Break 1", 50: "Lunch", 51: "Lunch", 52: "Lunch", 53: "Lunch", 62: "Break 2" } },
+        { name: "Jesus Rios", dept: "ELD - Phones", clockIn: 32, clockOut: 68, hours: { 38: "Break 1", 48: "Lunch", 49: "Lunch", 59: "Break 2" } },
+        { name: "Marie Perez", dept: "ELD - Phones", clockIn: 36, clockOut: 72, hours: { 39: "Break 1", 54: "Lunch", 55: "Lunch", 64: "Break 2" } },
+        { name: "Daniel Pelayo", dept: "ELD - Phones", clockIn: 36, clockOut: 72, hours: { 42: "Break 1", 53: "Lunch", 54: "Lunch", 55: "Lunch", 56: "Lunch", 65: "Break 2" } },
+        { name: "Kevin Ibarra", dept: "ELD - Phones", clockIn: 36, clockOut: 72, hours: { 45: "Break 1", 56: "Lunch", 57: "Lunch", 58: "Lunch", 59: "Lunch", 66: "Break 2" } },
+        { name: "Jose Rodriguez", dept: "ELD - Phones", clockIn: 36, clockOut: 72, hours: { 46: "Break 1", 56: "Lunch", 57: "Lunch", 69: "Break 2" } },
+        { name: "Kevin Williams", dept: "ELD - Phones", clockIn: 36, clockOut: 72, hours: { 48: "Break 1", 54: "Lunch", 55: "Lunch", 64: "Break 2" } },
+        { name: "Luis Ajche", dept: "ELD - Phones", clockIn: 36, clockOut: 72, hours: { 48: "Break 1", 55: "Lunch", 56: "Lunch", 57: "Lunch", 58: "Lunch", 68: "Break 2" } },
+        { name: "Jorge Najera", dept: "ELD - Phones", clockIn: 40, clockOut: 76, hours: { 48: "Lunch", 49: "Lunch", 50: "Lunch", 51: "Lunch", 64: "Break 1", 71: "Break 2" } },
+        { name: "Kia Francis", dept: "ELD - Phones", clockIn: 40, clockOut: 76, hours: { 51: "Break 1", 64: "Lunch", 65: "Lunch", 66: "Lunch" } },
+        { name: "Tevin Smallwood", dept: "ELD - Phones", clockIn: 40, clockOut: 76, hours: { 51: "Break 1", 65: "Lunch", 66: "Lunch", 67: "Lunch" } },
+        { name: "Shiyan Lee", dept: "ELD - Phones", clockIn: 40, clockOut: 76, hours: { 50: "Break 1", 60: "Lunch", 61: "Lunch", 62: "Lunch" } },
 
         // INS - Phones
-        { name: "Keyren Fuertes", dept: "INS - Phones", hours: { 33: "Break 1", 45: "Lunch", 46: "Lunch", 55: "Break 2" } },
-        { name: "Otto de la Cruz", dept: "INS - Phones", hours: { 33: "Break 1", 46: "Lunch", 47: "Lunch", 48: "Lunch", 49: "Lunch", 55: "Break 2" } },
-        { name: "Manfredo Monterroso", dept: "INS - Phones", hours: { 37: "Break 1", 46: "Break 2", 54: "Lunch", 55: "Lunch", 56: "Lunch", 57: "Lunch" } },
-        { name: "Eunice Sir", dept: "INS - Phones", hours: { 35: "Break 1", 43: "Break 2", 51: "Lunch", 52: "Lunch", 53: "Lunch", 54: "Lunch" } },
-        { name: "Ana Melendez", dept: "INS - Phones", hours: { 36: "Break 1", 44: "Break 2", 52: "Lunch", 53: "Lunch", 54: "Lunch", 55: "Lunch" } },
-        { name: "Monica Lopez", dept: "INS - Phones", hours: { 37: "Break 1", 48: "Lunch", 49: "Lunch", 50: "Lunch", 51: "Lunch", 59: "Break 2" } },
-        { name: "Gustavo Lopez", dept: "INS - Phones", hours: { 35: "Break 1", 43: "Break 2", 50: "Lunch", 51: "Lunch", 52: "Lunch", 53: "Lunch" } },
-        { name: "Joseth Huerta", dept: "INS - Phones", hours: { 37: "Break 1", 46: "Lunch", 47: "Lunch", 48: "Lunch", 49: "Lunch", 56: "Break 2" } },
-        { name: "Marco Ovalle", dept: "INS - Phones", hours: { 42: "Break 1", 52: "Lunch", 53: "Lunch", 54: "Lunch", 55: "Lunch", 63: "Break 2" } },
-        { name: "Ariel Yaegui", dept: "INS - Phones", hours: { 40: "Break 1", 49: "Break 2", 57: "Lunch", 58: "Lunch", 59: "Lunch", 60: "Lunch" } },
-        { name: "Acsa Esquivel", dept: "INS - Phones", hours: { 39: "Break 1", 48: "Break 2", 54: "Lunch", 55: "Lunch", 56: "Lunch", 57: "Lunch" } },
-        { name: "Luis Leon", dept: "INS - Phones", hours: { 39: "Break 1", 49: "Lunch", 50: "Lunch", 51: "Lunch", 52: "Lunch", 60: "Break 2" } },
-        { name: "Michelle Marquez", dept: "INS - Phones", hours: { 40: "Break 1", 50: "Lunch", 51: "Lunch", 52: "Lunch", 53: "Lunch", 61: "Break 2" } },
-        { name: "Kener Lee", dept: "INS - Phones", hours: { 41: "Break 1", 49: "Break 2", 58: "Lunch", 59: "Lunch", 60: "Lunch", 61: "Lunch" } },
-        { name: "Dana Redwood", dept: "INS - Phones", hours: { 40: "Break 1", 48: "Lunch", 49: "Lunch", 60: "Break 2" } },
-        { name: "Alondra Mendoza", dept: "INS - Phones", hours: { 43: "Break 1", 52: "Lunch", 53: "Lunch", 54: "Lunch", 55: "Lunch", 62: "Break 2" } },
-        { name: "Katering Santos", dept: "INS - Phones", hours: { 44: "Break 1", 52: "Break 2", 58: "Lunch", 59: "Lunch", 60: "Lunch", 61: "Lunch" } },
-        { name: "Lynda Escobedo", dept: "INS - Phones", hours: { 44: "Break 1", 53: "Lunch", 54: "Lunch", 55: "Lunch", 56: "Lunch", 65: "Break 2" } },
-        { name: "Marielys Tejada", dept: "INS - Phones", hours: { 47: "Break 1", 54: "Lunch", 55: "Lunch", 65: "Break 2" } },
-        { name: "Cesar Colaj", dept: "INS - Phones", hours: { 48: "Break 1", 56: "Break 2", 63: "Lunch", 64: "Lunch", 65: "Lunch", 66: "Lunch" } },
-        { name: "Juan Avedaño", dept: "INS - Phones", hours: { 46: "Break 1", 57: "Break 2", 66: "Lunch", 67: "Lunch", 68: "Lunch", 69: "Lunch" } },
+        { name: "Keyren Fuertes", dept: "INS - Phones", clockIn: 32, clockOut: 68, hours: { 33: "Break 1", 45: "Lunch", 46: "Lunch", 55: "Break 2" } },
+        { name: "Otto de la Cruz", dept: "INS - Phones", clockIn: 32, clockOut: 68, hours: { 33: "Break 1", 46: "Lunch", 47: "Lunch", 48: "Lunch", 49: "Lunch", 55: "Break 2" } },
+        { name: "Manfredo Monterroso", dept: "INS - Phones", clockIn: 32, clockOut: 68, hours: { 37: "Break 1", 46: "Break 2", 54: "Lunch", 55: "Lunch", 56: "Lunch", 57: "Lunch" } },
+        { name: "Eunice Sir", dept: "INS - Phones", clockIn: 32, clockOut: 68, hours: { 35: "Break 1", 43: "Break 2", 51: "Lunch", 52: "Lunch", 53: "Lunch", 54: "Lunch" } },
+        { name: "Ana Melendez", dept: "INS - Phones", clockIn: 32, clockOut: 68, hours: { 36: "Break 1", 44: "Break 2", 52: "Lunch", 53: "Lunch", 54: "Lunch", 55: "Lunch" } },
+        { name: "Monica Lopez", dept: "INS - Phones", clockIn: 32, clockOut: 68, hours: { 37: "Break 1", 48: "Lunch", 49: "Lunch", 50: "Lunch", 51: "Lunch", 59: "Break 2" } },
+        { name: "Gustavo Lopez", dept: "INS - Phones", clockIn: 32, clockOut: 68, hours: { 35: "Break 1", 43: "Break 2", 50: "Lunch", 51: "Lunch", 52: "Lunch", 53: "Lunch" } },
+        { name: "Joseth Huerta", dept: "INS - Phones", clockIn: 32, clockOut: 68, hours: { 37: "Break 1", 46: "Lunch", 47: "Lunch", 48: "Lunch", 49: "Lunch", 56: "Break 2" } },
+        { name: "Marco Ovalle", dept: "INS - Phones", clockIn: 36, clockOut: 72, hours: { 42: "Break 1", 52: "Lunch", 53: "Lunch", 54: "Lunch", 55: "Lunch", 63: "Break 2" } },
+        { name: "Ariel Yaegui", dept: "INS - Phones", clockIn: 36, clockOut: 72, hours: { 40: "Break 1", 49: "Break 2", 57: "Lunch", 58: "Lunch", 59: "Lunch", 60: "Lunch" } },
+        { name: "Acsa Esquivel", dept: "INS - Phones", clockIn: 32, clockOut: 68, hours: { 39: "Break 1", 48: "Break 2", 54: "Lunch", 55: "Lunch", 56: "Lunch", 57: "Lunch" } },
+        { name: "Luis Leon", dept: "INS - Phones", clockIn: 32, clockOut: 68, hours: { 39: "Break 1", 49: "Lunch", 50: "Lunch", 51: "Lunch", 52: "Lunch", 60: "Break 2" } },
+        { name: "Michelle Marquez", dept: "INS - Phones", clockIn: 32, clockOut: 68, hours: { 40: "Break 1", 50: "Lunch", 51: "Lunch", 52: "Lunch", 53: "Lunch", 61: "Break 2" } },
+        { name: "Kener Lee", dept: "INS - Phones", clockIn: 36, clockOut: 72, hours: { 41: "Break 1", 49: "Break 2", 58: "Lunch", 59: "Lunch", 60: "Lunch", 61: "Lunch" } },
+        { name: "Dana Redwood", dept: "INS - Phones", clockIn: 32, clockOut: 68, hours: { 40: "Break 1", 48: "Lunch", 49: "Lunch", 60: "Break 2" } },
+        { name: "Alondra Mendoza", dept: "INS - Phones", clockIn: 36, clockOut: 72, hours: { 43: "Break 1", 52: "Lunch", 53: "Lunch", 54: "Lunch", 55: "Lunch", 62: "Break 2" } },
+        { name: "Katering Santos", dept: "INS - Phones", clockIn: 36, clockOut: 72, hours: { 44: "Break 1", 52: "Break 2", 58: "Lunch", 59: "Lunch", 60: "Lunch", 61: "Lunch" } },
+        { name: "Lynda Escobedo", dept: "INS - Phones", clockIn: 36, clockOut: 72, hours: { 44: "Break 1", 53: "Lunch", 54: "Lunch", 55: "Lunch", 56: "Lunch", 65: "Break 2" } },
+        { name: "Marielys Tejada", dept: "INS - Phones", clockIn: 36, clockOut: 72, hours: { 47: "Break 1", 54: "Lunch", 55: "Lunch", 65: "Break 2" } },
+        { name: "Cesar Colaj", dept: "INS - Phones", clockIn: 40, clockOut: 76, hours: { 48: "Break 1", 56: "Break 2", 63: "Lunch", 64: "Lunch", 65: "Lunch", 66: "Lunch" } },
+        { name: "Juan Avedaño", dept: "INS - Phones", clockIn: 40, clockOut: 76, hours: { 46: "Break 1", 57: "Break 2", 66: "Lunch", 67: "Lunch", 68: "Lunch", 69: "Lunch" } },
 
         // LL+ Team
-        { name: "Julio Cortez", dept: "LL+", hours: { 32: "Break 1", 40: "Break 2", 48: "Lunch", 49: "Lunch", 50: "Lunch", 51: "Lunch" } },
-        { name: "Alex Coyote", dept: "LL+", hours: { 32: "Break 1", 40: "Break 2", 50: "Lunch", 51: "Lunch", 52: "Lunch", 53: "Lunch" } },
-        { name: "Omar Gomez", dept: "LL+", hours: { 41: "Break 1", 49: "Break 2", 54: "Lunch", 55: "Lunch", 56: "Lunch", 57: "Lunch" } },
-        { name: "Luis Escobar", dept: "LL+", hours: { 36: "Break 1", 45: "Break 2", 53: "Lunch", 54: "Lunch", 55: "Lunch", 56: "Lunch" } },
-        { name: "Andy Pineda", dept: "LL+", hours: { 38: "Break 1", 46: "Break 2", 54: "Lunch", 55: "Lunch", 56: "Lunch", 57: "Lunch" } },
-        { name: "Edgar Palomo", dept: "LL+", hours: { 41: "Break 1", 48: "Break 2", 57: "Lunch", 58: "Lunch", 59: "Lunch", 60: "Lunch" } },
-        { name: "Jonathan Pirir", dept: "LL+", hours: { 40: "Break 1", 48: "Break 2", 58: "Lunch", 59: "Lunch", 60: "Lunch", 61: "Lunch" } },
-        { name: "Yossi Martinez", dept: "LL+", hours: { 46: "Break 1", 52: "Break 2", 60: "Lunch", 61: "Lunch", 62: "Lunch", 63: "Lunch" } },
+        { name: "Julio Cortez", dept: "LL+", clockIn: 32, clockOut: 68, hours: { 32: "Break 1", 40: "Break 2", 48: "Lunch", 49: "Lunch", 50: "Lunch", 51: "Lunch" } },
+        { name: "Alex Coyote", dept: "LL+", clockIn: 32, clockOut: 68, hours: { 32: "Break 1", 40: "Break 2", 50: "Lunch", 51: "Lunch", 52: "Lunch", 53: "Lunch" } },
+        { name: "Omar Gomez", dept: "LL+", clockIn: 32, clockOut: 68, hours: { 41: "Break 1", 49: "Break 2", 54: "Lunch", 55: "Lunch", 56: "Lunch", 57: "Lunch" } },
+        { name: "Luis Escobar", dept: "LL+", clockIn: 32, clockOut: 68, hours: { 36: "Break 1", 45: "Break 2", 53: "Lunch", 54: "Lunch", 55: "Lunch", 56: "Lunch" } },
+        { name: "Andy Pineda", dept: "LL+", clockIn: 32, clockOut: 68, hours: { 38: "Break 1", 46: "Break 2", 54: "Lunch", 55: "Lunch", 56: "Lunch", 57: "Lunch" } },
+        { name: "Edgar Palomo", dept: "LL+", clockIn: 32, clockOut: 68, hours: { 41: "Break 1", 48: "Break 2", 57: "Lunch", 58: "Lunch", 59: "Lunch", 60: "Lunch" } },
+        { name: "Jonathan Pirir", dept: "LL+", clockIn: 32, clockOut: 68, hours: { 40: "Break 1", 48: "Break 2", 58: "Lunch", 59: "Lunch", 60: "Lunch", 61: "Lunch" } },
+        { name: "Yossi Martinez", dept: "LL+", clockIn: 36, clockOut: 72, hours: { 46: "Break 1", 52: "Break 2", 60: "Lunch", 61: "Lunch", 62: "Lunch", 63: "Lunch" } },
 
         // TFX Team
-        { name: "Fernando Ramirez", dept: "TFX", hours: { 38: "Break 1", 46: "Lunch", 47: "Lunch", 48: "Lunch", 49: "Lunch", 54: "Break 2" } },
-        { name: "Maria Saucedo", dept: "TFX", hours: { 50: "Break 1", 56: "Lunch", 57: "Lunch", 58: "Lunch", 59: "Lunch", 63: "Break 2" } },
-        { name: "Mariana Velasquez", dept: "TFX", hours: { 40: "Break 1", 52: "Lunch", 53: "Lunch", 54: "Lunch", 55: "Lunch", 62: "Break 2" } }
+        { name: "Fernando Ramirez", dept: "TFX", clockIn: 32, clockOut: 68, hours: { 38: "Break 1", 46: "Lunch", 47: "Lunch", 48: "Lunch", 49: "Lunch", 54: "Break 2" } },
+        { name: "Maria Saucedo", dept: "TFX", clockIn: 36, clockOut: 72, hours: { 50: "Break 1", 56: "Lunch", 57: "Lunch", 58: "Lunch", 59: "Lunch", 63: "Break 2" } },
+        { name: "Mariana Velasquez", dept: "TFX", clockIn: 32, clockOut: 68, hours: { 40: "Break 1", 52: "Lunch", 53: "Lunch", 54: "Lunch", 55: "Lunch", 62: "Break 2" } }
     ];
 
     function buildDefaultMasterAgents() {
@@ -1359,6 +1372,8 @@
                 id: idCounter++,
                 name: ag.name,
                 dept: ag.dept,
+                clockIn: ag.clockIn !== undefined ? ag.clockIn : 32,
+                clockOut: ag.clockOut !== undefined ? ag.clockOut : 68,
                 hours: ag.hours || {}
             };
         });
@@ -1560,7 +1575,7 @@
         volumeDataCombined = { phones: {}, cases: {} };
 
         for (let h = 0; h < 24; h++) {
-            // PHONES VOLUMES (OBS, INS Phones, ELD Phones, LL+, TFX)
+            // PHONES VOLUMES
             let pAns = 0, pAbCSAT = 0, pAbQ = 0, pAbH = 0, pAbR = 0;
             ['obs', 'ins_p', 'eld_p', 'll', 'tfx'].forEach(t => {
                 if (periodStore[t] && periodStore[t][h]) {
@@ -1578,7 +1593,7 @@
                 tot: pTot, max: Math.round(pTot * 1.1)
             };
 
-            // CASES VOLUMES (OBS Cases, INS Cases, ELD Cases)
+            // CASES VOLUMES
             let cAns = 0;
             if (periodStore.cases && periodStore.cases[h]) {
                 const item = periodStore.cases[h];
@@ -1617,7 +1632,7 @@
         tbody.innerHTML = '';
         const visibleDepts = getActiveVisibleDepts();
 
-        // Reconstruir Encabezados Dinámicos de Tabla
+        // Reconstruir Encabezados Dinámicos
         theadTr.innerHTML = `<th>Time Slot</th>` + 
             visibleDepts.map(d => `<th>${d}</th>`).join('') +
             `<th class="col-total">Total Away Agents</th><th class="col-details">Away Agents &amp; Activity Details</th>`;
@@ -1712,6 +1727,7 @@
         });
     }
 
+    // CÁLCULO EXACTO CON CLOCK IN Y CLOCK OUT
     function renderComparisonTable() {
         const tbody = document.getElementById('comparisonTableBody');
         tbody.innerHTML = '';
@@ -1724,18 +1740,34 @@
         const currentVolSet = getActiveVolumeSet();
 
         hourlySlots.forEach(slot => {
-            let activeRoster = 0;
+            let scheduledAgentsCount = 0;
             let awayEquivalentHours = 0;
 
-            visibleDepts.forEach(d => {
-                activeRoster += deptRosterCounts[d] || 0;
-                let entries = hourlyDataPattern[slot.h24][d] || [];
-                awayEquivalentHours += entries.length * 0.25;
+            const hourStartSlot = slot.h24 * 4;
+            const hourEndSlot = hourStartSlot + 4;
+
+            masterAgentsDB.forEach(ag => {
+                if (visibleDepts.includes(ag.dept)) {
+                    let cIn = ag.clockIn !== undefined ? ag.clockIn : 32;
+                    let cOut = ag.clockOut !== undefined ? ag.clockOut : 68;
+
+                    // Calcular qué fracción de la hora está el agente en su Turno
+                    for (let sIdx = hourStartSlot; sIdx < hourEndSlot; sIdx++) {
+                        if (sIdx >= cIn && sIdx < cOut) {
+                            scheduledAgentsCount += 0.25; // Suma 15 min de turno activo
+                            // Si tiene away en esta fracción de 15m, restar 0.25h
+                            if (ag.hours && ag.hours[sIdx] !== undefined) {
+                                awayEquivalentHours += 0.25;
+                            }
+                        }
+                    }
+                }
             });
 
             const activeVol = currentVolSet[slot.h24] ? currentVolSet[slot.h24].tot : 0;
 
-            const availAgents = Math.max(0, Number((activeRoster - awayEquivalentHours).toFixed(2)));
+            // Agentes Disponibles Netos en Llamadas / Casos
+            const availAgents = Math.max(0, Number((scheduledAgentsCount - awayEquivalentHours).toFixed(2)));
             const reqAgents = activeVol > 0 ? Math.ceil(activeVol / itemsPerHourPerAgent) : 0;
             const gap = Number((availAgents - reqAgents).toFixed(1));
 
@@ -1752,7 +1784,8 @@
             tr.innerHTML = `
                 <td class="time-col">${slot.time12}</td>
                 <td style="background-color: rgba(255, 183, 3, 0.25); color: var(--accent-yellow);"><b>${Math.round(activeVol)}</b></td>
-                <td>${availAgents} of ${activeRoster}</td>
+                <td>${scheduledAgentsCount.toFixed(1)}</td>
+                <td><b>${availAgents}</b></td>
                 <td>${reqAgents}</td>
                 <td>${gap >= 0 ? '+' + gap : gap}</td>
                 <td>${recText}</td>
@@ -1883,16 +1916,29 @@
 
         hourlySlots.forEach(slot => {
             const v = currentVolSet[slot.h24] ? currentVolSet[slot.h24].tot : 0;
-            let totalRoster = 0;
+            let scheduledAgentsCount = 0;
             let awayEquivalentHours = 0;
 
-            visibleDepts.forEach(d => {
-                totalRoster += deptRosterCounts[d] || 0;
-                let entries = hourlyDataPattern[slot.h24][d] || [];
-                awayEquivalentHours += entries.length * 0.25;
+            const hourStartSlot = slot.h24 * 4;
+            const hourEndSlot = hourStartSlot + 4;
+
+            masterAgentsDB.forEach(ag => {
+                if (visibleDepts.includes(ag.dept)) {
+                    let cIn = ag.clockIn !== undefined ? ag.clockIn : 32;
+                    let cOut = ag.clockOut !== undefined ? ag.clockOut : 68;
+
+                    for (let sIdx = hourStartSlot; sIdx < hourEndSlot; sIdx++) {
+                        if (sIdx >= cIn && sIdx < cOut) {
+                            scheduledAgentsCount += 0.25;
+                            if (ag.hours && ag.hours[sIdx] !== undefined) {
+                                awayEquivalentHours += 0.25;
+                            }
+                        }
+                    }
+                }
             });
 
-            const avail = Math.max(0, totalRoster - awayEquivalentHours);
+            const avail = Math.max(0, scheduledAgentsCount - awayEquivalentHours);
             const cap = Math.round(avail * itemsPerHourPerAgent);
 
             volumeData.push(Math.round(v));
@@ -2092,68 +2138,59 @@
         }
     }
 
-    // PARSER PHONES
+    // PARSER CORREGIDO PARA EVITAR CÁLCULOS ERRORES DE 40,000+
     function parsePastedTable(rawText) {
         if (!rawText || !rawText.trim()) return {};
         const result = {};
 
-        const timeRegex = /(\d{1,2}:\d{2}(?::\d{2})?\s*(?:AM|PM)?)/gi;
-        const matches = [];
-        let match;
-
-        while ((match = timeRegex.exec(rawText)) !== null) {
-            matches.push({
-                timeStr: match[1],
-                index: match.index,
-                endIndex: match.index + match[1].length
-            });
-        }
-
-        if (matches.length === 0) return result;
-
+        const lines = rawText.split(/\r?\n/);
         const hourlyAccumulator = {};
 
-        for (let i = 0; i < matches.length; i++) {
-            const current = matches[i];
-            const nextIndex = (i + 1 < matches.length) ? matches[i + 1].index : rawText.length;
-            const numSegment = rawText.substring(current.endIndex, nextIndex).trim();
+        lines.forEach(line => {
+            const trimmed = line.trim();
+            if (!trimmed) return;
 
-            let h24 = -1;
-            let hourMatch = current.timeStr.match(/(\d{1,2}):?(\d{2})?:?(\d{2})?\s*(AM|PM)?/i);
-            if (hourMatch) {
-                let h = parseInt(hourMatch[1], 10);
-                let pm = hourMatch[4] && hourMatch[4].toUpperCase() === 'PM';
-                let am = hourMatch[4] && hourMatch[4].toUpperCase() === 'AM';
-                if (pm && h < 12) h += 12;
-                if (am && h === 12) h = 0;
-                if (h >= 0 && h < 24) h24 = h;
-            }
+            // Ignorar encabezados y totales
+            const lower = trimmed.toLowerCase();
+            if (lower.includes('total') || lower.includes('date') || lower.includes('answered') || lower.includes('teammate')) return;
 
-            if (h24 !== -1) {
-                let digits = numSegment.split(/[\t\s\n,]+/).map(v => parseFloat(v)).filter(v => !isNaN(v));
-                if (digits.length === 0 && numSegment.length > 0) {
-                    let dMatch = numSegment.match(/\d+/g);
-                    if (dMatch) digits = dMatch.map(v => parseFloat(v));
-                }
+            // Extraer hora (ej. "8:00 AM", "09:00", "13:00")
+            const timeMatch = trimmed.match(/(\d{1,2}):(\d{2})(?::\d{2})?\s*(AM|PM)?/i);
+            if (!timeMatch) return;
 
+            let h = parseInt(timeMatch[1], 10);
+            const pm = timeMatch[3] && timeMatch[3].toUpperCase() === 'PM';
+            const am = timeMatch[3] && timeMatch[3].toUpperCase() === 'AM';
+            if (pm && h < 12) h += 12;
+            if (am && h === 12) h = 0;
+
+            if (h < 0 || h >= 24) return;
+
+            // Extraer números ignorando fechas (ej. 2025, 2026) o IDs de llamadas de más de 2000
+            const restOfLine = trimmed.substring(timeMatch.index + timeMatch[0].length);
+            let digits = restOfLine.split(/[\t\s,]+/)
+                .map(v => parseFloat(v))
+                .filter(v => !isNaN(v) && v < 2000 && v >= 0);
+
+            if (digits.length >= 1) {
                 let ans     = digits[0] || 0;
                 let abCSAT  = digits[1] || 0;
                 let abQ     = digits[2] || 0;
                 let abH     = digits[3] || 0;
                 let abR     = digits[4] || 0;
 
-                if (!hourlyAccumulator[h24]) {
-                    hourlyAccumulator[h24] = { ansSum: 0, abCSATSum: 0, abQSum: 0, abHSum: 0, abRSum: 0, count: 0 };
+                if (!hourlyAccumulator[h]) {
+                    hourlyAccumulator[h] = { ansSum: 0, abCSATSum: 0, abQSum: 0, abHSum: 0, abRSum: 0, count: 0 };
                 }
 
-                hourlyAccumulator[h24].ansSum    += ans;
-                hourlyAccumulator[h24].abCSATSum += abCSAT;
-                hourlyAccumulator[h24].abQSum    += abQ;
-                hourlyAccumulator[h24].abHSum    += abH;
-                hourlyAccumulator[h24].abRSum    += abR;
-                hourlyAccumulator[h24].count     += 1;
+                hourlyAccumulator[h].ansSum    += ans;
+                hourlyAccumulator[h].abCSATSum += abCSAT;
+                hourlyAccumulator[h].abQSum    += abQ;
+                hourlyAccumulator[h].abHSum    += abH;
+                hourlyAccumulator[h].abRSum    += abR;
+                hourlyAccumulator[h].count     += 1;
             }
-        }
+        });
 
         for (let h in hourlyAccumulator) {
             let item = hourlyAccumulator[h];
@@ -2172,7 +2209,7 @@
         return result;
     }
 
-    // PARSER CASES
+    // PARSER CORREGIDO PARA CASES
     function parseCasesTable(rawText) {
         if (!rawText || !rawText.trim()) return {};
         
@@ -2181,17 +2218,15 @@
 
         lines.forEach(line => {
             const trimmed = line.trim();
-            if (!trimmed || trimmed.toLowerCase().includes('teammate')) return;
+            if (!trimmed || trimmed.toLowerCase().includes('teammate') || trimmed.toLowerCase().includes('total')) return;
 
-            const match = trimmed.match(/^(.*?)([\d\s\t,]+)$/);
-            if (match && match[2]) {
-                const numbers = match[2].trim().split(/[\s\t,]+/).map(n => parseInt(n, 10)).filter(n => !isNaN(n));
-                if (numbers.length >= 1) {
-                    let closedVal = numbers[numbers.length - 1];
-                    if (closedVal > 0 && closedVal < 5000) {
-                        totalClosedCases += closedVal;
-                    }
-                }
+            const numbers = trimmed.split(/[\s\t,]+/)
+                .map(n => parseInt(n, 10))
+                .filter(n => !isNaN(n) && n >= 0 && n < 2000);
+
+            if (numbers.length >= 1) {
+                let closedVal = numbers[numbers.length - 1]; // Tomar el valor cerrado
+                totalClosedCases += closedVal;
             }
         });
 
@@ -2201,14 +2236,7 @@
 
         for (let h = 0; h < 24; h++) {
             if (activeHours.includes(h)) {
-                hourlyResult[h] = {
-                    ans: hourlyAns,
-                    abCSAT: 0,
-                    abQ: 0,
-                    abH: 0,
-                    abR: 0,
-                    tot: hourlyAns
-                };
+                hourlyResult[h] = { ans: hourlyAns, abCSAT: 0, abQ: 0, abH: 0, abR: 0, tot: hourlyAns };
             } else {
                 hourlyResult[h] = { ans: 0, abCSAT: 0, abQ: 0, abH: 0, abR: 0, tot: 0 };
             }
@@ -2281,7 +2309,7 @@
         const deptAgents = masterAgentsDB.filter(ag => ag.dept === selectedDept);
 
         if (deptAgents.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#aaa;">No agents registered in this department.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#aaa;">No agents registered in this department.</td></tr>`;
             return;
         }
 
@@ -2290,6 +2318,12 @@
             tr.className = 'agent-row-draggable';
             tr.setAttribute('draggable', 'true');
             tr.setAttribute('data-agent-id', ag.id);
+
+            let cIn = ag.clockIn !== undefined ? ag.clockIn : 32;
+            let cOut = ag.clockOut !== undefined ? ag.clockOut : 68;
+            let inSlot = agentSlots15Min.find(s => s.idx == cIn);
+            let outSlot = agentSlots15Min.find(s => s.idx == cOut);
+            let shiftStr = `${inSlot ? inSlot.time12 : "8:00 AM"} - ${outSlot ? outSlot.time12 : "5:00 PM"}`;
 
             let hoursBadges = [];
             if (ag.hours) {
@@ -2305,6 +2339,7 @@
                 <td><span class="drag-handle">☰</span></td>
                 <td><b>${ag.name}</b></td>
                 <td><span class="badge-dept">${ag.dept}</span></td>
+                <td><span style="color:var(--accent-yellow); font-weight:bold;">${shiftStr}</span></td>
                 <td>${hoursStr}</td>
                 <td>
                     <div class="action-btns">
@@ -2398,6 +2433,28 @@
         });
     };
 
+    function populateClockSelectors(selectedIn = 32, selectedOut = 68) {
+        const clockInSelect = document.getElementById('clockInSelect');
+        const clockOutSelect = document.getElementById('clockOutSelect');
+
+        clockInSelect.innerHTML = '';
+        clockOutSelect.innerHTML = '';
+
+        agentSlots15Min.forEach(slot => {
+            const opt1 = document.createElement('option');
+            opt1.value = slot.idx;
+            opt1.textContent = slot.time12;
+            if (slot.idx === selectedIn) opt1.selected = true;
+            clockInSelect.appendChild(opt1);
+
+            const opt2 = document.createElement('option');
+            opt2.value = slot.idx;
+            opt2.textContent = slot.time12;
+            if (slot.idx === selectedOut) opt2.selected = true;
+            clockOutSelect.appendChild(opt2);
+        });
+    }
+
     function openAgentForm(agentId = null) {
         const card = document.getElementById('agentFormCard');
         card.style.display = 'block';
@@ -2409,10 +2466,12 @@
 
         if (agentId) {
             const ag = masterAgentsDB.find(a => a.id === agentId);
-            document.getElementById('agentFormTitle').textContent = 'Edit Agent & Schedule (15-Min Intervals)';
+            document.getElementById('agentFormTitle').textContent = 'Edit Agent & Shift Schedule';
             document.getElementById('editAgentId').value = ag.id;
             document.getElementById('agentNameInput').value = ag.name;
             document.getElementById('agentDeptInput').value = ag.dept;
+
+            populateClockSelectors(ag.clockIn !== undefined ? ag.clockIn : 32, ag.clockOut !== undefined ? ag.clockOut : 68);
 
             agentSlots15Min.forEach(slot => {
                 const isChecked = ag.hours && ag.hours[slot.idx] !== undefined;
@@ -2433,10 +2492,12 @@
             });
 
         } else {
-            document.getElementById('agentFormTitle').textContent = 'Add New Agent (15-Min Intervals)';
+            document.getElementById('agentFormTitle').textContent = 'Add New Agent & Shift Schedule';
             document.getElementById('editAgentId').value = '';
             document.getElementById('agentNameInput').value = '';
             document.getElementById('agentDeptInput').value = currentDept;
+
+            populateClockSelectors(32, 68);
 
             agentSlots15Min.forEach(slot => {
                 const div = document.createElement('div');
@@ -2464,6 +2525,8 @@
         const idVal = document.getElementById('editAgentId').value;
         const name = document.getElementById('agentNameInput').value.trim();
         const dept = document.getElementById('agentDeptInput').value;
+        const clockIn = parseInt(document.getElementById('clockInSelect').value, 10);
+        const clockOut = parseInt(document.getElementById('clockOutSelect').value, 10);
 
         if (!name) return;
 
@@ -2480,11 +2543,13 @@
             if (ag) {
                 ag.name = name;
                 ag.dept = dept;
+                ag.clockIn = clockIn;
+                ag.clockOut = clockOut;
                 ag.hours = hoursObj;
             }
         } else {
             const newId = masterAgentsDB.length > 0 ? Math.max(...masterAgentsDB.map(a => a.id)) + 1 : 1;
-            masterAgentsDB.push({ id: newId, name: name, dept: dept, hours: hoursObj });
+            masterAgentsDB.push({ id: newId, name: name, dept: dept, clockIn: clockIn, clockOut: clockOut, hours: hoursObj });
         }
 
         recountRosterFromMasterDB();

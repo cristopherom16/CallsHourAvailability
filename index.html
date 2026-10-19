@@ -1050,7 +1050,7 @@
                 <p style="font-size:0.85rem; color:#ccc; margin-top:0;">Paste raw Cases table (Teammate | assignedConversations | replied to | Closed conversations):</p>
                 <div class="form-group">
                     <label>Cases / Messaging Data Table:</label>
-                    <textarea class="input-text" id="casesRawText" placeholder="Teammate assignedConversations assignedConversations replied to Closed conversations..." style="height: 220px; font-family: monospace; font-size:0.8rem;"></textarea>
+                    <textarea class="input-text" id="casesRawText" placeholder="Teammate assignedConversations replied to Closed conversations..." style="height: 220px; font-family: monospace; font-size:0.8rem;"></textarea>
                 </div>
             </div>
 
@@ -2182,23 +2182,41 @@
         return result;
     }
 
+    // PARSER DE CASOS PRECISO Y ANTI-NÚMEROS GIGANTES
     function parseCasesTable(rawText) {
         if (!rawText || !rawText.trim()) return {};
-        const lines = rawText.split('\n');
-        let totalClosed = 0;
-
-        const regex = /([A-Za-z\s]+?)\s*(\d+)\s*(\d+)\s*(\d+)/;
+        
+        // Separación por líneas
+        const lines = rawText.split(/\r?\n/);
+        let totalClosedCases = 0;
 
         lines.forEach(line => {
-            const match = line.match(regex);
-            if (match) {
-                totalClosed += parseInt(match[4], 10) || 0;
+            const trimmed = line.trim();
+            if (!trimmed || trimmed.toLowerCase().includes('teammate')) return;
+
+            // Extrae bloques numéricos de la fila
+            const numberMatches = trimmed.match(/\d+/g);
+            if (numberMatches && numberMatches.length > 0) {
+                // Toma el último valor entero
+                let rawVal = parseInt(numberMatches[numberMatches.length - 1], 10) || 0;
+
+                // Si el número es absurdo (> 1000) por estar pegado al ID/Nombre, extrae los últimos 2 o 3 dígitos válidos
+                if (rawVal > 1000) {
+                    const strVal = rawVal.toString();
+                    rawVal = parseInt(strVal.slice(-2), 10) || 0; 
+                }
+
+                // Límite máximo operativo razonable por agente por periodo
+                if (rawVal > 0 && rawVal <= 300) {
+                    totalClosedCases += rawVal;
+                }
             }
         });
 
         const hourlyResult = {};
-        const activeHours = [9, 10, 11, 12, 13, 14, 15, 16, 17];
-        const hourlyAns = Math.round(totalClosed / activeHours.length);
+        // Distribución en la jornada laboral activa de 9 horas (8 AM - 5 PM)
+        const activeHours = [8, 9, 10, 11, 12, 13, 14, 15, 16];
+        const hourlyAns = Math.round(totalClosedCases / activeHours.length);
 
         for (let h = 0; h < 24; h++) {
             if (activeHours.includes(h)) {

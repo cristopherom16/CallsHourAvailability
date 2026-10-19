@@ -2143,9 +2143,7 @@
         if (!rawText || !rawText.trim()) return {};
         const result = {};
 
-        const lines = rawText.split(/
-?
-/);
+        const lines = rawText.split(/\r?\n/);
         const hourlyAccumulator = {};
 
         lines.forEach(line => {
@@ -2171,7 +2169,7 @@
             // Extraer valores numéricos.
             // Regla Anti-40k: Ignorar números >= 800 (descarta Años como 2025/2026, IDs de llamada y sumatorios totales)
             const restOfLine = trimmed.substring(timeMatch.index + timeMatch[0].length);
-            let digits = restOfLine.split(/[	\s,]+/)
+            let digits = restOfLine.split(/[\t\s,]+/)
                 .map(v => parseFloat(v))
                 .filter(v => !isNaN(v) && v < 800 && v >= 0);
 
@@ -2217,9 +2215,7 @@
     function parseCasesTable(rawText) {
         if (!rawText || !rawText.trim()) return {};
         
-        const lines = rawText.split(/
-?
-/);
+        const lines = rawText.split(/\r?\n/);
         let totalClosedCases = 0;
         let countRows = 0;
 
@@ -2227,7 +2223,7 @@
             const trimmed = line.trim();
             if (!trimmed || trimmed.toLowerCase().includes('teammate') || trimmed.toLowerCase().includes('total')) return;
 
-            const numbers = trimmed.split(/[\s	,]+/)
+            const numbers = trimmed.split(/[\s\t,]+/)
                 .map(n => parseInt(n, 10))
                 .filter(n => !isNaN(n) && n >= 0 && n < 800);
 

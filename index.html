@@ -806,15 +806,15 @@
                     <option value="June">June</option>
                     <option value="July">July</option>
                     <option value="August">August</option>
-                    <option value="September" selected>September</option>
-                    <option value="October">October</option>
+                    <option value="September">September</option>
+                    <option value="October" selected>October</option>
                     <option value="November">November</option>
                     <option value="December">December</option>
                 </select>
 
                 <select id="weekSelect" class="input-select" style="font-weight: bold;">
-                    <option value="Week 1" selected>Week 1</option>
-                    <option value="Week 2">Week 2</option>
+                    <option value="Week 1">Week 1</option>
+                    <option value="Week 2" selected>Week 2</option>
                     <option value="Week 3">Week 3</option>
                     <option value="Week 4">Week 4</option>
                     <option value="Week 5">Week 5</option>
@@ -851,7 +851,7 @@
     <!-- Visualizations -->
     <div class="charts-grid">
         <div class="chart-card">
-            <h3 id="chart1Title">Consolidated Call Volume vs. Capacity (September - Week 1)</h3>
+            <h3 id="chart1Title">Consolidated Volume vs. Capacity</h3>
             <div class="chart-container">
                 <canvas id="volumeCapacityChart"></canvas>
             </div>
@@ -904,9 +904,9 @@
         </table>
     </div>
 
-    <!-- Table 2: Call Volume Metrics -->
+    <!-- Table 2: Call & Cases Volume Metrics -->
     <h2 class="section-title">
-        <span>2. Consolidated Volume Metrics (<span class="periodLabel">September - Week 1</span>)</span>
+        <span>2. Consolidated Volume Metrics (<span class="periodLabel">October - Week 2</span>)</span>
     </h2>
     <div class="table-responsive">
         <table>
@@ -927,16 +927,16 @@
 
     <!-- Table 3: Capacity & Staffing Gap -->
     <h2 class="section-title">
-        <span>3. Staffing Requirements &amp; Coverage Gap (<span class="periodLabel">September - Week 1</span>)</span>
+        <span>3. Staffing Requirements &amp; Coverage Gap (<span class="periodLabel">October - Week 2</span>)</span>
     </h2>
     <div class="table-responsive">
         <table>
             <thead>
                 <tr>
                     <th>Time Slot</th>
-                    <th style="background-color: var(--accent-yellow); color: #000;">Avg Call Volume</th>
-                    <th>Available Phone Agents</th>
-                    <th>Required Phone Agents</th>
+                    <th style="background-color: var(--accent-yellow); color: #000;">Avg Volume</th>
+                    <th>Available Agents</th>
+                    <th>Required Agents</th>
                     <th>Net Gap / Coverage</th>
                     <th>Recommended Action</th>
                 </tr>
@@ -982,16 +982,16 @@
                     <option value="June">June</option>
                     <option value="July">July</option>
                     <option value="August">August</option>
-                    <option value="September" selected>September</option>
-                    <option value="October">October</option>
+                    <option value="September">September</option>
+                    <option value="October" selected>October</option>
                     <option value="November">November</option>
                     <option value="December">December</option>
                 </select>
 
                 <label style="font-weight:bold; font-size:0.85rem; color: var(--accent-yellow);">Target Week:</label>
                 <select id="importWeekSelect" class="input-select">
-                    <option value="Week 1" selected>Week 1</option>
-                    <option value="Week 2">Week 2</option>
+                    <option value="Week 1">Week 1</option>
+                    <option value="Week 2" selected>Week 2</option>
                     <option value="Week 3">Week 3</option>
                     <option value="Week 4">Week 4</option>
                     <option value="Week 5">Week 5</option>
@@ -1186,7 +1186,6 @@
 
     let isRemoteUpdate = false;
 
-    // LISTA ACTUALIZADA DE DEPARTAMENTOS CON PHONE Y CASES
     const depts = [
         'OBS - Phones', 'OBS - Cases', 
         'INS - Phones', 'INS - Cases', 
@@ -1360,7 +1359,14 @@
     let hourlyDataPattern = {};
     let multiPeriodVolumeDB = {};
     let rawTextsDB = {};
-    let volumeDataCombined = {};
+    
+    // ESTRUCTURA DE VOLUMEN CON SEPARACIÓN ESTRICTA
+    let volumeDataCombined = {
+        phones: {},
+        cases: {},
+        all: {}
+    };
+    
     let masterAgentsDB = buildDefaultMasterAgents();
 
     function cleanKey(str) {
@@ -1506,33 +1512,52 @@
         }
 
         const periodStore = multiPeriodVolumeDB[monthKey][weekKey];
-        volumeDataCombined = {};
+        volumeDataCombined = { phones: {}, cases: {}, all: {} };
 
         for (let h = 0; h < 24; h++) {
-            let sumAns = 0, sumAbQ = 0, sumAbCSAT = 0, sumAbH = 0;
-            ['obs', 'ins_p', 'eld_p', 'll', 'tfx', 'cases'].forEach(t => {
+            // PHONE VOLUMES
+            let pAns = 0, pAbQ = 0, pAbCSAT = 0, pAbH = 0;
+            ['obs', 'ins_p', 'eld_p', 'll', 'tfx'].forEach(t => {
                 if (periodStore[t] && periodStore[t][h]) {
                     const item = periodStore[t][h];
-                    sumAns += item.ans || 0;
-                    sumAbQ += item.abQ || 0;
-                    sumAbCSAT += item.abCSAT || 0;
-                    sumAbH += item.abH || 0;
+                    pAns += item.ans || 0;
+                    pAbQ += item.abQ || 0;
+                    pAbCSAT += item.abCSAT || 0;
+                    pAbH += item.abH || 0;
                 }
             });
+            const pTot = Math.round(pAns + pAbQ + pAbCSAT + pAbH);
+            volumeDataCombined.phones[h] = {
+                ans: Math.round(pAns), abQ: Math.round(pAbQ), abCSAT: Math.round(pAbCSAT), abH: Math.round(pAbH),
+                tot: pTot, max: Math.round(pTot * 1.1)
+            };
 
-            const totalVol = sumAns + sumAbQ + sumAbCSAT + sumAbH;
-            volumeDataCombined[h] = {
-                ans: sumAns,
-                abQ: sumAbQ,
-                abCSAT: sumAbCSAT,
-                abH: sumAbH,
-                tot: totalVol,
-                max: Math.round(totalVol * 1.1)
+            // CASES VOLUMES
+            let cAns = 0, cAbQ = 0, cAbCSAT = 0, cAbH = 0;
+            if (periodStore.cases && periodStore.cases[h]) {
+                const item = periodStore.cases[h];
+                cAns = item.ans || 0;
+                cAbQ = item.abQ || 0;
+                cAbCSAT = item.abCSAT || 0;
+                cAbH = item.abH || 0;
+            }
+            const cTot = Math.round(cAns + cAbQ + cAbCSAT + cAbH);
+            volumeDataCombined.cases[h] = {
+                ans: Math.round(cAns), abQ: Math.round(cAbQ), abCSAT: Math.round(cAbCSAT), abH: Math.round(cAbH),
+                tot: cTot, max: Math.round(cTot * 1.1)
+            };
+
+            // COMBINED ALL
+            const aTot = pTot + cTot;
+            volumeDataCombined.all[h] = {
+                ans: Math.round(pAns + cAns), abQ: Math.round(pAbQ + cAbQ), 
+                abCSAT: Math.round(pAbCSAT + cAbCSAT), abH: Math.round(pAbH + cAbH),
+                tot: aTot, max: Math.round(aTot * 1.1)
             };
         }
 
         document.querySelectorAll('.periodLabel').forEach(el => el.textContent = `${getActiveMonth()} - ${getActiveWeek()}`);
-        document.getElementById('chart1Title').textContent = `Consolidated Call / Case Volume vs. Capacity (${getActiveMonth()} - ${getActiveWeek()})`;
+        document.getElementById('chart1Title').textContent = `Consolidated Volume vs. Capacity (${getActiveMonth()} - ${getActiveWeek()})`;
     }
 
     function renderAllUI() {
@@ -1616,21 +1641,39 @@
         });
     }
 
+    // OBTENER MÉTRICA DE VOLUMEN SEGÚN FILTRO
+    function getActiveVolumeSet() {
+        if (selectedDepts.has('ALL')) return volumeDataCombined.all;
+        
+        let hasPhones = false;
+        let hasCases = false;
+
+        selectedDepts.forEach(d => {
+            if (d.includes('Cases')) hasCases = true;
+            else hasPhones = true;
+        });
+
+        if (hasPhones && !hasCases) return volumeDataCombined.phones;
+        if (hasCases && !hasPhones) return volumeDataCombined.cases;
+        return volumeDataCombined.all;
+    }
+
     function renderVolumeTable() {
         const tbody = document.getElementById('volumeTableBody');
         tbody.innerHTML = '';
+        const currentVolSet = getActiveVolumeSet();
 
         hourlySlots.forEach(slot => {
-            const v = volumeDataCombined[slot.h24] || { ans:0, abQ:0, abCSAT:0, abH:0, tot:0, max:0 };
+            const v = currentVolSet[slot.h24] || { ans:0, abQ:0, abCSAT:0, abH:0, tot:0, max:0 };
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td class="time-col">${slot.time12}</td>
-                <td>${v.ans.toFixed(1)}</td>
-                <td>${v.abQ.toFixed(1)}</td>
-                <td>${v.abCSAT.toFixed(1)}</td>
-                <td>${v.abH.toFixed(1)}</td>
-                <td style="background-color: rgba(255, 183, 3, 0.25); font-weight: bold; color: var(--accent-yellow);"><b>${v.tot.toFixed(1)}</b></td>
-                <td>${v.max}</td>
+                <td>${Math.round(v.ans)}</td>
+                <td>${Math.round(v.abQ)}</td>
+                <td>${Math.round(v.abCSAT)}</td>
+                <td>${Math.round(v.abH)}</td>
+                <td style="background-color: rgba(255, 183, 3, 0.25); font-weight: bold; color: var(--accent-yellow);"><b>${Math.round(v.tot)}</b></td>
+                <td>${Math.round(v.max)}</td>
             `;
             tbody.appendChild(tr);
         });
@@ -1642,21 +1685,28 @@
 
         const aht = parseFloat(document.getElementById('ahtInput').value) || 5;
         const occ = (parseFloat(document.getElementById('occInput').value) || 85) / 100;
-        const callsPerHourPerAgent = (60 / aht) * occ;
+        const itemsPerHourPerAgent = (60 / aht) * occ;
 
-        const totalPhoneRoster = (deptRosterCounts["OBS - Phones"] || 0) + (deptRosterCounts["INS - Phones"] || 0) + (deptRosterCounts["ELD - Phones"] || 0);
+        const isAll = selectedDepts.has('ALL');
 
         hourlySlots.forEach(slot => {
-            const v = volumeDataCombined[slot.h24] || { tot: 0 };
-            const obsAway = (hourlyDataPattern[slot.h24]["OBS - Phones"]) ? hourlyDataPattern[slot.h24]["OBS - Phones"].length : 0;
-            const insAway = (hourlyDataPattern[slot.h24]["INS - Phones"]) ? hourlyDataPattern[slot.h24]["INS - Phones"].length : 0;
-            const eldAway = (hourlyDataPattern[slot.h24]["ELD - Phones"]) ? hourlyDataPattern[slot.h24]["ELD - Phones"].length : 0;
-            
-            const totalPhoneAway = obsAway + insAway + eldAway;
-            const phoneAvail = Math.max(0, totalPhoneRoster - totalPhoneAway);
+            let activeVol = 0;
+            let activeRoster = 0;
+            let activeAway = 0;
 
-            const reqAgents = v.tot > 0 ? Math.ceil(v.tot / callsPerHourPerAgent) : 0;
-            const gap = phoneAvail - reqAgents;
+            depts.forEach(d => {
+                if (isAll || selectedDepts.has(d)) {
+                    activeRoster += deptRosterCounts[d] || 0;
+                    activeAway += (hourlyDataPattern[slot.h24][d]) ? hourlyDataPattern[slot.h24][d].length : 0;
+                }
+            });
+
+            const currentVolSet = getActiveVolumeSet();
+            activeVol = currentVolSet[slot.h24] ? currentVolSet[slot.h24].tot : 0;
+
+            const availAgents = Math.max(0, activeRoster - activeAway);
+            const reqAgents = activeVol > 0 ? Math.ceil(activeVol / itemsPerHourPerAgent) : 0;
+            const gap = availAgents - reqAgents;
 
             let recText = "";
             if (gap < 0) {
@@ -1670,8 +1720,8 @@
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td class="time-col">${slot.time12}</td>
-                <td style="background-color: rgba(255, 183, 3, 0.25); color: var(--accent-yellow);"><b>${v.tot.toFixed(1)}</b></td>
-                <td>${phoneAvail} of ${totalPhoneRoster}</td>
+                <td style="background-color: rgba(255, 183, 3, 0.25); color: var(--accent-yellow);"><b>${Math.round(activeVol)}</b></td>
+                <td>${availAgents} of ${activeRoster}</td>
                 <td>${reqAgents}</td>
                 <td>${gap >= 0 ? '+' + gap : gap}</td>
                 <td>${recText}</td>
@@ -1680,35 +1730,61 @@
         });
     }
 
+    // RECOMENDACIONES ESPECÍFICAS PARA PHONES Y CASES
     function renderRecommendations() {
         const container = document.getElementById('recommendationsContainer');
         const month = getActiveMonth();
         const week = getActiveWeek();
 
-        let maxVol = 0;
-        let peakHour = 9;
+        let showPhones = selectedDepts.has('ALL');
+        let showCases = selectedDepts.has('ALL');
 
-        for (let h = 0; h < 24; h++) {
-            let v = volumeDataCombined[h] ? volumeDataCombined[h].tot : 0;
-            if (v > maxVol) {
-                maxVol = v;
-                peakHour = h;
-            }
+        if (!selectedDepts.has('ALL')) {
+            showPhones = false;
+            showCases = false;
+            selectedDepts.forEach(d => {
+                if (d.includes('Cases')) showCases = true;
+                else showPhones = true;
+            });
         }
 
-        let peakSlot = hourlySlots.find(s => s.h24 === peakHour);
-        let timeLabel = peakSlot ? peakSlot.time12 : "Peak Hour";
+        let maxPhoneVol = 0, peakPhoneHour = 9;
+        let maxCaseVol = 0, peakCaseHour = 11;
 
-        container.innerHTML = `
-            <div class="recommendation-card">
-                <h3>Peak-Hour Shift &amp; Meal Staggering (${month} - ${week})</h3>
-                <p>For <b>${month} (${week})</b>, overall volume peaks around <b>${timeLabel}</b> with an average volume of <b>${maxVol.toFixed(1)} interactions/hour</b>. Overlapping lunches and breaks reduce available capacity during key windows. Staggering meal schedules into smaller shifts is essential to maintain queue SLA.</p>
-            </div>
-            <div class="recommendation-card">
-                <h3>Cross-Queue Reinforcement &amp; Flex Staffing</h3>
-                <p>When demand spikes above capacity in <i>${month} - ${week}</i>, activate cross-skilling protocols so that agents from non-phone or lower-volume teams support phone/case queues during high-demand hours.</p>
-            </div>
-        `;
+        for (let h = 0; h < 24; h++) {
+            let pv = volumeDataCombined.phones[h] ? volumeDataCombined.phones[h].tot : 0;
+            if (pv > maxPhoneVol) { maxPhoneVol = pv; peakPhoneHour = h; }
+
+            let cv = volumeDataCombined.cases[h] ? volumeDataCombined.cases[h].tot : 0;
+            if (cv > maxCaseVol) { maxCaseVol = cv; peakCaseHour = h; }
+        }
+
+        let pSlot = hourlySlots.find(s => s.h24 === peakPhoneHour);
+        let cSlot = hourlySlots.find(s => s.h24 === peakCaseHour);
+
+        let html = '';
+
+        if (showPhones) {
+            html += `
+                <div class="recommendation-card">
+                    <h3>📞 Phone Support Recommendations (${month} - ${week})</h3>
+                    <p>Call volume peaks around <b>${pSlot ? pSlot.time12 : "Peak Hour"}</b> with an average of <b>${Math.round(maxPhoneVol)} calls/hour</b>. 
+                    <b>Action:</b> Restructure break/lunch shifts for Phone teams (OBS, INS, ELD Phones) between 11:00 AM and 2:00 PM to prevent SLA drops during lunch breaks.</p>
+                </div>
+            `;
+        }
+
+        if (showCases) {
+            html += `
+                <div class="recommendation-card">
+                    <h3>✉️ Cases &amp; Messaging Recommendations (${month} - ${week})</h3>
+                    <p>Case volume reaches maximum activity around <b>${cSlot ? cSlot.time12 : "Peak Hour"}</b> with <b>${Math.round(maxCaseVol)} assigned cases/hour</b>. 
+                    <b>Action:</b> Enforce backlog sweep sessions during low call-volume hours. Cross-train available phone agents during non-peak windows to handle offline case queues.</p>
+                </div>
+            `;
+        }
+
+        container.innerHTML = html;
     }
 
     function initCharts() {
@@ -1728,7 +1804,7 @@
                         tension: 0.3
                     },
                     {
-                        label: 'Available Phone Capacity',
+                        label: 'Available Capacity',
                         data: [],
                         borderColor: '#ffffff',
                         borderDash: [5, 5],
@@ -1787,25 +1863,30 @@
     function updateCharts() {
         const aht = parseFloat(document.getElementById('ahtInput').value) || 5;
         const occ = (parseFloat(document.getElementById('occInput').value) || 85) / 100;
-        const callsPerHourPerAgent = (60 / aht) * occ;
+        const itemsPerHourPerAgent = (60 / aht) * occ;
 
         const volumeData = [];
         const capacityData = [];
-
-        const totalPhoneRoster = (deptRosterCounts["OBS - Phones"] || 0) + (deptRosterCounts["INS - Phones"] || 0) + (deptRosterCounts["ELD - Phones"] || 0);
+        const isAll = selectedDepts.has('ALL');
+        const currentVolSet = getActiveVolumeSet();
 
         hourlySlots.forEach(slot => {
-            const v = volumeDataCombined[slot.h24] ? volumeDataCombined[slot.h24].tot : 0;
-            const obsAway = hourlyDataPattern[slot.h24]["OBS - Phones"] ? hourlyDataPattern[slot.h24]["OBS - Phones"].length : 0;
-            const insAway = hourlyDataPattern[slot.h24]["INS - Phones"] ? hourlyDataPattern[slot.h24]["INS - Phones"].length : 0;
-            const eldAway = hourlyDataPattern[slot.h24]["ELD - Phones"] ? hourlyDataPattern[slot.h24]["ELD - Phones"].length : 0;
-            
-            const totalPhoneAway = obsAway + insAway + eldAway;
-            const phoneAvail = Math.max(0, totalPhoneRoster - totalPhoneAway);
-            const callCapacity = Math.round(phoneAvail * callsPerHourPerAgent);
+            const v = currentVolSet[slot.h24] ? currentVolSet[slot.h24].tot : 0;
+            let totalRoster = 0;
+            let totalAway = 0;
 
-            volumeData.push(v);
-            capacityData.push(callCapacity);
+            depts.forEach(d => {
+                if (isAll || selectedDepts.has(d)) {
+                    totalRoster += deptRosterCounts[d] || 0;
+                    totalAway += (hourlyDataPattern[slot.h24][d]) ? hourlyDataPattern[slot.h24][d].length : 0;
+                }
+            });
+
+            const avail = Math.max(0, totalRoster - totalAway);
+            const cap = Math.round(avail * itemsPerHourPerAgent);
+
+            volumeData.push(Math.round(v));
+            capacityData.push(cap);
         });
 
         volumeCapacityChartInstance.data.datasets[0].data = volumeData;
@@ -1952,7 +2033,7 @@
                     allBtn.classList.add('active');
                 }
             }
-            renderScheduleTable();
+            renderAllUI();
         });
 
         document.getElementById('ahtInput').addEventListener('input', () => {
@@ -2091,24 +2172,20 @@
         for (let h in hourlyAccumulator) {
             let item = hourlyAccumulator[h];
             let cnt = item.count || 1;
-            let avgAns = item.ansSum / cnt;
-            let avgAbQ = item.abQSum / cnt;
-            let avgCSAT = item.abCSATSum / cnt;
-            let avgAbH = item.abHSum / cnt;
 
             result[h] = {
-                ans: avgAns,
-                abQ: avgAbQ,
-                abCSAT: avgCSAT,
-                abH: avgAbH,
-                tot: avgAns + avgAbQ + avgCSAT + avgAbH
+                ans: Math.round(item.ansSum / cnt),
+                abQ: Math.round(item.abQSum / cnt),
+                abCSAT: Math.round(item.abCSATSum / cnt),
+                abH: Math.round(item.abHSum / cnt),
+                tot: Math.round((item.ansSum + item.abQSum + item.abCSATSum + item.abHSum) / cnt)
             };
         }
 
         return result;
     }
 
-    // PARSER PARADIGMA TABLA DE CASES Y CONVERSACIONES (FORMATO TEAMMATE)
+    // PARSER MEJORADO PARA TABLA DE CASOS (TEAMMATES)
     function parseCasesTable(rawText) {
         if (!rawText || !rawText.trim()) return {};
         const lines = rawText.split('\n');
@@ -2129,7 +2206,7 @@
 
         const hourlyResult = {};
         const activeHours = [9, 10, 11, 12, 13, 14, 15, 16, 17];
-        const hourlyAns = totalClosed / activeHours.length;
+        const hourlyAns = Math.round(totalClosed / activeHours.length);
 
         for (let h = 0; h < 24; h++) {
             if (activeHours.includes(h)) {

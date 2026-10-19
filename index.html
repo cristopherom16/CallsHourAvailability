@@ -76,16 +76,18 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: var(--bg-light);
             margin: 0;
-            padding: 20px;
+            /* El botón toggle mide 40px y tiene left: 16px. Su borde derecho está en 56px.
+               Con padding-left: 60px el contenedor queda exactamente a 4px (1 mm) del icono */
+            padding: 10px 10px 10px 60px;
             color: var(--text-main);
             transition: background-color 0.3s, color 0.3s;
         }
 
         .container {
-            max-width: 1600px;
+            max-width: 100%;
             margin: 0 auto;
             background: var(--card-bg);
-            padding: 25px;
+            padding: 20px;
             border-radius: 12px;
             box-shadow: 0 4px 20px rgba(0,0,0,0.5);
             border: 2px solid var(--accent-yellow);
@@ -94,8 +96,8 @@
         .header {
             background-color: var(--primary-dark);
             color: #ffffff;
-            margin: -25px -25px 25px -25px;
-            padding: 20px 30px;
+            margin: -20px -20px 20px -20px;
+            padding: 20px 25px;
             border-radius: 12px 12px 0 0;
             display: flex;
             justify-content: space-between;
@@ -265,6 +267,40 @@
             color: #000000;
             box-shadow: 0 2px 8px rgba(255, 183, 3, 0.4);
             border-color: #ffffff;
+        }
+
+        .channel-tab-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            background: var(--primary-dark);
+            padding: 8px;
+            border-radius: 8px;
+            border: 2px solid var(--accent-yellow);
+        }
+
+        .btn-channel {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            background: var(--primary-color);
+            color: var(--accent-yellow);
+            font-weight: bold;
+            font-size: 0.95rem;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.2s;
+            text-transform: uppercase;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-channel.active {
+            background: var(--accent-yellow);
+            color: #000000;
+            box-shadow: 0 2px 8px rgba(255, 183, 3, 0.4);
         }
 
         .input-select, .input-number, .input-text {
@@ -690,7 +726,7 @@
         .theme-toggle-btn {
             position: fixed;
             bottom: 20px;
-            left: 20px;
+            left: 16px;
             z-index: 999;
             width: 40px;
             height: 40px;
@@ -778,6 +814,16 @@
         </div>
     </div>
 
+    <!-- SELECCIÓN DE CANAL DE DASHBOARD -->
+    <div class="channel-tab-group">
+        <button class="btn-channel active" id="btnChannelPhone" onclick="switchChannel('PHONES')">
+            <i class="fa-solid fa-phone"></i> Phones Dashboard (OBS, INS, ELD Phones, LL+, TFX)
+        </button>
+        <button class="btn-channel" id="btnChannelCases" onclick="switchChannel('CASES')">
+            <i class="fa-solid fa-envelope"></i> Cases Dashboard (OBS, INS, ELD Cases)
+        </button>
+    </div>
+
     <!-- Controls Panel -->
     <div class="controls-panel">
         <div class="control-group">
@@ -809,18 +855,8 @@
         </div>
 
         <div class="control-group">
-            <span class="controls-title">Filter by Department</span>
-            <div class="slicer-buttons" id="slicerContainer">
-                <button class="btn-slicer all-btn active" data-dept="ALL">All Departments</button>
-                <button class="btn-slicer" data-dept="OBS - Phones">OBS - Phones</button>
-                <button class="btn-slicer" data-dept="OBS - Cases">OBS - Cases</button>
-                <button class="btn-slicer" data-dept="INS - Phones">INS - Phones</button>
-                <button class="btn-slicer" data-dept="INS - Cases">INS - Cases</button>
-                <button class="btn-slicer" data-dept="ELD - Phones">ELD - Phones</button>
-                <button class="btn-slicer" data-dept="ELD - Cases">ELD - Cases</button>
-                <button class="btn-slicer" data-dept="LL+">LL+</button>
-                <button class="btn-slicer" data-dept="TFX">TFX</button>
-            </div>
+            <span class="controls-title">Filter Department (<span id="channelNameLabel">Phones</span>)</span>
+            <div class="slicer-buttons" id="slicerContainer"></div>
         </div>
 
         <div class="control-group">
@@ -857,34 +893,18 @@
     <div class="table-responsive">
         <table>
             <thead>
-                <tr>
+                <tr id="scheduleTableHeader">
                     <th>Time Slot</th>
-                    <th class="dept-col" data-dept="OBS - Phones">OBS - Phones</th>
-                    <th class="dept-col" data-dept="OBS - Cases">OBS - Cases</th>
-                    <th class="dept-col" data-dept="INS - Phones">INS - Phones</th>
-                    <th class="dept-col" data-dept="INS - Cases">INS - Cases</th>
-                    <th class="dept-col" data-dept="ELD - Phones">ELD - Phones</th>
-                    <th class="dept-col" data-dept="ELD - Cases">ELD - Cases</th>
-                    <th class="dept-col" data-dept="LL+">LL+</th>
-                    <th class="dept-col" data-dept="TFX">TFX</th>
                     <th class="col-total">Total Away Agents</th>
                     <th class="col-details">Away Agents &amp; Activity Details</th>
                 </tr>
             </thead>
             <tbody id="scheduleTableBody"></tbody>
             <tfoot>
-                <tr>
+                <tr id="scheduleTableFooter">
                     <td>TOTAL ROSTER</td>
-                    <td class="dept-foot" data-dept="OBS - Phones" id="foot-OBS - Phones">27</td>
-                    <td class="dept-foot" data-dept="OBS - Cases" id="foot-OBS - Cases">10</td>
-                    <td class="dept-foot" data-dept="INS - Phones" id="foot-INS - Phones">21</td>
-                    <td class="dept-foot" data-dept="INS - Cases" id="foot-INS - Cases">0</td>
-                    <td class="dept-foot" data-dept="ELD - Phones" id="foot-ELD - Phones">29</td>
-                    <td class="dept-foot" data-dept="ELD - Cases" id="foot-ELD - Cases">0</td>
-                    <td class="dept-foot" data-dept="LL+" id="foot-LL+">8</td>
-                    <td class="dept-foot" data-dept="TFX" id="foot-TFX">3</td>
-                    <td id="footTotal" style="background-color: var(--accent-yellow); color: black;">98</td>
-                    <td id="footNote" style="text-align: left; font-style: italic;">Selected Headcount Total = 98 Agents</td>
+                    <td id="footTotal" style="background-color: var(--accent-yellow); color: black;">0</td>
+                    <td id="footNote" style="text-align: left; font-style: italic;">Selected Headcount Total = 0 Agents</td>
                 </tr>
             </tfoot>
         </table>
@@ -1173,13 +1193,14 @@
 
     let isRemoteUpdate = false;
 
-    const depts = [
-        'OBS - Phones', 'OBS - Cases', 
-        'INS - Phones', 'INS - Cases', 
-        'ELD - Phones', 'ELD - Cases', 
-        'LL+', 'TFX'
-    ];
-    
+    // DEFINICIÓN DE EQUIPOS Y GRUPOS SEPARADOS
+    const phoneDepts = ['OBS - Phones', 'INS - Phones', 'ELD - Phones', 'LL+', 'TFX'];
+    const casesDepts = ['OBS - Cases', 'INS - Cases', 'ELD - Cases'];
+    const depts = [...phoneDepts, ...casesDepts];
+
+    let activeChannel = 'PHONES'; // 'PHONES' o 'CASES'
+    let selectedDeptFilter = 'ALL_CHANNEL'; // Filtra los equipos dentro del canal activo
+
     let deptRosterCounts = {
         'OBS - Phones': 27,
         'OBS - Cases': 10,
@@ -1349,8 +1370,7 @@
     
     let volumeDataCombined = {
         phones: {},
-        cases: {},
-        all: {}
+        cases: {}
     };
     
     let masterAgentsDB = buildDefaultMasterAgents();
@@ -1440,7 +1460,6 @@
         });
     }
 
-    let selectedDepts = new Set(['ALL']);
     let isAuthenticated = false;
     let pendingAction = null;
 
@@ -1474,10 +1493,52 @@
         }
     }
 
+    window.switchChannel = function(channel) {
+        activeChannel = channel;
+        selectedDeptFilter = 'ALL_CHANNEL';
+
+        document.getElementById('btnChannelPhone').classList.toggle('active', channel === 'PHONES');
+        document.getElementById('btnChannelCases').classList.toggle('active', channel === 'CASES');
+        document.getElementById('channelNameLabel').textContent = channel === 'PHONES' ? 'Phones Teams' : 'Cases Teams';
+
+        renderSlicerButtons();
+        renderAllUI();
+    };
+
+    function renderSlicerButtons() {
+        const container = document.getElementById('slicerContainer');
+        container.innerHTML = '';
+
+        const currentDepts = activeChannel === 'PHONES' ? phoneDepts : casesDepts;
+
+        const allBtn = document.createElement('button');
+        allBtn.className = `btn-slicer ${selectedDeptFilter === 'ALL_CHANNEL' ? 'active' : ''}`;
+        allBtn.textContent = activeChannel === 'PHONES' ? 'All Phone Teams' : 'All Case Teams';
+        allBtn.onclick = () => {
+            selectedDeptFilter = 'ALL_CHANNEL';
+            renderSlicerButtons();
+            renderAllUI();
+        };
+        container.appendChild(allBtn);
+
+        currentDepts.forEach(d => {
+            const btn = document.createElement('button');
+            btn.className = `btn-slicer ${selectedDeptFilter === d ? 'active' : ''}`;
+            btn.textContent = d;
+            btn.onclick = () => {
+                selectedDeptFilter = d;
+                renderSlicerButtons();
+                renderAllUI();
+            };
+            container.appendChild(btn);
+        });
+    }
+
     document.addEventListener("DOMContentLoaded", () => {
         initTheme();
         recountRosterFromMasterDB();
         syncPatternFromMasterDB();
+        renderSlicerButtons();
         initCharts();
         setupEventListeners();
         initFirebaseListeners();
@@ -1496,10 +1557,10 @@
         }
 
         const periodStore = multiPeriodVolumeDB[monthKey][weekKey];
-        volumeDataCombined = { phones: {}, cases: {}, all: {} };
+        volumeDataCombined = { phones: {}, cases: {} };
 
         for (let h = 0; h < 24; h++) {
-            // PHONE VOLUMES
+            // PHONES VOLUMES (OBS, INS Phones, ELD Phones, LL+, TFX)
             let pAns = 0, pAbCSAT = 0, pAbQ = 0, pAbH = 0, pAbR = 0;
             ['obs', 'ins_p', 'eld_p', 'll', 'tfx'].forEach(t => {
                 if (periodStore[t] && periodStore[t][h]) {
@@ -1517,7 +1578,7 @@
                 tot: pTot, max: Math.round(pTot * 1.1)
             };
 
-            // CASES VOLUMES
+            // CASES VOLUMES (OBS Cases, INS Cases, ELD Cases)
             let cAns = 0;
             if (periodStore.cases && periodStore.cases[h]) {
                 const item = periodStore.cases[h];
@@ -1528,18 +1589,16 @@
                 ans: cTot, abCSAT: 0, abQ: 0, abH: 0, abR: 0,
                 tot: cTot, max: Math.round(cTot * 1.1)
             };
-
-            // COMBINED ALL
-            const aTot = pTot + cTot;
-            volumeDataCombined.all[h] = {
-                ans: Math.round(pAns + cAns), abCSAT: Math.round(pAbCSAT), 
-                abQ: Math.round(pAbQ), abH: Math.round(pAbH), abR: Math.round(pAbR),
-                tot: aTot, max: Math.round(aTot * 1.1)
-            };
         }
 
         document.querySelectorAll('.periodLabel').forEach(el => el.textContent = `${getActiveMonth()} - ${getActiveWeek()}`);
-        document.getElementById('chart1Title').textContent = `Consolidated Volume vs. Capacity (${getActiveMonth()} - ${getActiveWeek()})`;
+        document.getElementById('chart1Title').textContent = `Volume vs. Capacity (${activeChannel} - ${getActiveMonth()} ${getActiveWeek()})`;
+    }
+
+    function getActiveVisibleDepts() {
+        const allowedGroup = activeChannel === 'PHONES' ? phoneDepts : casesDepts;
+        if (selectedDeptFilter === 'ALL_CHANNEL') return allowedGroup;
+        return [selectedDeptFilter];
     }
 
     function renderAllUI() {
@@ -1552,31 +1611,30 @@
 
     function renderScheduleTable() {
         const tbody = document.getElementById('scheduleTableBody');
+        const theadTr = document.getElementById('scheduleTableHeader');
+        const tfootTr = document.getElementById('scheduleTableFooter');
+        
         tbody.innerHTML = '';
-        const isAll = selectedDepts.has('ALL');
+        const visibleDepts = getActiveVisibleDepts();
 
-        document.querySelectorAll('th.dept-col').forEach(th => {
-            const d = th.getAttribute('data-dept');
-            th.style.display = (isAll || selectedDepts.has(d)) ? '' : 'none';
-        });
+        // Reconstruir Encabezados Dinámicos de Tabla
+        theadTr.innerHTML = `<th>Time Slot</th>` + 
+            visibleDepts.map(d => `<th>${d}</th>`).join('') +
+            `<th class="col-total">Total Away Agents</th><th class="col-details">Away Agents &amp; Activity Details</th>`;
 
-        document.querySelectorAll('td.dept-foot').forEach(td => {
-            const d = td.getAttribute('data-dept');
-            td.style.display = (isAll || selectedDepts.has(d)) ? '' : 'none';
-            if (deptRosterCounts[d] !== undefined) td.textContent = deptRosterCounts[d];
-        });
-
+        // Reconstruir Pie de Tabla Dinámico
         let totalHeadcount = 0;
-        if (isAll) {
-            totalHeadcount = Object.values(deptRosterCounts).reduce((a, b) => a + b, 0);
-        } else {
-            selectedDepts.forEach(d => {
-                if (deptRosterCounts[d]) totalHeadcount += deptRosterCounts[d];
-            });
-        }
-        document.getElementById('footTotal').textContent = totalHeadcount;
-        document.getElementById('footNote').textContent = `Selected Headcount Total = ${totalHeadcount} Agents`;
+        let footCellsHtml = `<td>TOTAL ROSTER</td>`;
+        visibleDepts.forEach(d => {
+            let count = deptRosterCounts[d] || 0;
+            totalHeadcount += count;
+            footCellsHtml += `<td>${count}</td>`;
+        });
+        footCellsHtml += `<td id="footTotal" style="background-color: var(--accent-yellow); color: black;">${totalHeadcount}</td>`;
+        footCellsHtml += `<td id="footNote" style="text-align: left; font-style: italic;">Selected Headcount Total = ${totalHeadcount} Agents</td>`;
+        tfootTr.innerHTML = footCellsHtml;
 
+        // Filas Horarias
         hourlySlots.forEach(slot => {
             const tr = document.createElement('tr');
             
@@ -1588,15 +1646,12 @@
             let rowTotalAway = 0;
             let rowDetails = [];
 
-            depts.forEach(dept => {
+            visibleDepts.forEach(dept => {
                 const td = document.createElement('td');
                 td.className = 'dept-cell';
-                const isVisible = isAll || selectedDepts.has(dept);
-                td.style.display = isVisible ? '' : 'none';
 
                 let rawEntries = (hourlyDataPattern[slot.h24] && hourlyDataPattern[slot.h24][dept]) ? hourlyDataPattern[slot.h24][dept] : [];
                 
-                // Mapear agentes únicos dentro de la hora
                 let uniqueAgents = {};
                 rawEntries.forEach(ag => {
                     if (!uniqueAgents[ag.name]) uniqueAgents[ag.name] = [];
@@ -1604,14 +1659,12 @@
                 });
 
                 let uniqueCount = Object.keys(uniqueAgents).length;
+                rowTotalAway += uniqueCount;
 
-                if (isVisible) {
-                    rowTotalAway += uniqueCount;
-                    Object.keys(uniqueAgents).forEach(agName => {
-                        let acts = Array.from(new Set(uniqueAgents[agName])).join('/');
-                        rowDetails.push(`<b>${agName}</b> (${dept} - <i>${acts}</i>)`);
-                    });
-                }
+                Object.keys(uniqueAgents).forEach(agName => {
+                    let acts = Array.from(new Set(uniqueAgents[agName])).join('/');
+                    rowDetails.push(`<b>${agName}</b> (${dept} - <i>${acts}</i>)`);
+                });
 
                 td.innerHTML = uniqueCount > 0 
                     ? `<span class="count-badge">${uniqueCount}</span>` 
@@ -1634,19 +1687,7 @@
     }
 
     function getActiveVolumeSet() {
-        if (selectedDepts.has('ALL')) return volumeDataCombined.all;
-        
-        let hasPhones = false;
-        let hasCases = false;
-
-        selectedDepts.forEach(d => {
-            if (d.includes('Cases')) hasCases = true;
-            else hasPhones = true;
-        });
-
-        if (hasPhones && !hasCases) return volumeDataCombined.phones;
-        if (hasCases && !hasPhones) return volumeDataCombined.cases;
-        return volumeDataCombined.all;
+        return activeChannel === 'PHONES' ? volumeDataCombined.phones : volumeDataCombined.cases;
     }
 
     function renderVolumeTable() {
@@ -1679,22 +1720,19 @@
         const occ = (parseFloat(document.getElementById('occInput').value) || 85) / 100;
         const itemsPerHourPerAgent = (60 / aht) * occ;
 
-        const isAll = selectedDepts.has('ALL');
+        const visibleDepts = getActiveVisibleDepts();
+        const currentVolSet = getActiveVolumeSet();
 
         hourlySlots.forEach(slot => {
             let activeRoster = 0;
             let awayEquivalentHours = 0;
 
-            depts.forEach(d => {
-                if (isAll || selectedDepts.has(d)) {
-                    activeRoster += deptRosterCounts[d] || 0;
-                    let entries = hourlyDataPattern[slot.h24][d] || [];
-                    // Cada slot de 15 min restado equivale a 0.25 Horas-Agente
-                    awayEquivalentHours += entries.length * 0.25;
-                }
+            visibleDepts.forEach(d => {
+                activeRoster += deptRosterCounts[d] || 0;
+                let entries = hourlyDataPattern[slot.h24][d] || [];
+                awayEquivalentHours += entries.length * 0.25;
             });
 
-            const currentVolSet = getActiveVolumeSet();
             const activeVol = currentVolSet[slot.h24] ? currentVolSet[slot.h24].tot : 0;
 
             const availAgents = Math.max(0, Number((activeRoster - awayEquivalentHours).toFixed(2)));
@@ -1728,50 +1766,31 @@
         const month = getActiveMonth();
         const week = getActiveWeek();
 
-        let showPhones = selectedDepts.has('ALL');
-        let showCases = selectedDepts.has('ALL');
-
-        if (!selectedDepts.has('ALL')) {
-            showPhones = false;
-            showCases = false;
-            selectedDepts.forEach(d => {
-                if (d.includes('Cases')) showCases = true;
-                else showPhones = true;
-            });
-        }
-
-        let maxPhoneVol = 0, peakPhoneHour = 9;
-        let maxCaseVol = 0, peakCaseHour = 11;
+        let maxVol = 0, peakHour = 9;
+        const currentVolSet = getActiveVolumeSet();
 
         for (let h = 0; h < 24; h++) {
-            let pv = volumeDataCombined.phones[h] ? volumeDataCombined.phones[h].tot : 0;
-            if (pv > maxPhoneVol) { maxPhoneVol = pv; peakPhoneHour = h; }
-
-            let cv = volumeDataCombined.cases[h] ? volumeDataCombined.cases[h].tot : 0;
-            if (cv > maxCaseVol) { maxCaseVol = cv; peakCaseHour = h; }
+            let v = currentVolSet[h] ? currentVolSet[h].tot : 0;
+            if (v > maxVol) { maxVol = v; peakHour = h; }
         }
 
-        let pSlot = hourlySlots.find(s => s.h24 === peakPhoneHour);
-        let cSlot = hourlySlots.find(s => s.h24 === peakCaseHour);
+        let slot = hourlySlots.find(s => s.h24 === peakHour);
 
         let html = '';
-
-        if (showPhones) {
-            html += `
+        if (activeChannel === 'PHONES') {
+            html = `
                 <div class="recommendation-card">
                     <h3>📞 Phone Support Recommendations (${month} - ${week})</h3>
-                    <p>Call volume peaks around <b>${pSlot ? pSlot.time12 : "Peak Hour"}</b> with an average of <b>${Math.round(maxPhoneVol)} calls/hour</b>. 
-                    <b>Action:</b> Restructure break/lunch shifts for Phone teams (OBS, INS, ELD Phones) between 11:00 AM and 2:00 PM to prevent SLA drops during lunch breaks.</p>
+                    <p>Call volume peaks around <b>${slot ? slot.time12 : "Peak Hour"}</b> with an average of <b>${Math.round(maxVol)} calls/hour</b>. 
+                    <b>Action:</b> Restructure break/lunch shifts for Phone teams (OBS, INS, ELD Phones, LL+, TFX) between 11:00 AM and 2:00 PM to prevent SLA drops during lunch breaks.</p>
                 </div>
             `;
-        }
-
-        if (showCases) {
-            html += `
+        } else {
+            html = `
                 <div class="recommendation-card">
                     <h3>✉️ Cases &amp; Messaging Recommendations (${month} - ${week})</h3>
-                    <p>Case volume reaches maximum activity around <b>${cSlot ? cSlot.time12 : "Peak Hour"}</b> with <b>${Math.round(maxCaseVol)} assigned cases/hour</b>. 
-                    <b>Action:</b> Enforce backlog sweep sessions during low call-volume hours. Cross-train available phone agents during non-peak windows to handle offline case queues.</p>
+                    <p>Case volume reaches maximum activity around <b>${slot ? slot.time12 : "Peak Hour"}</b> with <b>${Math.round(maxVol)} assigned cases/hour</b> across Case teams (OBS, INS, ELD Cases). 
+                    <b>Action:</b> Enforce backlog sweep sessions during low volume hours. Cross-train available agents during non-peak windows to handle offline case queues.</p>
                 </div>
             `;
         }
@@ -1827,7 +1846,7 @@
         deptDistributionChartInstance = new Chart(ctx2, {
             type: 'bar',
             data: {
-                labels: depts,
+                labels: [],
                 datasets: [
                     { label: 'Total Headcount', data: [], backgroundColor: '#0b2545', borderColor: '#ffb703', borderWidth: 1.5 },
                     { label: 'Away Agents in Peak Hour (1:00 PM)', data: [], backgroundColor: '#ffb703', borderColor: '#ffffff', borderWidth: 1.5 }
@@ -1859,7 +1878,7 @@
 
         const volumeData = [];
         const capacityData = [];
-        const isAll = selectedDepts.has('ALL');
+        const visibleDepts = getActiveVisibleDepts();
         const currentVolSet = getActiveVolumeSet();
 
         hourlySlots.forEach(slot => {
@@ -1867,12 +1886,10 @@
             let totalRoster = 0;
             let awayEquivalentHours = 0;
 
-            depts.forEach(d => {
-                if (isAll || selectedDepts.has(d)) {
-                    totalRoster += deptRosterCounts[d] || 0;
-                    let entries = hourlyDataPattern[slot.h24][d] || [];
-                    awayEquivalentHours += entries.length * 0.25;
-                }
+            visibleDepts.forEach(d => {
+                totalRoster += deptRosterCounts[d] || 0;
+                let entries = hourlyDataPattern[slot.h24][d] || [];
+                awayEquivalentHours += entries.length * 0.25;
             });
 
             const avail = Math.max(0, totalRoster - awayEquivalentHours);
@@ -1886,13 +1903,14 @@
         volumeCapacityChartInstance.data.datasets[1].data = capacityData;
         volumeCapacityChartInstance.update();
 
-        const totalHeadcounts = depts.map(d => deptRosterCounts[d]);
-        const peakAway = depts.map(d => {
+        const totalHeadcounts = visibleDepts.map(d => deptRosterCounts[d]);
+        const peakAway = visibleDepts.map(d => {
             let entries = hourlyDataPattern[13][d] || [];
             let uniqueNames = new Set(entries.map(e => e.name));
             return uniqueNames.size;
         });
 
+        deptDistributionChartInstance.data.labels = visibleDepts;
         deptDistributionChartInstance.data.datasets[0].data = totalHeadcounts;
         deptDistributionChartInstance.data.datasets[1].data = peakAway;
         deptDistributionChartInstance.update();
@@ -1999,38 +2017,6 @@
             loadActivePeriodVolume();
             renderAllUI();
             broadcastNavChange(getActiveMonth(), getActiveWeek());
-        });
-
-        document.getElementById('slicerContainer').addEventListener('click', (e) => {
-            if (!e.target.classList.contains('btn-slicer')) return;
-            const dept = e.target.getAttribute('data-dept');
-            const allBtn = document.querySelector('.btn-slicer[data-dept="ALL"]');
-
-            if (dept === 'ALL') {
-                selectedDepts.clear();
-                selectedDepts.add('ALL');
-                document.querySelectorAll('.btn-slicer').forEach(btn => btn.classList.remove('active'));
-                allBtn.classList.add('active');
-            } else {
-                if (selectedDepts.has('ALL')) {
-                    selectedDepts.delete('ALL');
-                    allBtn.classList.remove('active');
-                }
-
-                if (selectedDepts.has(dept)) {
-                    selectedDepts.delete(dept);
-                    e.target.classList.remove('active');
-                } else {
-                    selectedDepts.add(dept);
-                    e.target.classList.add('active');
-                }
-
-                if (selectedDepts.size === 0) {
-                    selectedDepts.add('ALL');
-                    allBtn.classList.add('active');
-                }
-            }
-            renderAllUI();
         });
 
         document.getElementById('ahtInput').addEventListener('input', () => {

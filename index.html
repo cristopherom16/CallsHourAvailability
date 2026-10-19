@@ -1609,7 +1609,6 @@
             let cAns = 0;
             if (periodStore.cases) {
                 if (selectedDeptFilter === 'ALL_CHANNEL') {
-                    // Sumar todos los casos importados
                     for (let deptKey in periodStore.cases) {
                         if (periodStore.cases[deptKey] && periodStore.cases[deptKey][h]) {
                             cAns += periodStore.cases[deptKey][h].ans || 0;
@@ -1618,7 +1617,6 @@
                 } else if (periodStore.cases[selectedDeptFilter] && periodStore.cases[selectedDeptFilter][h]) {
                     cAns = periodStore.cases[selectedDeptFilter][h].ans || 0;
                 } else if (periodStore.cases[h]) {
-                    // Fallback para estructuras planas
                     cAns = periodStore.cases[h].ans || 0;
                 }
             }
@@ -1751,7 +1749,6 @@
         });
     }
 
-    // CÁLCULO EXACTO CON CLOCK IN Y CLOCK OUT
     function renderComparisonTable() {
         const tbody = document.getElementById('comparisonTableBody');
         tbody.innerHTML = '';
@@ -2227,11 +2224,10 @@
         return result;
     }
 
-    // PARSER MEJORADO PARA CASOS CON ASIGNACIÓN DE DEPARTAMENTO
+    // PARSER INTELIGENTE DE TABLAS PEGADAS CONTINUAS PARA CASOS
     function parseCasesTable(rawText) {
         if (!rawText || !rawText.trim()) return {};
-        
-        const lines = rawText.split(/\r?\n/);
+
         const deptCasesAcc = {
             'OBS - Cases': {},
             'INS - Cases': {},
@@ -2242,34 +2238,45 @@
             for (let h = 0; h < 24; h++) deptCasesAcc[d][h] = { ans: 0 };
         });
 
-        lines.forEach(line => {
-            const trimmed = line.trim();
-            if (!trimmed || trimmed.toLowerCase().includes('teammate') || trimmed.toLowerCase().includes('total')) return;
+        const text = rawText.replace(/\r/g, '');
+        // Expresión regular que busca bloques: Nombre del Agente + Números finales (assigned, replied, closed)
+        const regex = /([A-Za-z\s.\-áéíóúÁÉÍÓÚñÑ]+?)([\d,]+)\s*([\d,]+)?\s*([\d,]+)?/g;
+
+        let match;
+        let totalClosedCases = 0;
+
+        while ((match = regex.exec(text)) !== null) {
+            let name = match[1].trim();
+            if (!name || name.toLowerCase().includes('teammate') || name.toLowerCase().includes('conversations')) continue;
 
             // Extraer números
-            const numbers = trimmed.split(/[\s\t,]+/)
-                .map(n => parseInt(n, 10))
-                .filter(n => !isNaN(n) && n >= 0 && n < 800);
+            let num1 = match[2] ? parseInt(match[2].replace(/,/g, ''), 10) : 0;
+            let num2 = match[3] ? parseInt(match[3].replace(/,/g, ''), 10) : 0;
+            let num3 = match[4] ? parseInt(match[4].replace(/,/g, ''), 10) : 0;
 
-            if (numbers.length >= 1) {
-                let closedVal = numbers[numbers.length - 1]; // Casos cerrados
-                
-                // Mapear agente a departamento según Master DB
-                let matchedAgent = masterAgentsDB.find(ag => trimmed.toLowerCase().includes(ag.name.toLowerCase()));
+            let closedVal = 0;
+            if (num3 > 0) closedVal = num3;
+            else if (num2 > 0) closedVal = num2;
+            else closedVal = num1;
+
+            if (closedVal > 0) {
+                totalClosedCases += closedVal;
+
+                // Mapeo automático de agente a departamento
+                let matchedAgent = masterAgentsDB.find(ag => ag.name.toLowerCase().includes(name.toLowerCase()) || name.toLowerCase().includes(ag.name.toLowerCase()));
                 let targetDept = matchedAgent ? matchedAgent.dept : 'OBS - Cases';
 
-                if (!deptCasesAcc[targetDept]) deptCasesAcc[targetDept] = {};
+                if (!casesDepts.includes(targetDept)) targetDept = 'OBS - Cases';
 
-                // Distribuir equitativamente en horario operativo activo (8 AM - 4 PM)
+                // Distribuir en franja de horario laboral (8 AM - 4 PM = 9 horas)
                 const activeHours = [8, 9, 10, 11, 12, 13, 14, 15, 16];
                 const hourlyVal = Math.round(closedVal / activeHours.length);
 
                 activeHours.forEach(h => {
-                    if (!deptCasesAcc[targetDept][h]) deptCasesAcc[targetDept][h] = { ans: 0 };
                     deptCasesAcc[targetDept][h].ans += hourlyVal;
                 });
             }
-        });
+        }
 
         return deptCasesAcc;
     }

@@ -1360,7 +1360,6 @@
     let multiPeriodVolumeDB = {};
     let rawTextsDB = {};
     
-    // ESTRUCTURA DE VOLUMEN CON SEPARACIÓN ESTRICTA
     let volumeDataCombined = {
         phones: {},
         cases: {},
@@ -1641,7 +1640,6 @@
         });
     }
 
-    // OBTENER MÉTRICA DE VOLUMEN SEGÚN FILTRO
     function getActiveVolumeSet() {
         if (selectedDepts.has('ALL')) return volumeDataCombined.all;
         
@@ -1730,7 +1728,6 @@
         });
     }
 
-    // RECOMENDACIONES ESPECÍFICAS PARA PHONES Y CASES
     function renderRecommendations() {
         const container = document.getElementById('recommendationsContainer');
         const month = getActiveMonth();
@@ -2185,12 +2182,9 @@
         return result;
     }
 
-    // PARSER MEJORADO PARA TABLA DE CASOS (TEAMMATES)
     function parseCasesTable(rawText) {
         if (!rawText || !rawText.trim()) return {};
         const lines = rawText.split('\n');
-        let totalAssigned = 0;
-        let totalReplied = 0;
         let totalClosed = 0;
 
         const regex = /([A-Za-z\s]+?)\s*(\d+)\s*(\d+)\s*(\d+)/;
@@ -2198,8 +2192,6 @@
         lines.forEach(line => {
             const match = line.match(regex);
             if (match) {
-                totalAssigned += parseInt(match[2], 10) || 0;
-                totalReplied += parseInt(match[3], 10) || 0;
                 totalClosed += parseInt(match[4], 10) || 0;
             }
         });
@@ -2266,11 +2258,11 @@
         document.getElementById('monthSelect').value = targetMonth;
         document.getElementById('weekSelect').value = targetWeek;
 
-        loadActivePeriodVolume();
-        renderAllUI();
-
         saveVolumeDBToFirebase();
         saveRawTextsToFirebase();
+
+        loadActivePeriodVolume();
+        renderAllUI();
         broadcastNavChange(targetMonth, targetWeek);
 
         document.getElementById('importModal').classList.remove('active');

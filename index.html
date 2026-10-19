@@ -1001,7 +1001,7 @@
 
             <!-- SECTION FOR PHONE MODE -->
             <div id="phoneImportSection">
-                <p style="font-size:0.85rem; color:#ccc; margin-top:0;">Columns expected: <b>Date &amp; Hour | Answered | Abandoned in CSAT rating | Abandoned in queue | Abandoned on hold | Abandoned in routing</b></p>
+                <p style="font-size:0.85rem; color:#ccc; margin-top:0;">Expected Columns: <b>Date &amp; Hour | Answered | Abandoned in CSAT rating | Abandoned in queue | Abandoned on hold | Abandoned in routing</b></p>
                 <div class="tab-buttons" id="teamImportTabs">
                     <button class="tab-btn active" data-tab="tab-obs">OBS Phones</button>
                     <button class="tab-btn" data-tab="tab-ins-p">INS Phones</button>
@@ -1164,7 +1164,7 @@
 <!-- FIREBASE SDK ENGINE -->
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-app.js";
-    import { getDatabase, ref, onValue, set, remove } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-database.js";
+    import { getDatabase, ref, onValue, set, remove, update } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-database.js";
 
     const firebaseConfig = {
         apiKey: "AIzaSyAmB9PhTd_Dz68rTZQZlRS1mcfAy1SQxgo",
@@ -2106,8 +2106,7 @@
         }
     }
 
-    // PARSER EXACTO PARA ESTRUCTURA PHONES (6 COLUMNAS)
-    // Date & Hour | Answered | Abandoned in CSAT rating | Abandoned in queue | Abandoned on hold | Abandoned in routing
+    // PARSER EXACTO CON PROMEDIO ANTI-ACUMULACIÓN DÍA A DÍA
     function parsePastedTable(rawText) {
         if (!rawText || !rawText.trim()) return {};
         const result = {};
@@ -2151,12 +2150,12 @@
                     if (dMatch) digits = dMatch.map(v => parseFloat(v));
                 }
 
-                // Mapeo Estricto de Columnas
-                let ans     = digits[0] || 0; // Answered
-                let abCSAT  = digits[1] || 0; // Abandoned in CSAT rating
-                let abQ     = digits[2] || 0; // Abandoned in queue
-                let abH     = digits[3] || 0; // Abandoned on hold
-                let abR     = digits[4] || 0; // Abandoned in routing
+                // Mapeo Estricto
+                let ans     = digits[0] || 0;
+                let abCSAT  = digits[1] || 0;
+                let abQ     = digits[2] || 0;
+                let abH     = digits[3] || 0;
+                let abR     = digits[4] || 0;
 
                 if (!hourlyAccumulator[h24]) {
                     hourlyAccumulator[h24] = { ansSum: 0, abCSATSum: 0, abQSum: 0, abHSum: 0, abRSum: 0, count: 0 };
@@ -2188,7 +2187,7 @@
         return result;
     }
 
-    // PARSER CORREGIDO PARA CASES (MÉTRICA REAL DE CLOSED CONVERSATIONS)
+    // PARSER CASES CORREGIDO Y SEPARADO
     function parseCasesTable(rawText) {
         if (!rawText || !rawText.trim()) return {};
         
@@ -2199,12 +2198,11 @@
             const trimmed = line.trim();
             if (!trimmed || trimmed.toLowerCase().includes('teammate')) return;
 
-            // Extrae el texto del agente y el bloque numérico del final de la fila
+            // Extrae únicamente los números independientes al final de cada fila
             const match = trimmed.match(/^(.*?)([\d\s\t,]+)$/);
             if (match && match[2]) {
                 const numbers = match[2].trim().split(/[\s\t,]+/).map(n => parseInt(n, 10)).filter(n => !isNaN(n));
                 if (numbers.length >= 1) {
-                    // La última columna numérica es 'Closed conversations'
                     let closedVal = numbers[numbers.length - 1];
                     if (closedVal > 0 && closedVal < 2000) {
                         totalClosedCases += closedVal;
@@ -2214,7 +2212,6 @@
         });
 
         const hourlyResult = {};
-        // Distribución equitativa en horas hábiles (8 AM a 5 PM)
         const activeHours = [8, 9, 10, 11, 12, 13, 14, 15, 16];
         const hourlyAns = Math.round(totalClosedCases / activeHours.length);
 
@@ -2277,8 +2274,9 @@
         document.getElementById('monthSelect').value = targetMonth;
         document.getElementById('weekSelect').value = targetWeek;
 
-        saveVolumeDBToFirebase();
-        saveRawTextsToFirebase();
+        // FUSIONAL UPDATE EN FIREBASE (SIN BORRAR CANALES EXISTENTES)
+        update(ref(db, `wfm_data/multiPeriodVolumeDB/${monthKey}/${weekKey}`), periodStore);
+        update(ref(db, `wfm_data/rawTextsDB/${monthKey}/${weekKey}`), rawStore);
 
         loadActivePeriodVolume();
         renderAllUI();

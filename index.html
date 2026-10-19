@@ -76,7 +76,7 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: var(--bg-light);
             margin: 0;
-            /* Margen horizontal a 1mm (~4px) del icono toggle flotante (40px width + 16px left + 4px = 60px padding-left) */
+            /* Margen horizontal exactamente a 1mm (~4px) del icono toggle flotante (40px width + 16px left + 4px = 60px padding-left) */
             padding: 10px 10px 10px 60px;
             color: var(--text-main);
             transition: background-color 0.3s, color 0.3s;
@@ -1597,7 +1597,7 @@
             let cAns = 0;
             if (periodStore.cases && periodStore.cases[h]) {
                 const item = periodStore.cases[h];
-                cAns = item.ans || 0;
+                cAns += item.ans || 0;
             }
             const cTot = Math.round(cAns);
             volumeDataCombined.cases[h] = {
@@ -2138,19 +2138,21 @@
         }
     }
 
-    // PARSER CORREGIDO PARA EVITAR CÁLCULOS ERRORES DE 40,000+
+    // PARSER RIGUROSO ANTI 40,000+
     function parsePastedTable(rawText) {
         if (!rawText || !rawText.trim()) return {};
         const result = {};
 
-        const lines = rawText.split(/\r?\n/);
+        const lines = rawText.split(/
+?
+/);
         const hourlyAccumulator = {};
 
         lines.forEach(line => {
             const trimmed = line.trim();
             if (!trimmed) return;
 
-            // Ignorar encabezados y totales
+            // Ignorar filas de encabezados y totales
             const lower = trimmed.toLowerCase();
             if (lower.includes('total') || lower.includes('date') || lower.includes('answered') || lower.includes('teammate')) return;
 
@@ -2166,11 +2168,12 @@
 
             if (h < 0 || h >= 24) return;
 
-            // Extraer números ignorando fechas (ej. 2025, 2026) o IDs de llamadas de más de 2000
+            // Extraer valores numéricos.
+            // Regla Anti-40k: Ignorar números >= 800 (descarta Años como 2025/2026, IDs de llamada y sumatorios totales)
             const restOfLine = trimmed.substring(timeMatch.index + timeMatch[0].length);
-            let digits = restOfLine.split(/[\t\s,]+/)
+            let digits = restOfLine.split(/[	\s,]+/)
                 .map(v => parseFloat(v))
-                .filter(v => !isNaN(v) && v < 2000 && v >= 0);
+                .filter(v => !isNaN(v) && v < 800 && v >= 0);
 
             if (digits.length >= 1) {
                 let ans     = digits[0] || 0;
@@ -2192,6 +2195,7 @@
             }
         });
 
+        // Promediar por franja horaria para evitar acumulación errónea
         for (let h in hourlyAccumulator) {
             let item = hourlyAccumulator[h];
             let cnt = item.count || 1;
@@ -2209,30 +2213,34 @@
         return result;
     }
 
-    // PARSER CORREGIDO PARA CASES
+    // PARSER RIGUROSO PARA CASES
     function parseCasesTable(rawText) {
         if (!rawText || !rawText.trim()) return {};
         
-        const lines = rawText.split(/\r?\n/);
+        const lines = rawText.split(/
+?
+/);
         let totalClosedCases = 0;
+        let countRows = 0;
 
         lines.forEach(line => {
             const trimmed = line.trim();
             if (!trimmed || trimmed.toLowerCase().includes('teammate') || trimmed.toLowerCase().includes('total')) return;
 
-            const numbers = trimmed.split(/[\s\t,]+/)
+            const numbers = trimmed.split(/[\s	,]+/)
                 .map(n => parseInt(n, 10))
-                .filter(n => !isNaN(n) && n >= 0 && n < 2000);
+                .filter(n => !isNaN(n) && n >= 0 && n < 800);
 
             if (numbers.length >= 1) {
                 let closedVal = numbers[numbers.length - 1]; // Tomar el valor cerrado
                 totalClosedCases += closedVal;
+                countRows++;
             }
         });
 
         const hourlyResult = {};
         const activeHours = [8, 9, 10, 11, 12, 13, 14, 15, 16];
-        const hourlyAns = Math.round(totalClosedCases / activeHours.length);
+        const hourlyAns = activeHours.length > 0 ? Math.round(totalClosedCases / activeHours.length) : 0;
 
         for (let h = 0; h < 24; h++) {
             if (activeHours.includes(h)) {

@@ -267,16 +267,6 @@
             border-color: #ffffff;
         }
 
-        .btn-slicer.all-btn {
-            border-color: var(--accent-yellow);
-            color: var(--accent-yellow);
-        }
-
-        .btn-slicer.all-btn.active {
-            background-color: var(--accent-yellow);
-            color: #000000;
-        }
-
         .input-select, .input-number, .input-text {
             padding: 8px 12px;
             border-radius: 6px;
@@ -348,8 +338,6 @@
             color: #000000;
             border-color: #ffffff;
         }
-        
-        thead th.col-details { background-color: #14365d; }
 
         tfoot tr td {
             font-weight: bold;
@@ -602,9 +590,7 @@
             transition: background-color 0.15s;
         }
 
-        .agent-row-draggable:active {
-            cursor: grabbing;
-        }
+        .agent-row-draggable:active { cursor: grabbing; }
 
         .agent-row-draggable.dragging {
             opacity: 0.5;
@@ -1443,13 +1429,11 @@
                     let slot15Idx = parseInt(idx, 10);
                     let hour24 = Math.floor(slot15Idx / 4);
                     if (hour24 >= 0 && hour24 < 24 && hourlyDataPattern[hour24] && hourlyDataPattern[hour24][ag.dept]) {
-                        let exists = hourlyDataPattern[hour24][ag.dept].some(item => item.name === ag.name);
-                        if (!exists) {
-                            hourlyDataPattern[hour24][ag.dept].push({
-                                name: ag.name,
-                                act: ag.hours[idx]
-                            });
-                        }
+                        hourlyDataPattern[hour24][ag.dept].push({
+                            name: ag.name,
+                            act: ag.hours[idx],
+                            slot15Idx: slot15Idx
+                        });
                     }
                 }
             }
@@ -1610,17 +1594,27 @@
                 const isVisible = isAll || selectedDepts.has(dept);
                 td.style.display = isVisible ? '' : 'none';
 
-                let agents = (hourlyDataPattern[slot.h24] && hourlyDataPattern[slot.h24][dept]) ? hourlyDataPattern[slot.h24][dept] : [];
+                let rawEntries = (hourlyDataPattern[slot.h24] && hourlyDataPattern[slot.h24][dept]) ? hourlyDataPattern[slot.h24][dept] : [];
                 
+                // Mapear agentes únicos dentro de la hora
+                let uniqueAgents = {};
+                rawEntries.forEach(ag => {
+                    if (!uniqueAgents[ag.name]) uniqueAgents[ag.name] = [];
+                    uniqueAgents[ag.name].push(ag.act);
+                });
+
+                let uniqueCount = Object.keys(uniqueAgents).length;
+
                 if (isVisible) {
-                    rowTotalAway += agents.length;
-                    agents.forEach(ag => {
-                        rowDetails.push(`<b>${ag.name}</b> (${dept} - <i>${ag.act}</i>)`);
+                    rowTotalAway += uniqueCount;
+                    Object.keys(uniqueAgents).forEach(agName => {
+                        let acts = Array.from(new Set(uniqueAgents[agName])).join('/');
+                        rowDetails.push(`<b>${agName}</b> (${dept} - <i>${acts}</i>)`);
                     });
                 }
 
-                td.innerHTML = agents.length > 0 
-                    ? `<span class="count-badge">${agents.length}</span>` 
+                td.innerHTML = uniqueCount > 0 
+                    ? `<span class="count-badge">${uniqueCount}</span>` 
                     : `<span class="zero-count">-</span>`;
                 tr.appendChild(td);
             });
@@ -1688,23 +1682,24 @@
         const isAll = selectedDepts.has('ALL');
 
         hourlySlots.forEach(slot => {
-            let activeVol = 0;
             let activeRoster = 0;
-            let activeAway = 0;
+            let awayEquivalentHours = 0;
 
             depts.forEach(d => {
                 if (isAll || selectedDepts.has(d)) {
                     activeRoster += deptRosterCounts[d] || 0;
-                    activeAway += (hourlyDataPattern[slot.h24][d]) ? hourlyDataPattern[slot.h24][d].length : 0;
+                    let entries = hourlyDataPattern[slot.h24][d] || [];
+                    // Cada slot de 15 min restado equivale a 0.25 Horas-Agente
+                    awayEquivalentHours += entries.length * 0.25;
                 }
             });
 
             const currentVolSet = getActiveVolumeSet();
-            activeVol = currentVolSet[slot.h24] ? currentVolSet[slot.h24].tot : 0;
+            const activeVol = currentVolSet[slot.h24] ? currentVolSet[slot.h24].tot : 0;
 
-            const availAgents = Math.max(0, activeRoster - activeAway);
+            const availAgents = Math.max(0, Number((activeRoster - awayEquivalentHours).toFixed(2)));
             const reqAgents = activeVol > 0 ? Math.ceil(activeVol / itemsPerHourPerAgent) : 0;
-            const gap = availAgents - reqAgents;
+            const gap = Number((availAgents - reqAgents).toFixed(1));
 
             let recText = "";
             if (gap < 0) {
@@ -1870,16 +1865,17 @@
         hourlySlots.forEach(slot => {
             const v = currentVolSet[slot.h24] ? currentVolSet[slot.h24].tot : 0;
             let totalRoster = 0;
-            let totalAway = 0;
+            let awayEquivalentHours = 0;
 
             depts.forEach(d => {
                 if (isAll || selectedDepts.has(d)) {
                     totalRoster += deptRosterCounts[d] || 0;
-                    totalAway += (hourlyDataPattern[slot.h24][d]) ? hourlyDataPattern[slot.h24][d].length : 0;
+                    let entries = hourlyDataPattern[slot.h24][d] || [];
+                    awayEquivalentHours += entries.length * 0.25;
                 }
             });
 
-            const avail = Math.max(0, totalRoster - totalAway);
+            const avail = Math.max(0, totalRoster - awayEquivalentHours);
             const cap = Math.round(avail * itemsPerHourPerAgent);
 
             volumeData.push(Math.round(v));
@@ -1891,7 +1887,11 @@
         volumeCapacityChartInstance.update();
 
         const totalHeadcounts = depts.map(d => deptRosterCounts[d]);
-        const peakAway = depts.map(d => (hourlyDataPattern[13][d] ? hourlyDataPattern[13][d].length : 0));
+        const peakAway = depts.map(d => {
+            let entries = hourlyDataPattern[13][d] || [];
+            let uniqueNames = new Set(entries.map(e => e.name));
+            return uniqueNames.size;
+        });
 
         deptDistributionChartInstance.data.datasets[0].data = totalHeadcounts;
         deptDistributionChartInstance.data.datasets[1].data = peakAway;
@@ -2106,7 +2106,7 @@
         }
     }
 
-    // PARSER EXACTO CON PROMEDIO ANTI-ACUMULACIÓN DÍA A DÍA
+    // PARSER PHONES
     function parsePastedTable(rawText) {
         if (!rawText || !rawText.trim()) return {};
         const result = {};
@@ -2150,7 +2150,6 @@
                     if (dMatch) digits = dMatch.map(v => parseFloat(v));
                 }
 
-                // Mapeo Estricto
                 let ans     = digits[0] || 0;
                 let abCSAT  = digits[1] || 0;
                 let abQ     = digits[2] || 0;
@@ -2187,7 +2186,7 @@
         return result;
     }
 
-    // PARSER CASES CORREGIDO Y SEPARADO
+    // PARSER CASES
     function parseCasesTable(rawText) {
         if (!rawText || !rawText.trim()) return {};
         
@@ -2198,13 +2197,12 @@
             const trimmed = line.trim();
             if (!trimmed || trimmed.toLowerCase().includes('teammate')) return;
 
-            // Extrae únicamente los números independientes al final de cada fila
             const match = trimmed.match(/^(.*?)([\d\s\t,]+)$/);
             if (match && match[2]) {
                 const numbers = match[2].trim().split(/[\s\t,]+/).map(n => parseInt(n, 10)).filter(n => !isNaN(n));
                 if (numbers.length >= 1) {
                     let closedVal = numbers[numbers.length - 1];
-                    if (closedVal > 0 && closedVal < 2000) {
+                    if (closedVal > 0 && closedVal < 5000) {
                         totalClosedCases += closedVal;
                     }
                 }
@@ -2274,7 +2272,6 @@
         document.getElementById('monthSelect').value = targetMonth;
         document.getElementById('weekSelect').value = targetWeek;
 
-        // FUSIONAL UPDATE EN FIREBASE (SIN BORRAR CANALES EXISTENTES)
         update(ref(db, `wfm_data/multiPeriodVolumeDB/${monthKey}/${weekKey}`), periodStore);
         update(ref(db, `wfm_data/rawTextsDB/${monthKey}/${weekKey}`), rawStore);
 

@@ -1762,7 +1762,7 @@
 
         hourlySlots.forEach(slot => {
             let scheduledAgentsCount = 0;
-            let awayEquivalentHours = 0;
+            let availableAgentsCount = 0;
 
             const hourStartSlot = slot.h24 * 4;
             const hourEndSlot = hourStartSlot + 4;
@@ -1773,10 +1773,13 @@
                     let cOut = ag.clockOut !== undefined ? ag.clockOut : 68;
 
                     for (let sIdx = hourStartSlot; sIdx < hourEndSlot; sIdx++) {
+                        // Solo si está dentro de su horario de Clock-In a Clock-Out
                         if (sIdx >= cIn && sIdx < cOut) {
-                            scheduledAgentsCount += 0.25;
-                            if (ag.hours && ag.hours[sIdx] !== undefined) {
-                                awayEquivalentHours += 0.25;
+                            scheduledAgentsCount += 0.25; // 15 mins activos en turno
+                            
+                            // Si NO está programado en descansos/almuerzos, está verdaderamente disponible
+                            if (!ag.hours || ag.hours[sIdx] === undefined) {
+                                availableAgentsCount += 0.25;
                             }
                         }
                     }
@@ -1785,7 +1788,7 @@
 
             const activeVol = currentVolSet[slot.h24] ? currentVolSet[slot.h24].tot : 0;
 
-            const availAgents = Math.max(0, Number((scheduledAgentsCount - awayEquivalentHours).toFixed(2)));
+            const availAgents = Math.max(0, Number(availableAgentsCount.toFixed(2)));
             const reqAgents = activeVol > 0 ? Math.ceil(activeVol / itemsPerHourPerAgent) : 0;
             const gap = Number((availAgents - reqAgents).toFixed(1));
 
@@ -1934,8 +1937,7 @@
 
         hourlySlots.forEach(slot => {
             const v = currentVolSet[slot.h24] ? currentVolSet[slot.h24].tot : 0;
-            let scheduledAgentsCount = 0;
-            let awayEquivalentHours = 0;
+            let availableAgentsCount = 0;
 
             const hourStartSlot = slot.h24 * 4;
             const hourEndSlot = hourStartSlot + 4;
@@ -1946,17 +1948,17 @@
                     let cOut = ag.clockOut !== undefined ? ag.clockOut : 68;
 
                     for (let sIdx = hourStartSlot; sIdx < hourEndSlot; sIdx++) {
+                        // Solo disponible dentro de Clock-In / Clock-Out y sin Break/Lunch
                         if (sIdx >= cIn && sIdx < cOut) {
-                            scheduledAgentsCount += 0.25;
-                            if (ag.hours && ag.hours[sIdx] !== undefined) {
-                                awayEquivalentHours += 0.25;
+                            if (!ag.hours || ag.hours[sIdx] === undefined) {
+                                availableAgentsCount += 0.25;
                             }
                         }
                     }
                 }
             });
 
-            const avail = Math.max(0, scheduledAgentsCount - awayEquivalentHours);
+            const avail = Math.max(0, availableAgentsCount);
             const cap = Math.round(avail * itemsPerHourPerAgent);
 
             volumeData.push(Math.round(v));
@@ -2239,7 +2241,6 @@
         });
 
         const text = rawText.replace(/\r/g, '');
-        // Expresión regular que busca bloques: Nombre del Agente + Números finales (assigned, replied, closed)
         const regex = /([A-Za-z\s.\-áéíóúÁÉÍÓÚñÑ]+?)([\d,]+)\s*([\d,]+)?\s*([\d,]+)?/g;
 
         let match;
@@ -2249,7 +2250,6 @@
             let name = match[1].trim();
             if (!name || name.toLowerCase().includes('teammate') || name.toLowerCase().includes('conversations')) continue;
 
-            // Extraer números
             let num1 = match[2] ? parseInt(match[2].replace(/,/g, ''), 10) : 0;
             let num2 = match[3] ? parseInt(match[3].replace(/,/g, ''), 10) : 0;
             let num3 = match[4] ? parseInt(match[4].replace(/,/g, ''), 10) : 0;
@@ -2262,13 +2262,11 @@
             if (closedVal > 0) {
                 totalClosedCases += closedVal;
 
-                // Mapeo automático de agente a departamento
                 let matchedAgent = masterAgentsDB.find(ag => ag.name.toLowerCase().includes(name.toLowerCase()) || name.toLowerCase().includes(ag.name.toLowerCase()));
                 let targetDept = matchedAgent ? matchedAgent.dept : 'OBS - Cases';
 
                 if (!casesDepts.includes(targetDept)) targetDept = 'OBS - Cases';
 
-                // Distribuir en franja de horario laboral (8 AM - 4 PM = 9 horas)
                 const activeHours = [8, 9, 10, 11, 12, 13, 14, 15, 16];
                 const hourlyVal = Math.round(closedVal / activeHours.length);
 
@@ -2599,3 +2597,4 @@
 
 </body>
 </html>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      

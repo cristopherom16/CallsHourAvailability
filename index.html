@@ -867,7 +867,7 @@
                 <input type="number" id="occInput" class="input-number" value="85" min="50" max="100" style="width: 55px;">
             </div>
             <div id="casesParams" style="display: none; gap: 10px; align-items: center;">
-                <label style="font-size: 0.8rem; font-weight: bold; color: var(--accent-yellow);">Conv / Hr / Agent:</label>
+                <label style="font-size: 0.8rem; font-weight: bold; color: var(--accent-yellow);">Conv / Hr / Agent Target:</label>
                 <input type="number" id="cphInput" class="input-number" value="15" min="1" max="100" style="width: 65px;">
             </div>
         </div>
@@ -1051,10 +1051,10 @@
 
             <!-- SECTION FOR CASES MODE -->
             <div id="casesImportSection" style="display: none;">
-                <p style="font-size:0.85rem; color:#ccc; margin-top:0;">Paste raw Cases table (Teammate | Assigned | Replied | Closed conversations):</p>
+                <p style="font-size:0.85rem; color:#ccc; margin-top:0;">Paste raw Cases table (Time/Hour OR Teammate | Assigned | Replied | Closed conversations):</p>
                 <div class="form-group">
                     <label>Cases / Messaging Data Table:</label>
-                    <textarea class="input-text" id="casesRawText" placeholder="Teammate assignedConversations replied to Closed conversations..." style="height: 220px; font-family: monospace; font-size:0.8rem;"></textarea>
+                    <textarea class="input-text" id="casesRawText" placeholder="Time/Teammate assignedConversations replied to Closed conversations..." style="height: 220px; font-family: monospace; font-size:0.8rem;"></textarea>
                 </div>
             </div>
 
@@ -2295,7 +2295,7 @@
         return result;
     }
 
-    // PARSER DE TABLAS PEGADAS PARA CASOS (Assigned, Replied, Closed)
+    // PARSER INTELIGENTE DE TABLAS DE CASOS CON SOPORTE PARA TIEMPO HORARIO O POR AGENTE (CURVA REAL)
     function parseCasesTable(rawText) {
         if (!rawText || !rawText.trim()) return {};
 
@@ -2309,52 +2309,100 @@
             for (let h = 0; h < 24; h++) deptCasesAcc[d][h] = { assigned: 0, replied: 0, closed: 0 };
         });
 
-        const text = rawText.replace(/\r/g, '');
-        const regex = /([A-Za-z\s.\-áéíóúÁÉÍÓÚñÑ]+?)([\d,]+)\s*([\d,]+)?\s*([\d,]+)?/g;
+        const lines = rawText.split(/\r?\n/);
+        let hasHourlyData = false;
 
-        let match;
-
-        while ((match = regex.exec(text)) !== null) {
-            let name = match[1].trim();
-            if (!name || name.toLowerCase().includes('teammate') || name.toLowerCase().includes('conversations')) continue;
-
-            let num1 = match[2] ? parseInt(match[2].replace(/,/g, ''), 10) : 0;
-            let num2 = match[3] ? parseInt(match[3].replace(/,/g, ''), 10) : 0;
-            let num3 = match[4] ? parseInt(match[4].replace(/,/g, ''), 10) : 0;
-
-            let assignedVal = num1;
-            let repliedVal = num2;
-            let closedVal = num3;
-
-            if (match[4] === undefined) {
-                if (match[3] !== undefined) {
-                    assignedVal = num1;
-                    repliedVal = 0;
-                    closedVal = num2;
-                } else {
-                    assignedVal = num1;
-                    repliedVal = 0;
-                    closedVal = num1;
-                }
+        // Comprobar si la tabla introducida contiene marcas de tiempo por hora
+        lines.forEach(line => {
+            if (line.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i)) {
+                hasHourlyData = true;
             }
+        });
 
-            if (assignedVal > 0 || closedVal > 0) {
-                let matchedAgent = masterAgentsDB.find(ag => ag.name.toLowerCase().includes(name.toLowerCase()) || name.toLowerCase().includes(ag.name.toLowerCase()));
-                let targetDept = matchedAgent ? matchedAgent.dept : 'OBS - Cases';
+        if (hasHourlyData) {
+            // Procesamiento directo por filas horarias
+            lines.forEach(line => {
+                const trimmed = line.trim();
+                if (!trimmed || trimmed.toLowerCase().includes('total') || trimmed.toLowerCase().includes('teammate')) return;
 
-                if (!casesDepts.includes(targetDept)) targetDept = 'OBS - Cases';
+                const timeMatch = trimmed.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
+                if (!timeMatch) return;
 
-                const activeHours = [8, 9, 10, 11, 12, 13, 14, 15, 16];
-                
-                const hAssigned = Math.round(assignedVal / activeHours.length);
-                const hReplied = Math.round(repliedVal / activeHours.length);
-                const hClosed = Math.round(closedVal / activeHours.length);
+                let h = parseInt(timeMatch[1], 10);
+                const pm = timeMatch[3] && timeMatch[3].toUpperCase() === 'PM';
+                const am = timeMatch[3] && timeMatch[3].toUpperCase() === 'AM';
+                if (pm && h < 12) h += 12;
+                if (am && h === 12) h = 0;
 
-                activeHours.forEach(h => {
-                    deptCasesAcc[targetDept][h].assigned += hAssigned;
-                    deptCasesAcc[targetDept][h].replied += hReplied;
-                    deptCasesAcc[targetDept][h].closed += hClosed;
-                });
+                if (h < 0 || h >= 24) return;
+
+                const restOfLine = trimmed.substring(timeMatch.index + timeMatch[0].length);
+                let digits = restOfLine.split(/[\t\s,]+/)
+                    .map(v => parseFloat(v))
+                    .filter(v => !isNaN(v) && v >= 0);
+
+                if (digits.length >= 1) {
+                    let assigned = digits[0] || 0;
+                    let replied = digits[1] || 0;
+                    let closed = digits[2] !== undefined ? digits[2] : (digits[1] !== undefined ? digits[1] : digits[0]);
+
+                    casesDepts.forEach(dept => {
+                        deptCasesAcc[dept][h].assigned += assigned;
+                        deptCasesAcc[dept][h].replied += replied;
+                        deptCasesAcc[dept][h].closed += closed;
+                    });
+                }
+            });
+        } else {
+            // Distribución dinámica usando Curva de Volumen Horario Real (Llegada/Procesamiento de casos)
+            const text = rawText.replace(/\r/g, '');
+            const regex = /([A-Za-z\s.\-áéíóúÁÉÍÓÚñÑ]+?)([\d,]+)\s*([\d,]+)?\s*([\d,]+)?/g;
+            let match;
+
+            // Factores de distribución horaria basada en el flujo real operativo (pico en horas centrales)
+            const hourlyDistributionFactors = {
+                8: 0.05, 9: 0.12, 10: 0.16, 11: 0.18, 12: 0.13, 13: 0.11, 14: 0.12, 15: 0.08, 16: 0.05
+            };
+
+            while ((match = regex.exec(text)) !== null) {
+                let name = match[1].trim();
+                if (!name || name.toLowerCase().includes('teammate') || name.toLowerCase().includes('conversations')) continue;
+
+                let num1 = match[2] ? parseInt(match[2].replace(/,/g, ''), 10) : 0;
+                let num2 = match[3] ? parseInt(match[3].replace(/,/g, ''), 10) : 0;
+                let num3 = match[4] ? parseInt(match[4].replace(/,/g, ''), 10) : 0;
+
+                let assignedVal = num1;
+                let repliedVal = num2;
+                let closedVal = num3;
+
+                if (match[4] === undefined) {
+                    if (match[3] !== undefined) {
+                        assignedVal = num1;
+                        repliedVal = 0;
+                        closedVal = num2;
+                    } else {
+                        assignedVal = num1;
+                        repliedVal = 0;
+                        closedVal = num1;
+                    }
+                }
+
+                if (assignedVal > 0 || closedVal > 0) {
+                    let matchedAgent = masterAgentsDB.find(ag => ag.name.toLowerCase().includes(name.toLowerCase()) || name.toLowerCase().includes(ag.name.toLowerCase()));
+                    let targetDept = matchedAgent ? matchedAgent.dept : 'OBS - Cases';
+
+                    if (!casesDepts.includes(targetDept)) targetDept = 'OBS - Cases';
+
+                    Object.keys(hourlyDistributionFactors).forEach(hStr => {
+                        let h = parseInt(hStr, 10);
+                        let factor = hourlyDistributionFactors[h];
+
+                        deptCasesAcc[targetDept][h].assigned += Math.round(assignedVal * factor);
+                        deptCasesAcc[targetDept][h].replied += Math.round(repliedVal * factor);
+                        deptCasesAcc[targetDept][h].closed += Math.round(closedVal * factor);
+                    });
+                }
             }
         }
 

@@ -859,11 +859,16 @@
 
         <div class="control-group">
             <span class="controls-title">Staffing Parameters</span>
-            <div style="display: flex; gap: 10px; align-items: center;">
+            <!-- DYNAMIC PARAMETERS CONTAINER FOR PHONES VS CASES -->
+            <div id="phoneParams" style="display: flex; gap: 10px; align-items: center;">
                 <label style="font-size: 0.8rem; font-weight: bold; color: var(--accent-yellow);">AHT (min):</label>
                 <input type="number" id="ahtInput" class="input-number" value="5" min="1" max="60" style="width: 55px;">
                 <label style="font-size: 0.8rem; font-weight: bold; color: var(--accent-yellow);">Occ (%):</label>
                 <input type="number" id="occInput" class="input-number" value="85" min="50" max="100" style="width: 55px;">
+            </div>
+            <div id="casesParams" style="display: none; gap: 10px; align-items: center;">
+                <label style="font-size: 0.8rem; font-weight: bold; color: var(--accent-yellow);">Conv / Hr / Agent:</label>
+                <input type="number" id="cphInput" class="input-number" value="15" min="1" max="100" style="width: 65px;">
             </div>
         </div>
     </div>
@@ -915,15 +920,8 @@
     <div class="table-responsive">
         <table>
             <thead>
-                <tr>
-                    <th>Time Slot</th>
-                    <th>Avg. Answered</th>
-                    <th>Avg. Abnd. in CSAT rating</th>
-                    <th>Avg. Abnd. in Queue</th>
-                    <th>Avg. Abnd. on Hold</th>
-                    <th>Avg. Abnd. in Routing</th>
-                    <th style="background-color: var(--accent-yellow); color: #000;">Avg. Total Volume</th>
-                    <th>Max Historical</th>
+                <tr id="volumeTableHeader">
+                    <!-- Dynamic Header Populated by JS -->
                 </tr>
             </thead>
             <tbody id="volumeTableBody"></tbody>
@@ -941,7 +939,7 @@
                     <th>Time Slot</th>
                     <th style="background-color: var(--accent-yellow); color: #000;">Avg Volume</th>
                     <th>Scheduled Agents (Shift Active)</th>
-                    <th>Available Agents (Net On Calls)</th>
+                    <th>Available Agents (Net On Queue)</th>
                     <th>Required Agents</th>
                     <th>Net Gap / Coverage</th>
                     <th>Recommended Action</th>
@@ -1053,7 +1051,7 @@
 
             <!-- SECTION FOR CASES MODE -->
             <div id="casesImportSection" style="display: none;">
-                <p style="font-size:0.85rem; color:#ccc; margin-top:0;">Paste raw Cases table (Teammate | assignedConversations | replied to | Closed conversations):</p>
+                <p style="font-size:0.85rem; color:#ccc; margin-top:0;">Paste raw Cases table (Teammate | Assigned | Replied | Closed conversations):</p>
                 <div class="form-group">
                     <label>Cases / Messaging Data Table:</label>
                     <textarea class="input-text" id="casesRawText" placeholder="Teammate assignedConversations replied to Closed conversations..." style="height: 220px; font-family: monospace; font-size:0.8rem;"></textarea>
@@ -1515,7 +1513,12 @@
         document.getElementById('btnChannelCases').classList.toggle('active', channel === 'CASES');
         document.getElementById('channelNameLabel').textContent = channel === 'PHONES' ? 'Phones Teams' : 'Cases Teams';
 
+        // Toggle controls visibility
+        document.getElementById('phoneParams').style.display = channel === 'PHONES' ? 'flex' : 'none';
+        document.getElementById('casesParams').style.display = channel === 'CASES' ? 'flex' : 'none';
+
         renderSlicerButtons();
+        loadActivePeriodVolume();
         renderAllUI();
     };
 
@@ -1531,6 +1534,7 @@
         allBtn.onclick = () => {
             selectedDeptFilter = 'ALL_CHANNEL';
             renderSlicerButtons();
+            loadActivePeriodVolume();
             renderAllUI();
         };
         container.appendChild(allBtn);
@@ -1542,6 +1546,7 @@
             btn.onclick = () => {
                 selectedDeptFilter = d;
                 renderSlicerButtons();
+                loadActivePeriodVolume();
                 renderAllUI();
             };
             container.appendChild(btn);
@@ -1587,17 +1592,19 @@
                 'TFX': 'tfx'
             };
 
-            activeDepts.forEach(dept => {
-                const key = phoneMap[dept];
-                if (key && periodStore[key] && periodStore[key][h]) {
-                    const item = periodStore[key][h];
-                    pAns += item.ans || 0;
-                    pAbCSAT += item.abCSAT || 0;
-                    pAbQ += item.abQ || 0;
-                    pAbH += item.abH || 0;
-                    pAbR += item.abR || 0;
-                }
-            });
+            if (activeChannel === 'PHONES') {
+                activeDepts.forEach(dept => {
+                    const key = phoneMap[dept];
+                    if (key && periodStore[key] && periodStore[key][h]) {
+                        const item = periodStore[key][h];
+                        pAns += item.ans || 0;
+                        pAbCSAT += item.abCSAT || 0;
+                        pAbQ += item.abQ || 0;
+                        pAbH += item.abH || 0;
+                        pAbR += item.abR || 0;
+                    }
+                });
+            }
 
             const pTot = Math.round(pAns + pAbCSAT + pAbQ + pAbH + pAbR);
             volumeDataCombined.phones[h] = {
@@ -1605,26 +1612,35 @@
                 tot: pTot, max: Math.round(pTot * 1.1)
             };
 
-            // CASES VOLUMES
-            let cAns = 0;
+            // CASES VOLUMES (Assigned, Replied, Closed)
+            let cAssigned = 0, cReplied = 0, cClosed = 0;
             if (periodStore.cases) {
                 if (selectedDeptFilter === 'ALL_CHANNEL') {
                     for (let deptKey in periodStore.cases) {
                         if (periodStore.cases[deptKey] && periodStore.cases[deptKey][h]) {
-                            cAns += periodStore.cases[deptKey][h].ans || 0;
+                            cAssigned += periodStore.cases[deptKey][h].assigned || 0;
+                            cReplied += periodStore.cases[deptKey][h].replied || 0;
+                            cClosed += periodStore.cases[deptKey][h].closed || 0;
                         }
                     }
                 } else if (periodStore.cases[selectedDeptFilter] && periodStore.cases[selectedDeptFilter][h]) {
-                    cAns = periodStore.cases[selectedDeptFilter][h].ans || 0;
+                    cAssigned = periodStore.cases[selectedDeptFilter][h].assigned || 0;
+                    cReplied = periodStore.cases[selectedDeptFilter][h].replied || 0;
+                    cClosed = periodStore.cases[selectedDeptFilter][h].closed || 0;
                 } else if (periodStore.cases[h]) {
-                    cAns = periodStore.cases[h].ans || 0;
+                    cAssigned = periodStore.cases[h].assigned || periodStore.cases[h].ans || 0;
+                    cReplied = periodStore.cases[h].replied || 0;
+                    cClosed = periodStore.cases[h].closed || 0;
                 }
             }
 
-            const cTot = Math.round(cAns);
+            const cTot = Math.round(cClosed);
             volumeDataCombined.cases[h] = {
-                ans: cTot, abCSAT: 0, abQ: 0, abH: 0, abR: 0,
-                tot: cTot, max: Math.round(cTot * 1.1)
+                assigned: Math.round(cAssigned),
+                replied: Math.round(cReplied),
+                closed: Math.round(cClosed),
+                tot: cTot, 
+                max: Math.round(cTot * 1.1)
             };
         }
 
@@ -1728,34 +1744,77 @@
     }
 
     function renderVolumeTable() {
+        const theadTr = document.getElementById('volumeTableHeader');
         const tbody = document.getElementById('volumeTableBody');
         tbody.innerHTML = '';
         const currentVolSet = getActiveVolumeSet();
 
-        hourlySlots.forEach(slot => {
-            const v = currentVolSet[slot.h24] || { ans:0, abCSAT:0, abQ:0, abH:0, abR:0, tot:0, max:0 };
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td class="time-col">${slot.time12}</td>
-                <td>${Math.round(v.ans)}</td>
-                <td>${Math.round(v.abCSAT)}</td>
-                <td>${Math.round(v.abQ)}</td>
-                <td>${Math.round(v.abH)}</td>
-                <td>${Math.round(v.abR)}</td>
-                <td style="background-color: rgba(255, 183, 3, 0.25); font-weight: bold; color: var(--accent-yellow);"><b>${Math.round(v.tot)}</b></td>
-                <td>${Math.round(v.max)}</td>
+        if (activeChannel === 'PHONES') {
+            theadTr.innerHTML = `
+                <th>Time Slot</th>
+                <th>Avg. Answered</th>
+                <th>Avg. Abnd. in CSAT rating</th>
+                <th>Avg. Abnd. in Queue</th>
+                <th>Avg. Abnd. on Hold</th>
+                <th>Avg. Abnd. in Routing</th>
+                <th style="background-color: var(--accent-yellow); color: #000;">Avg. Total Volume</th>
+                <th>Max Historical</th>
             `;
-            tbody.appendChild(tr);
-        });
+
+            hourlySlots.forEach(slot => {
+                const v = currentVolSet[slot.h24] || { ans:0, abCSAT:0, abQ:0, abH:0, abR:0, tot:0, max:0 };
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="time-col">${slot.time12}</td>
+                    <td>${Math.round(v.ans)}</td>
+                    <td>${Math.round(v.abCSAT)}</td>
+                    <td>${Math.round(v.abQ)}</td>
+                    <td>${Math.round(v.abH)}</td>
+                    <td>${Math.round(v.abR)}</td>
+                    <td style="background-color: rgba(255, 183, 3, 0.25); font-weight: bold; color: var(--accent-yellow);"><b>${Math.round(v.tot)}</b></td>
+                    <td>${Math.round(v.max)}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        } else {
+            theadTr.innerHTML = `
+                <th>Time Slot</th>
+                <th>Avg. Conversations Assigned</th>
+                <th>Avg. Conversations Replied To</th>
+                <th>Avg. Closed Conversations</th>
+                <th style="background-color: var(--accent-yellow); color: #000;">Avg. Total Volume (Closed)</th>
+                <th>Max Historical</th>
+            `;
+
+            hourlySlots.forEach(slot => {
+                const v = currentVolSet[slot.h24] || { assigned:0, replied:0, closed:0, tot:0, max:0 };
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="time-col">${slot.time12}</td>
+                    <td>${Math.round(v.assigned)}</td>
+                    <td>${Math.round(v.replied)}</td>
+                    <td>${Math.round(v.closed)}</td>
+                    <td style="background-color: rgba(255, 183, 3, 0.25); font-weight: bold; color: var(--accent-yellow);"><b>${Math.round(v.tot)}</b></td>
+                    <td>${Math.round(v.max)}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
     }
 
     function renderComparisonTable() {
         const tbody = document.getElementById('comparisonTableBody');
         tbody.innerHTML = '';
 
-        const aht = parseFloat(document.getElementById('ahtInput').value) || 5;
-        const occ = (parseFloat(document.getElementById('occInput').value) || 85) / 100;
-        const itemsPerHourPerAgent = (60 / aht) * occ;
+        let itemsPerHourPerAgent = 12;
+
+        if (activeChannel === 'PHONES') {
+            const aht = parseFloat(document.getElementById('ahtInput').value) || 5;
+            const occ = (parseFloat(document.getElementById('occInput').value) || 85) / 100;
+            itemsPerHourPerAgent = (60 / aht) * occ;
+        } else {
+            itemsPerHourPerAgent = parseFloat(document.getElementById('cphInput').value) || 15;
+        }
 
         const visibleDepts = getActiveVisibleDepts();
         const currentVolSet = getActiveVolumeSet();
@@ -1773,11 +1832,9 @@
                     let cOut = ag.clockOut !== undefined ? ag.clockOut : 68;
 
                     for (let sIdx = hourStartSlot; sIdx < hourEndSlot; sIdx++) {
-                        // Solo si está dentro de su horario de Clock-In a Clock-Out
                         if (sIdx >= cIn && sIdx < cOut) {
-                            scheduledAgentsCount += 0.25; // 15 mins activos en turno
+                            scheduledAgentsCount += 0.25;
                             
-                            // Si NO está programado en descansos/almuerzos, está verdaderamente disponible
                             if (!ag.hours || ag.hours[sIdx] === undefined) {
                                 availableAgentsCount += 0.25;
                             }
@@ -1796,9 +1853,9 @@
             if (gap < 0) {
                 recText = `<span class="status-deficit">Deficit of ${Math.abs(gap)} Agent(s). Add Reinforcement.</span>`;
             } else if (gap <= 2 && reqAgents > 0) {
-                recText = `<span class="status-tight">Tight Capacity. Monitor Spikes.</span>`;
+                recText = `<span class="status-tight">Tight Capacity / SL Risk. Monitor Spikes.</span>`;
             } else {
-                recText = `<span class="status-ok">Optimal Coverage (+${gap} Avail.)</span>`;
+                recText = `<span class="status-ok">Optimal Service Level (+${gap} Avail.)</span>`;
             }
 
             const tr = document.createElement('tr');
@@ -1840,11 +1897,14 @@
                 </div>
             `;
         } else {
+            const targetCPH = parseFloat(document.getElementById('cphInput').value) || 15;
+            const reqPeakAgents = Math.ceil(maxVol / targetCPH);
             html = `
                 <div class="recommendation-card">
-                    <h3>✉️ Cases &amp; Messaging Recommendations (${month} - ${week})</h3>
-                    <p>Case volume reaches maximum activity around <b>${slot ? slot.time12 : "Peak Hour"}</b> with <b>${Math.round(maxVol)} assigned cases/hour</b> across Case teams (OBS, INS, ELD Cases). 
-                    <b>Action:</b> Enforce backlog sweep sessions during low volume hours. Cross-train available agents during non-peak windows to handle offline case queues.</p>
+                    <h3>✉️ Cases &amp; Messaging Service Level Recommendations (${month} - ${week})</h3>
+                    <p>Case volume reaches maximum activity around <b>${slot ? slot.time12 : "Peak Hour"}</b> with <b>${Math.round(maxVol)} closed conversations/hour</b> across Case teams. 
+                    Targeting <b>${targetCPH} conversations/hour/agent</b> requires <b>${reqPeakAgents} active agents</b> at peak hour.
+                    <b>Action:</b> Enforce real-time queue management and backlog sweep sessions during non-peak windows to maintain hourly Service Level.</p>
                 </div>
             `;
         }
@@ -1926,9 +1986,15 @@
     }
 
     function updateCharts() {
-        const aht = parseFloat(document.getElementById('ahtInput').value) || 5;
-        const occ = (parseFloat(document.getElementById('occInput').value) || 85) / 100;
-        const itemsPerHourPerAgent = (60 / aht) * occ;
+        let itemsPerHourPerAgent = 12;
+
+        if (activeChannel === 'PHONES') {
+            const aht = parseFloat(document.getElementById('ahtInput').value) || 5;
+            const occ = (parseFloat(document.getElementById('occInput').value) || 85) / 100;
+            itemsPerHourPerAgent = (60 / aht) * occ;
+        } else {
+            itemsPerHourPerAgent = parseFloat(document.getElementById('cphInput').value) || 15;
+        }
 
         const volumeData = [];
         const capacityData = [];
@@ -1948,7 +2014,6 @@
                     let cOut = ag.clockOut !== undefined ? ag.clockOut : 68;
 
                     for (let sIdx = hourStartSlot; sIdx < hourEndSlot; sIdx++) {
-                        // Solo disponible dentro de Clock-In / Clock-Out y sin Break/Lunch
                         if (sIdx >= cIn && sIdx < cOut) {
                             if (!ag.hours || ag.hours[sIdx] === undefined) {
                                 availableAgentsCount += 0.25;
@@ -2093,6 +2158,11 @@
             renderComparisonTable();
             updateCharts();
         });
+        document.getElementById('cphInput').addEventListener('input', () => {
+            renderComparisonTable();
+            renderRecommendations();
+            updateCharts();
+        });
 
         document.getElementById('btnCloseAuth').addEventListener('click', () => {
             document.getElementById('authModal').classList.remove('active');
@@ -2158,7 +2228,6 @@
         }
     }
 
-    // PARSER RIGUROSO ANTI 40,000+
     function parsePastedTable(rawText) {
         if (!rawText || !rawText.trim()) return {};
         const result = {};
@@ -2200,7 +2269,7 @@
                     hourlyAccumulator[h] = { ansSum: 0, abCSATSum: 0, abQSum: 0, abHSum: 0, abRSum: 0, count: 0 };
                 }
 
-                hourlyAccumulator[h].ansSum    += ans;
+                hourlyAccumulator[h].ansSum     += ans;
                 hourlyAccumulator[h].abCSATSum += abCSAT;
                 hourlyAccumulator[h].abQSum    += abQ;
                 hourlyAccumulator[h].abHSum    += abH;
@@ -2226,7 +2295,7 @@
         return result;
     }
 
-    // PARSER INTELIGENTE DE TABLAS PEGADAS CONTINUAS PARA CASOS
+    // PARSER DE TABLAS PEGADAS PARA CASOS (Assigned, Replied, Closed)
     function parseCasesTable(rawText) {
         if (!rawText || !rawText.trim()) return {};
 
@@ -2237,14 +2306,13 @@
         };
 
         casesDepts.forEach(d => {
-            for (let h = 0; h < 24; h++) deptCasesAcc[d][h] = { ans: 0 };
+            for (let h = 0; h < 24; h++) deptCasesAcc[d][h] = { assigned: 0, replied: 0, closed: 0 };
         });
 
         const text = rawText.replace(/\r/g, '');
         const regex = /([A-Za-z\s.\-áéíóúÁÉÍÓÚñÑ]+?)([\d,]+)\s*([\d,]+)?\s*([\d,]+)?/g;
 
         let match;
-        let totalClosedCases = 0;
 
         while ((match = regex.exec(text)) !== null) {
             let name = match[1].trim();
@@ -2254,24 +2322,38 @@
             let num2 = match[3] ? parseInt(match[3].replace(/,/g, ''), 10) : 0;
             let num3 = match[4] ? parseInt(match[4].replace(/,/g, ''), 10) : 0;
 
-            let closedVal = 0;
-            if (num3 > 0) closedVal = num3;
-            else if (num2 > 0) closedVal = num2;
-            else closedVal = num1;
+            let assignedVal = num1;
+            let repliedVal = num2;
+            let closedVal = num3;
 
-            if (closedVal > 0) {
-                totalClosedCases += closedVal;
+            if (match[4] === undefined) {
+                if (match[3] !== undefined) {
+                    assignedVal = num1;
+                    repliedVal = 0;
+                    closedVal = num2;
+                } else {
+                    assignedVal = num1;
+                    repliedVal = 0;
+                    closedVal = num1;
+                }
+            }
 
+            if (assignedVal > 0 || closedVal > 0) {
                 let matchedAgent = masterAgentsDB.find(ag => ag.name.toLowerCase().includes(name.toLowerCase()) || name.toLowerCase().includes(ag.name.toLowerCase()));
                 let targetDept = matchedAgent ? matchedAgent.dept : 'OBS - Cases';
 
                 if (!casesDepts.includes(targetDept)) targetDept = 'OBS - Cases';
 
                 const activeHours = [8, 9, 10, 11, 12, 13, 14, 15, 16];
-                const hourlyVal = Math.round(closedVal / activeHours.length);
+                
+                const hAssigned = Math.round(assignedVal / activeHours.length);
+                const hReplied = Math.round(repliedVal / activeHours.length);
+                const hClosed = Math.round(closedVal / activeHours.length);
 
                 activeHours.forEach(h => {
-                    deptCasesAcc[targetDept][h].ans += hourlyVal;
+                    deptCasesAcc[targetDept][h].assigned += hAssigned;
+                    deptCasesAcc[targetDept][h].replied += hReplied;
+                    deptCasesAcc[targetDept][h].closed += hClosed;
                 });
             }
         }
@@ -2597,4 +2679,3 @@
 
 </body>
 </html>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      

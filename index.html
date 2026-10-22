@@ -1847,12 +1847,8 @@
             let reqAgents = 0;
 
             if (activeChannel === 'PHONES') {
-                const vItem = currentVolSet[slot.h24] || { ans: 0, abCSAT: 0, abQ: 0, abH: 0, abR: 0, tot: 0 };
-                activeVol = vItem.tot;
-                
-                // MISMA FÓRMULA UNIFICADA DE CARGA DE TRABAJO: (Volumen / Capacidad Por Hora) / 8 Horas
-                const hoursNeeded = activeVol / itemsPerHourPerAgent;
-                reqAgents = activeVol > 0 ? Math.ceil(hoursNeeded / 8) : 0;
+                activeVol = currentVolSet[slot.h24] ? currentVolSet[slot.h24].tot : 0;
+                reqAgents = activeVol > 0 ? Math.ceil(activeVol / itemsPerHourPerAgent) : 0;
             } else {
                 // FÓRMULA DE CASOS SOLICITADA: (Assigned + Replied + Closed) / 3
                 const vItem = currentVolSet[slot.h24] || { assigned: 0, replied: 0, closed: 0 };
@@ -2059,7 +2055,7 @@
             let cap = 0;
 
             if (activeChannel === 'PHONES') {
-                cap = Math.round(avail * itemsPerHourPerAgent * 8);
+                cap = Math.round(avail * itemsPerHourPerAgent);
             } else {
                 cap = Math.round(avail * itemsPerHourPerAgent * 8);
             }

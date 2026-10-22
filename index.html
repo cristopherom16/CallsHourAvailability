@@ -1843,11 +1843,25 @@
                 }
             });
 
-            const activeVol = currentVolSet[slot.h24] ? currentVolSet[slot.h24].tot : 0;
+            let activeVol = 0;
+            let reqAgents = 0;
 
-            const availAgents = Math.max(0, Number(availableAgentsCount.toFixed(2)));
-            const reqAgents = activeVol > 0 ? Math.ceil(activeVol / itemsPerHourPerAgent) : 0;
-            const gap = Number((availAgents - reqAgents).toFixed(1));
+            if (activeChannel === 'PHONES') {
+                activeVol = currentVolSet[slot.h24] ? currentVolSet[slot.h24].tot : 0;
+                reqAgents = activeVol > 0 ? Math.ceil(activeVol / itemsPerHourPerAgent) : 0;
+            } else {
+                // FÓRMULA DE CASOS SOLICITADA: (Assigned + Replied + Closed) / 3
+                const vItem = currentVolSet[slot.h24] || { assigned: 0, replied: 0, closed: 0 };
+                const avgVolumeSum = (vItem.assigned + vItem.replied + vItem.closed) / 3;
+                activeVol = Math.round(avgVolumeSum);
+
+                // Cálculo exacto de horas necesarias -> divididas en jornadas de 8h por agente
+                const hoursNeeded = activeVol / itemsPerHourPerAgent; // Target de 15 conv/h
+                reqAgents = activeVol > 0 ? Math.ceil(hoursNeeded / 8) : 0;
+            }
+
+            const availAgents = Math.round(Math.max(0, availableAgentsCount));
+            const gap = Math.round(availAgents - reqAgents);
 
             let recText = "";
             if (gap < 0) {
@@ -1862,7 +1876,7 @@
             tr.innerHTML = `
                 <td class="time-col">${slot.time12}</td>
                 <td style="background-color: rgba(255, 183, 3, 0.25); color: var(--accent-yellow);"><b>${Math.round(activeVol)}</b></td>
-                <td>${scheduledAgentsCount.toFixed(1)}</td>
+                <td>${Math.round(scheduledAgentsCount)}</td>
                 <td><b>${availAgents}</b></td>
                 <td>${reqAgents}</td>
                 <td>${gap >= 0 ? '+' + gap : gap}</td>
@@ -1881,7 +1895,13 @@
         const currentVolSet = getActiveVolumeSet();
 
         for (let h = 0; h < 24; h++) {
-            let v = currentVolSet[h] ? currentVolSet[h].tot : 0;
+            let v = 0;
+            if (activeChannel === 'PHONES') {
+                v = currentVolSet[h] ? currentVolSet[h].tot : 0;
+            } else {
+                let item = currentVolSet[h] || { assigned: 0, replied: 0, closed: 0 };
+                v = (item.assigned + item.replied + item.closed) / 3;
+            }
             if (v > maxVol) { maxVol = v; peakHour = h; }
         }
 
@@ -1898,12 +1918,12 @@
             `;
         } else {
             const targetCPH = parseFloat(document.getElementById('cphInput').value) || 15;
-            const reqPeakAgents = Math.ceil(maxVol / targetCPH);
+            const reqPeakAgents = Math.ceil((maxVol / targetCPH) / 8);
             html = `
                 <div class="recommendation-card">
                     <h3>✉️ Cases &amp; Messaging Service Level Recommendations (${month} - ${week})</h3>
-                    <p>Case volume reaches maximum activity around <b>${slot ? slot.time12 : "Peak Hour"}</b> with <b>${Math.round(maxVol)} closed conversations/hour</b> across Case teams. 
-                    Targeting <b>${targetCPH} conversations/hour/agent</b> requires <b>${reqPeakAgents} active agents</b> at peak hour.
+                    <p>Case volume reaches maximum activity around <b>${slot ? slot.time12 : "Peak Hour"}</b> with an average of <b>${Math.round(maxVol)} conversations/hour</b> across Case teams. 
+                    Targeting <b>${targetCPH} conversations/hour/agent</b> in 8-hour daily shifts requires <b>${reqPeakAgents} full-time agents</b>.
                     <b>Action:</b> Enforce real-time queue management and backlog sweep sessions during non-peak windows to maintain hourly Service Level.</p>
                 </div>
             `;
@@ -2002,7 +2022,15 @@
         const currentVolSet = getActiveVolumeSet();
 
         hourlySlots.forEach(slot => {
-            const v = currentVolSet[slot.h24] ? currentVolSet[slot.h24].tot : 0;
+            let v = 0;
+
+            if (activeChannel === 'PHONES') {
+                v = currentVolSet[slot.h24] ? currentVolSet[slot.h24].tot : 0;
+            } else {
+                let item = currentVolSet[slot.h24] || { assigned: 0, replied: 0, closed: 0 };
+                v = (item.assigned + item.replied + item.closed) / 3;
+            }
+
             let availableAgentsCount = 0;
 
             const hourStartSlot = slot.h24 * 4;
@@ -2024,7 +2052,13 @@
             });
 
             const avail = Math.max(0, availableAgentsCount);
-            const cap = Math.round(avail * itemsPerHourPerAgent);
+            let cap = 0;
+
+            if (activeChannel === 'PHONES') {
+                cap = Math.round(avail * itemsPerHourPerAgent);
+            } else {
+                cap = Math.round(avail * itemsPerHourPerAgent * 8);
+            }
 
             volumeData.push(Math.round(v));
             capacityData.push(cap);
@@ -2320,7 +2354,6 @@
         });
 
         if (hasHourlyData) {
-            // Procesamiento directo por filas horarias
             lines.forEach(line => {
                 const trimmed = line.trim();
                 if (!trimmed || trimmed.toLowerCase().includes('total') || trimmed.toLowerCase().includes('teammate')) return;
@@ -2354,12 +2387,10 @@
                 }
             });
         } else {
-            // Distribución dinámica usando Curva de Volumen Horario Real (Llegada/Procesamiento de casos)
             const text = rawText.replace(/\r/g, '');
             const regex = /([A-Za-z\s.\-áéíóúÁÉÍÓÚñÑ]+?)([\d,]+)\s*([\d,]+)?\s*([\d,]+)?/g;
             let match;
 
-            // Factores de distribución horaria basada en el flujo real operativo (pico en horas centrales)
             const hourlyDistributionFactors = {
                 8: 0.05, 9: 0.12, 10: 0.16, 11: 0.18, 12: 0.13, 13: 0.11, 14: 0.12, 15: 0.08, 16: 0.05
             };

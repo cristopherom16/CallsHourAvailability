@@ -935,9 +935,9 @@
     <div class="table-responsive">
         <table>
             <thead>
-                <tr>
+                <tr id="comparisonTableHeader">
                     <th>Time Slot</th>
-                    <th style="background-color: var(--accent-yellow); color: #000;">Avg Volume</th>
+                    <th style="background-color: var(--accent-yellow); color: #000;">Avg Volume (Offered)</th>
                     <th>Scheduled Agents (Shift Active)</th>
                     <th>Available Agents (Net On Queue)</th>
                     <th>Required Agents</th>
@@ -1087,6 +1087,7 @@
 </div>
 
 <!-- MODAL: Manage Agents & Schedules -->
+<div class="modal-card" style="display:none;" id="mgmtModalWrapper"></div>
 <div class="modal-overlay" id="mgmtModal">
     <div class="modal-card" style="max-width: 950px;">
         <div class="modal-header">
@@ -1606,10 +1607,21 @@
                 });
             }
 
-            const pTot = Math.round(pAns + pAbCSAT + pAbQ + pAbH + pAbR);
+            // AJUSTE CLAVE WFM: Total Abandono y Total Ofrecido Real
+            const pTotAbnd = pAbCSAT + pAbQ + pAbH + pAbR;
+            const pTotOffered = pAns + pTotAbnd;
+            const pAbndRate = pTotOffered > 0 ? (pTotAbnd / pTotOffered) * 100 : 0;
+
             volumeDataCombined.phones[h] = {
-                ans: Math.round(pAns), abCSAT: Math.round(pAbCSAT), abQ: Math.round(pAbQ), abH: Math.round(pAbH), abR: Math.round(pAbR),
-                tot: pTot, max: Math.round(pTot * 1.1)
+                ans: Math.round(pAns),
+                abCSAT: Math.round(pAbCSAT),
+                abQ: Math.round(pAbQ),
+                abH: Math.round(pAbH),
+                abR: Math.round(pAbR),
+                totAbnd: Math.round(pTotAbnd),
+                tot: Math.round(pTotOffered),      // Total Llamadas Ofrecidas (Entrantes)
+                abndRate: pAbndRate.toFixed(1),   // Tasa de Abandono Real
+                max: Math.round(pTotOffered * 1.1)
             };
 
             // CASES VOLUMES (Assigned, Replied, Closed)
@@ -1753,25 +1765,29 @@
             theadTr.innerHTML = `
                 <th>Time Slot</th>
                 <th>Avg. Answered</th>
-                <th>Avg. Abnd. in CSAT rating</th>
-                <th>Avg. Abnd. in Queue</th>
-                <th>Avg. Abnd. on Hold</th>
-                <th>Avg. Abnd. in Routing</th>
-                <th style="background-color: var(--accent-yellow); color: #000;">Avg. Total Volume</th>
+                <th>Abnd. CSAT</th>
+                <th>Abnd. Queue</th>
+                <th>Abnd. Hold</th>
+                <th>Abnd. Routing</th>
+                <th style="color: var(--danger-color);">Total Abandoned</th>
+                <th style="background-color: var(--accent-yellow); color: #000;">Total Offered Volume</th>
+                <th>% Abnd Rate</th>
                 <th>Max Historical</th>
             `;
 
             hourlySlots.forEach(slot => {
-                const v = currentVolSet[slot.h24] || { ans:0, abCSAT:0, abQ:0, abH:0, abR:0, tot:0, max:0 };
+                const v = currentVolSet[slot.h24] || { ans:0, abCSAT:0, abQ:0, abH:0, abR:0, totAbnd:0, tot:0, abndRate: "0.0", max:0 };
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td class="time-col">${slot.time12}</td>
-                    <td>${Math.round(v.ans)}</td>
+                    <td><b>${Math.round(v.ans)}</b></td>
                     <td>${Math.round(v.abCSAT)}</td>
                     <td>${Math.round(v.abQ)}</td>
                     <td>${Math.round(v.abH)}</td>
                     <td>${Math.round(v.abR)}</td>
+                    <td style="color: var(--danger-color); font-weight: bold;">${Math.round(v.totAbnd)}</td>
                     <td style="background-color: rgba(255, 183, 3, 0.25); font-weight: bold; color: var(--accent-yellow);"><b>${Math.round(v.tot)}</b></td>
+                    <td style="font-weight:bold; color:${parseFloat(v.abndRate) > 5 ? 'var(--danger-color)' : 'var(--success-color)'}">${v.abndRate}%</td>
                     <td>${Math.round(v.max)}</td>
                 `;
                 tbody.appendChild(tr);
@@ -1804,6 +1820,7 @@
 
     function renderComparisonTable() {
         const tbody = document.getElementById('comparisonTableBody');
+        const theadTr = document.getElementById('comparisonTableHeader');
         tbody.innerHTML = '';
 
         let itemsPerHourPerAgent = 12;
@@ -1812,8 +1829,28 @@
             const aht = parseFloat(document.getElementById('ahtInput').value) || 5;
             const occ = (parseFloat(document.getElementById('occInput').value) || 85) / 100;
             itemsPerHourPerAgent = (60 / aht) * occ;
+
+            theadTr.innerHTML = `
+                <th>Time Slot</th>
+                <th style="background-color: var(--accent-yellow); color: #000;">Total Offered Volume</th>
+                <th>Answered vs Abandoned</th>
+                <th>Scheduled Agents</th>
+                <th>Available Agents (Queue)</th>
+                <th>Required Agents (Full Demand)</th>
+                <th>Net Gap / Coverage</th>
+                <th>Recommended Action</th>
+            `;
         } else {
             itemsPerHourPerAgent = parseFloat(document.getElementById('cphInput').value) || 15;
+            theadTr.innerHTML = `
+                <th>Time Slot</th>
+                <th style="background-color: var(--accent-yellow); color: #000;">Avg Volume</th>
+                <th>Scheduled Agents (Shift Active)</th>
+                <th>Available Agents (Net On Queue)</th>
+                <th>Required Agents</th>
+                <th>Net Gap / Coverage</th>
+                <th>Recommended Action</th>
+            `;
         }
 
         const visibleDepts = getActiveVisibleDepts();
@@ -1845,18 +1882,22 @@
 
             let activeVol = 0;
             let reqAgents = 0;
+            let answeredCount = 0;
+            let abandonedCount = 0;
 
             if (activeChannel === 'PHONES') {
-                activeVol = currentVolSet[slot.h24] ? currentVolSet[slot.h24].tot : 0;
+                const vItem = currentVolSet[slot.h24] || { ans: 0, totAbnd: 0, tot: 0 };
+                activeVol = vItem.tot; // LÓGICA CORREGIDA: Oferta real = Ans + Abnd
+                answeredCount = vItem.ans;
+                abandonedCount = vItem.totAbnd;
+                // Agentes necesarios para atender TODO el tráfico entrante sin abandono
                 reqAgents = activeVol > 0 ? Math.ceil(activeVol / itemsPerHourPerAgent) : 0;
             } else {
-                // FÓRMULA DE CASOS SOLICITADA: (Assigned + Replied + Closed) / 3
                 const vItem = currentVolSet[slot.h24] || { assigned: 0, replied: 0, closed: 0 };
                 const avgVolumeSum = (vItem.assigned + vItem.replied + vItem.closed) / 3;
                 activeVol = Math.round(avgVolumeSum);
 
-                // Cálculo exacto de horas necesarias -> divididas en jornadas de 8h por agente
-                const hoursNeeded = activeVol / itemsPerHourPerAgent; // Target de 15 conv/h
+                const hoursNeeded = activeVol / itemsPerHourPerAgent;
                 reqAgents = activeVol > 0 ? Math.ceil(hoursNeeded / 8) : 0;
             }
 
@@ -1865,23 +1906,36 @@
 
             let recText = "";
             if (gap < 0) {
-                recText = `<span class="status-deficit">Deficit of ${Math.abs(gap)} Agent(s). Add Reinforcement.</span>`;
+                recText = `<span class="status-deficit">Deficit of ${Math.abs(gap)} Agent(s). Causes Abandonment.</span>`;
             } else if (gap <= 2 && reqAgents > 0) {
-                recText = `<span class="status-tight">Tight Capacity / SL Risk. Monitor Spikes.</span>`;
+                recText = `<span class="status-tight">Tight Capacity / SLA Risk. Monitor Surges.</span>`;
             } else {
                 recText = `<span class="status-ok">Optimal Service Level (+${gap} Avail.)</span>`;
             }
 
             const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td class="time-col">${slot.time12}</td>
-                <td style="background-color: rgba(255, 183, 3, 0.25); color: var(--accent-yellow);"><b>${Math.round(activeVol)}</b></td>
-                <td>${Math.round(scheduledAgentsCount)}</td>
-                <td><b>${availAgents}</b></td>
-                <td>${reqAgents}</td>
-                <td>${gap >= 0 ? '+' + gap : gap}</td>
-                <td>${recText}</td>
-            `;
+            if (activeChannel === 'PHONES') {
+                tr.innerHTML = `
+                    <td class="time-col">${slot.time12}</td>
+                    <td style="background-color: rgba(255, 183, 3, 0.25); color: var(--accent-yellow);"><b>${Math.round(activeVol)}</b></td>
+                    <td><span style="color:var(--success-color); font-weight:bold;">${answeredCount}</span> / <span style="color:var(--danger-color); font-weight:bold;">${abandonedCount}</span></td>
+                    <td>${Math.round(scheduledAgentsCount)}</td>
+                    <td><b>${availAgents}</b></td>
+                    <td><b style="color:var(--accent-yellow);">${reqAgents}</b></td>
+                    <td style="font-weight:bold; color:${gap < 0 ? 'var(--danger-color)' : 'var(--success-color)'}">${gap >= 0 ? '+' + gap : gap}</td>
+                    <td>${recText}</td>
+                `;
+            } else {
+                tr.innerHTML = `
+                    <td class="time-col">${slot.time12}</td>
+                    <td style="background-color: rgba(255, 183, 3, 0.25); color: var(--accent-yellow);"><b>${Math.round(activeVol)}</b></td>
+                    <td>${Math.round(scheduledAgentsCount)}</td>
+                    <td><b>${availAgents}</b></td>
+                    <td>${reqAgents}</td>
+                    <td>${gap >= 0 ? '+' + gap : gap}</td>
+                    <td>${recText}</td>
+                `;
+            }
             tbody.appendChild(tr);
         });
     }
@@ -1892,28 +1946,42 @@
         const week = getActiveWeek();
 
         let maxVol = 0, peakHour = 9;
+        let peakAns = 0, peakAbnd = 0;
         const currentVolSet = getActiveVolumeSet();
 
         for (let h = 0; h < 24; h++) {
             let v = 0;
             if (activeChannel === 'PHONES') {
-                v = currentVolSet[h] ? currentVolSet[h].tot : 0;
+                let item = currentVolSet[h] || { ans: 0, totAbnd: 0, tot: 0 };
+                v = item.tot;
+                if (v > maxVol) {
+                    maxVol = v;
+                    peakHour = h;
+                    peakAns = item.ans;
+                    peakAbnd = item.totAbnd;
+                }
             } else {
                 let item = currentVolSet[h] || { assigned: 0, replied: 0, closed: 0 };
                 v = (item.assigned + item.replied + item.closed) / 3;
+                if (v > maxVol) { maxVol = v; peakHour = h; }
             }
-            if (v > maxVol) { maxVol = v; peakHour = h; }
         }
 
         let slot = hourlySlots.find(s => s.h24 === peakHour);
 
         let html = '';
         if (activeChannel === 'PHONES') {
+            const aht = parseFloat(document.getElementById('ahtInput').value) || 5;
+            const occ = (parseFloat(document.getElementById('occInput').value) || 85) / 100;
+            const itemsPerHourPerAgent = (60 / aht) * occ;
+            const reqPeakAgents = Math.ceil(maxVol / itemsPerHourPerAgent);
+
             html = `
                 <div class="recommendation-card">
-                    <h3>📞 Phone Support Recommendations (${month} - ${week})</h3>
-                    <p>Call volume peaks around <b>${slot ? slot.time12 : "Peak Hour"}</b> with an average of <b>${Math.round(maxVol)} calls/hour</b>. 
-                    <b>Action:</b> Restructure break/lunch shifts for Phone teams (OBS, INS, ELD Phones, LL+, TFX) between 11:00 AM and 2:00 PM to prevent SLA drops during lunch breaks.</p>
+                    <h3>📞 Phone Support Volume &amp; Abandonment Analysis (${month} - ${week})</h3>
+                    <p>Total call flow (Offered) peaks at <b>${slot ? slot.time12 : "Peak Hour"}</b> with an average of <b>${Math.round(maxVol)} calls offered</b> (${peakAns} answered vs. <b>${peakAbnd} abandoned</b>).
+                    <br>To absorb the entire incoming flow without call drops at AHT ${aht}m &amp; ${Math.round(occ*100)}% Occ, exactly <b>${reqPeakAgents} available agents on queue</b> are required at this peak hour.
+                    <br><b>Recommended Action:</b> Stagger away activities and avoid simultaneous breaks/lunches between 11:00 AM and 2:00 PM across Phone departments to cover unhandled call abandonment.</p>
                 </div>
             `;
         } else {
@@ -1940,12 +2008,21 @@
                 labels: hourlySlots.map(s => s.time12),
                 datasets: [
                     {
-                        label: 'Total Volume',
+                        label: 'Total Offered Volume (Ans + Abnd)',
                         data: [],
                         borderColor: '#ffb703',
                         backgroundColor: 'rgba(255, 183, 3, 0.25)',
                         borderWidth: 3,
                         fill: true,
+                        tension: 0.3
+                    },
+                    {
+                        label: 'Answered Volume Only',
+                        data: [],
+                        borderColor: '#00e676',
+                        backgroundColor: 'transparent',
+                        borderWidth: 2,
+                        fill: false,
                         tension: 0.3
                     },
                     {
@@ -2017,18 +2094,23 @@
         }
 
         const volumeData = [];
+        const answeredData = [];
         const capacityData = [];
         const visibleDepts = getActiveVisibleDepts();
         const currentVolSet = getActiveVolumeSet();
 
         hourlySlots.forEach(slot => {
             let v = 0;
+            let ansV = 0;
 
             if (activeChannel === 'PHONES') {
-                v = currentVolSet[slot.h24] ? currentVolSet[slot.h24].tot : 0;
+                const item = currentVolSet[slot.h24] || { ans: 0, tot: 0 };
+                v = item.tot;
+                ansV = item.ans;
             } else {
                 let item = currentVolSet[slot.h24] || { assigned: 0, replied: 0, closed: 0 };
                 v = (item.assigned + item.replied + item.closed) / 3;
+                ansV = item.closed || 0;
             }
 
             let availableAgentsCount = 0;
@@ -2061,11 +2143,15 @@
             }
 
             volumeData.push(Math.round(v));
+            answeredData.push(Math.round(ansV));
             capacityData.push(cap);
         });
 
+        volumeCapacityChartInstance.data.datasets[0].label = activeChannel === 'PHONES' ? 'Total Offered (Ans + Abnd)' : 'Total Closed Volume';
         volumeCapacityChartInstance.data.datasets[0].data = volumeData;
-        volumeCapacityChartInstance.data.datasets[1].data = capacityData;
+        volumeCapacityChartInstance.data.datasets[1].data = answeredData;
+        volumeCapacityChartInstance.data.datasets[1].hidden = activeChannel !== 'PHONES';
+        volumeCapacityChartInstance.data.datasets[2].data = capacityData;
         volumeCapacityChartInstance.update();
 
         const totalHeadcounts = visibleDepts.map(d => deptRosterCounts[d]);
@@ -2186,10 +2272,12 @@
 
         document.getElementById('ahtInput').addEventListener('input', () => {
             renderComparisonTable();
+            renderRecommendations();
             updateCharts();
         });
         document.getElementById('occInput').addEventListener('input', () => {
             renderComparisonTable();
+            renderRecommendations();
             updateCharts();
         });
         document.getElementById('cphInput').addEventListener('input', () => {
@@ -2316,20 +2404,28 @@
             let item = hourlyAccumulator[h];
             let cnt = item.count || 1;
 
+            let avgAns = item.ansSum / cnt;
+            let avgCSAT = item.abCSATSum / cnt;
+            let avgQ = item.abQSum / cnt;
+            let avgH = item.abHSum / cnt;
+            let avgR = item.abRSum / cnt;
+            let totAbnd = avgCSAT + avgQ + avgH + avgR;
+            let totOffered = avgAns + totAbnd;
+
             result[h] = {
-                ans: Math.round(item.ansSum / cnt),
-                abCSAT: Math.round(item.abCSATSum / cnt),
-                abQ: Math.round(item.abQSum / cnt),
-                abH: Math.round(item.abHSum / cnt),
-                abR: Math.round(item.abRSum / cnt),
-                tot: Math.round((item.ansSum + item.abCSATSum + item.abQSum + item.abHSum + item.abRSum) / cnt)
+                ans: Math.round(avgAns),
+                abCSAT: Math.round(avgCSAT),
+                abQ: Math.round(avgQ),
+                abH: Math.round(avgH),
+                abR: Math.round(avgR),
+                totAbnd: Math.round(totAbnd),
+                tot: Math.round(totOffered)
             };
         }
 
         return result;
     }
 
-    // PARSER INTELIGENTE DE TABLAS DE CASOS CON SOPORTE PARA TIEMPO HORARIO O POR AGENTE (CURVA REAL)
     function parseCasesTable(rawText) {
         if (!rawText || !rawText.trim()) return {};
 
@@ -2346,7 +2442,6 @@
         const lines = rawText.split(/\r?\n/);
         let hasHourlyData = false;
 
-        // Comprobar si la tabla introducida contiene marcas de tiempo por hora
         lines.forEach(line => {
             if (line.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i)) {
                 hasHourlyData = true;

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WFM Analytics & Call Volume Analysis Dashboard</title>
+    <title>WFM Analytics & Zero Abandonment Dashboard</title>
     <!-- Chart.js & PapaParse -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
@@ -12,21 +12,20 @@
 
     <style>
         :root {
-            --primary-color: #0b2545;       /* Azul oscuro profundo */
-            --primary-dark: #031021;        /* Azul medianoche */
-            --accent-yellow: #ffb703;      /* Ámbar vibrante */
-            --accent-yellow-light: #fff3d1;/* Ámbar claro para selecciones/saldos */
-            --accent-yellow-dark: #b67d00; /* Ámbar oscuro para bordes y texto */
-            --bg-light: #08121e;           /* Fondo principal oscuro */
-            --card-bg: #0f2b48;            /* Fondo de tarjetas y paneles */
-            --border-color: #ffb703;        /* Bordes en Amarillo Ámbar */
+            --primary-color: #0b2545;
+            --primary-dark: #031021;
+            --accent-yellow: #ffb703;
+            --accent-yellow-light: #fff3d1;
+            --accent-yellow-dark: #b67d00;
+            --bg-light: #08121e;
+            --card-bg: #0f2b48;
+            --border-color: #ffb703;
             --success-color: #00e676;
             --warning-color: #ff9100;
             --danger-color: #ff5252;
-            --text-main: #ffffff;           /* Texto claro para legibilidad */
+            --text-main: #ffffff;
         }
 
-        /* LIGHT MODE OVERRIDES */
         body.light-mode {
             --bg-light: #f8fafc;
             --card-bg: #ffffff;
@@ -125,10 +124,7 @@
             padding: 6px;
         }
 
-        .logo-svg {
-            width: 100%;
-            height: 100%;
-        }
+        .logo-svg { width: 100%; height: 100%; }
 
         .header h1 {
             margin: 0;
@@ -164,9 +160,7 @@
             font-weight: bold;
         }
 
-        .btn-yellow:hover {
-            background-color: #d49400;
-        }
+        .btn-yellow:hover { background-color: #d49400; }
 
         .btn-secondary {
             background-color: #ffffff;
@@ -174,18 +168,10 @@
             border: 1px solid var(--accent-yellow);
         }
 
-        .btn-secondary:hover {
-            background-color: var(--accent-yellow-light);
-        }
+        .btn-secondary:hover { background-color: var(--accent-yellow-light); }
 
-        .btn-danger {
-            background-color: var(--danger-color);
-            color: #ffffff;
-        }
-
-        .btn-danger:hover {
-            background-color: #b71c1c;
-        }
+        .btn-danger { background-color: var(--danger-color); color: #ffffff; }
+        .btn-danger:hover { background-color: #b71c1c; }
 
         .btn-outline {
             background-color: transparent;
@@ -255,11 +241,7 @@
             transition: all 0.2s ease;
         }
 
-        .btn-slicer:hover {
-            background-color: var(--accent-yellow);
-            color: #000000;
-        }
-
+        .btn-slicer:hover { background-color: var(--accent-yellow); color: #000000; }
         .btn-slicer.active {
             background-color: var(--accent-yellow);
             color: #000000;
@@ -456,10 +438,7 @@
 
         .modal-overlay {
             position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
+            top: 0; left: 0; right: 0; bottom: 0;
             background: rgba(0,0,0,0.8);
             display: flex;
             align-items: center;
@@ -592,9 +571,7 @@
             padding: 0 2px;
         }
 
-        .saved-week-chip .btn-del-period {
-            color: var(--danger-color);
-        }
+        .saved-week-chip .btn-del-period { color: var(--danger-color); }
 
         .mgmt-toolbar {
             display: flex;
@@ -802,8 +779,8 @@
                 </svg>
             </div>
             <div>
-                <h1>CAPACITY &amp; VOLUME DASHBOARD</h1>
-                <small style="opacity: 0.85;">Workforce Management, Hourly Analytics &amp; 15-Min Agent Schedules</small>
+                <h1>CAPACITY &amp; ZERO-ABANDONMENT DASHBOARD</h1>
+                <small style="opacity: 0.85;">Workforce Management, Erlang-C Zero Abandonment Model &amp; 15-Min Agent Schedules</small>
             </div>
         </div>
         <div class="header-actions">
@@ -859,12 +836,15 @@
 
         <div class="control-group">
             <span class="controls-title">Staffing Parameters</span>
-            <!-- DYNAMIC PARAMETERS CONTAINER FOR PHONES VS CASES -->
-            <div id="phoneParams" style="display: flex; gap: 10px; align-items: center;">
+            <div id="phoneParams" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
                 <label style="font-size: 0.8rem; font-weight: bold; color: var(--accent-yellow);">AHT (min):</label>
-                <input type="number" id="ahtInput" class="input-number" value="5" min="1" max="60" style="width: 55px;">
-                <label style="font-size: 0.8rem; font-weight: bold; color: var(--accent-yellow);">Occ (%):</label>
-                <input type="number" id="occInput" class="input-number" value="85" min="50" max="100" style="width: 55px;">
+                <input type="number" id="ahtInput" class="input-number" value="5" min="1" max="60" style="width: 50px;">
+                
+                <label style="font-size: 0.8rem; font-weight: bold; color: var(--accent-yellow);" title="Target Answer Time in seconds">Target Time (s):</label>
+                <input type="number" id="targetSecInput" class="input-number" value="20" min="5" max="120" style="width: 50px;">
+
+                <label style="font-size: 0.8rem; font-weight: bold; color: var(--accent-yellow);" title="Shrinkage (Breaks/Unplanned/Aux)">Shrinkage (%):</label>
+                <input type="number" id="shrinkageInput" class="input-number" value="15" min="0" max="50" style="width: 50px;">
             </div>
             <div id="casesParams" style="display: none; gap: 10px; align-items: center;">
                 <label style="font-size: 0.8rem; font-weight: bold; color: var(--accent-yellow);">Conv / Hr / Agent Target:</label>
@@ -920,9 +900,7 @@
     <div class="table-responsive">
         <table>
             <thead>
-                <tr id="volumeTableHeader">
-                    <!-- Dynamic Header Populated by JS -->
-                </tr>
+                <tr id="volumeTableHeader"></tr>
             </thead>
             <tbody id="volumeTableBody"></tbody>
         </table>
@@ -930,7 +908,7 @@
 
     <!-- Table 3: Capacity & Staffing Gap -->
     <h2 class="section-title">
-        <span>3. Staffing Requirements &amp; Coverage Gap (<span class="periodLabel">October - Week 2</span>)</span>
+        <span>3. Zero Abandonment Capacity &amp; Staffing Requirements (<span class="periodLabel">October - Week 2</span>)</span>
     </h2>
     <div class="table-responsive">
         <table>
@@ -940,10 +918,10 @@
                     <th style="background-color: var(--accent-yellow); color: #000;">Total Offered Volume</th>
                     <th>Answered vs Abandoned</th>
                     <th>Scheduled Agents</th>
-                    <th>Available Agents (Queue)</th>
-                    <th>Required Agents (Full Demand)</th>
-                    <th>Net Gap / Coverage</th>
-                    <th>Recommended Action (Zero Abandonment)</th>
+                    <th>Available in Queue</th>
+                    <th style="background-color: rgba(255,183,3,0.3); color: var(--accent-yellow);">Required for 0% Abandon</th>
+                    <th>Staffing Gap</th>
+                    <th>Action Required</th>
                 </tr>
             </thead>
             <tbody id="comparisonTableBody"></tbody>
@@ -970,7 +948,6 @@
                 </div>
             </div>
 
-            <!-- MODE SELECTOR: PHONES VS CASES -->
             <div class="mode-selector">
                 <button class="mode-btn active" id="btnModePhone" onclick="switchImportMode('phone')">Phone Support Data</button>
                 <button class="mode-btn" id="btnModeCases" onclick="switchImportMode('cases')">Cases / Messaging Data</button>
@@ -1003,7 +980,6 @@
                 </select>
             </div>
 
-            <!-- SECTION FOR PHONE MODE -->
             <div id="phoneImportSection">
                 <p style="font-size:0.85rem; color:#ccc; margin-top:0;">Expected Columns: <b>Date &amp; Hour | Answered | Abandoned in CSAT rating | Abandoned in queue | Abandoned on hold | Abandoned in routing</b></p>
                 <div class="tab-buttons" id="teamImportTabs">
@@ -1050,7 +1026,6 @@
                 </div>
             </div>
 
-            <!-- SECTION FOR CASES MODE -->
             <div id="casesImportSection" style="display: none;">
                 <p style="font-size:0.85rem; color:#ccc; margin-top:0;">Paste raw Cases table (Time/Hour OR Teammate | Assigned | Replied | Closed conversations):</p>
                 <div class="form-group">
@@ -1075,7 +1050,7 @@
             <button class="close-btn" id="btnCloseAuth">&times;</button>
         </div>
         <div class="modal-body">
-            <p style="font-size:0.9rem;">Please enter the administrative password to edit or delete agent schedules:</p>
+            <p style="font-size:0.9rem;">Please enter administrative password:</p>
             <div class="form-group">
                 <input type="password" id="authPasswordInput" class="input-text" placeholder="Access Password" style="text-align:center; font-size:1rem;">
                 <span id="authErrorMsg" style="color:var(--danger-color); font-size:0.8rem; display:none; margin-top:5px;">Incorrect password. Try again.</span>
@@ -1134,13 +1109,12 @@
                         </select>
                     </div>
 
-                    <!-- CONFIGURACIÓN DE CLOCK IN Y CLOCK OUT -->
                     <div class="form-group">
-                        <label style="color:var(--accent-yellow); font-weight:bold;">Clock In (Inicio de Turno):</label>
+                        <label style="color:var(--accent-yellow); font-weight:bold;">Clock In:</label>
                         <select id="clockInSelect" class="input-select"></select>
                     </div>
                     <div class="form-group">
-                        <label style="color:var(--accent-yellow); font-weight:bold;">Clock Out (Fin de Turno):</label>
+                        <label style="color:var(--accent-yellow); font-weight:bold;">Clock Out:</label>
                         <select id="clockOutSelect" class="input-select"></select>
                     </div>
 
@@ -1177,7 +1151,7 @@
     </div>
 </div>
 
-<!-- FIREBASE SDK ENGINE -->
+<!-- SCRIPT & ENGINE -->
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-app.js";
     import { getDatabase, ref, onValue, set, remove, update } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-database.js";
@@ -1203,7 +1177,6 @@
 
     let isRemoteUpdate = false;
 
-    // DEFINICIÓN DE EQUIPOS Y GRUPOS SEPARADOS
     const phoneDepts = ['OBS - Phones', 'INS - Phones', 'ELD - Phones', 'LL+', 'TFX'];
     const casesDepts = ['OBS - Cases', 'INS - Cases', 'ELD - Cases'];
     const depts = [...phoneDepts, ...casesDepts];
@@ -1221,6 +1194,47 @@
         'LL+': 8,
         'TFX': 3
     };
+
+    /**
+     * MOTOR MATEMÁTICO ERLANG C PARA CERO ABANDONO
+     * Calcula los agentes mínimos para alcanzar >98% de llamadas atendidas en menos de targetWaitSec
+     */
+    function calculateZeroAbandonAgents(callsPerHour, ahtMinutes, targetWaitSec = 20, targetSL = 0.98, shrinkage = 0.15) {
+        if (!callsPerHour || callsPerHour <= 0) return 0;
+        
+        const ahtSec = ahtMinutes * 60;
+        const arrivalRatePerSec = callsPerHour / 3600;
+        const trafficIntensityErlangs = arrivalRatePerSec * ahtSec;
+        
+        let agents = Math.ceil(trafficIntensityErlangs) + 1; // Debe ser estrictamente mayor a los Erlangs
+        
+        while (agents < 300) {
+            let sumTerms = 0;
+            let currentPower = 1;
+            
+            for (let k = 0; k < agents; k++) {
+                if (k > 0) currentPower *= (trafficIntensityErlangs / k);
+                sumTerms += currentPower;
+            }
+            
+            let lastPower = currentPower * (trafficIntensityErlangs / agents);
+            let pWaitDenominator = sumTerms + (lastPower * (agents / (agents - trafficIntensityErlangs)));
+            let probWait = (lastPower * (agents / (agents - trafficIntensityErlangs))) / pWaitDenominator;
+            
+            // Probabilidad de ser atendido antes de targetWaitSec
+            let exponent = - (agents - trafficIntensityErlangs) * (targetWaitSec / ahtSec);
+            let serviceLevel = 1 - (probWait * Math.exp(exponent));
+            
+            if (serviceLevel >= targetSL) {
+                break;
+            }
+            agents++;
+        }
+        
+        // Compensación por shrinkage (desconexiones, aux, breaks no programados)
+        const netRequiredWithShrinkage = Math.ceil(agents / (1 - (shrinkage || 0)));
+        return netRequiredWithShrinkage;
+    }
 
     function generate24HourlySlots() {
         const slots = [];
@@ -1250,9 +1264,8 @@
     }
     const agentSlots15Min = generate15MinSlots();
 
-    // Roster Base
+    // Roster base idéntico
     const rawRosterData = [
-        // OBS - Phones
         { name: "Dean Spencer", dept: "OBS - Phones", clockIn: 32, clockOut: 68, hours: { 35: "Break 1", 44: "Lunch", 45: "Lunch", 55: "Break 2" } },
         { name: "Daneil Facey", dept: "OBS - Phones", clockIn: 32, clockOut: 68, hours: { 40: "Lunch", 41: "Lunch", 42: "Lunch", 51: "Break 2" } },
         { name: "Shanique Kelly", dept: "OBS - Phones", clockIn: 32, clockOut: 68, hours: { 36: "Break 1", 49: "Lunch", 50: "Lunch", 51: "Lunch" } },
@@ -1280,8 +1293,6 @@
         { name: "Felix Torres", dept: "OBS - Phones", clockIn: 36, clockOut: 72, hours: { 47: "Break 1", 52: "Lunch", 53: "Lunch", 63: "Break 2" } },
         { name: "Omar Jimenez", dept: "OBS - Phones", clockIn: 40, clockOut: 76, hours: { 50: "Break 1", 58: "Lunch", 59: "Lunch", 60: "Lunch", 61: "Lunch", 70: "Break 2" } },
         { name: "Michelle Salmon", dept: "OBS - Phones", clockIn: 40, clockOut: 76, hours: { 54: "Break 1", 65: "Lunch", 66: "Lunch", 67: "Lunch" } },
-
-        // OBS - Cases
         { name: "Emely Hernandez", dept: "OBS - Cases", clockIn: 32, clockOut: 68, hours: { 32: "Break 1", 43: "Lunch", 44: "Lunch", 45: "Lunch", 46: "Lunch", 55: "Break 2" } },
         { name: "Pablo Saquilmer", dept: "OBS - Cases", clockIn: 32, clockOut: 68, hours: { 40: "Break 1", 50: "Lunch", 51: "Lunch", 52: "Lunch", 53: "Lunch", 57: "Break 2" } },
         { name: "Lucia Herrera", dept: "OBS - Cases", clockIn: 32, clockOut: 68, hours: { 35: "Break 1", 50: "Lunch", 51: "Lunch", 52: "Lunch", 53: "Lunch", 57: "Break 2" } },
@@ -1292,8 +1303,6 @@
         { name: "Jorge Saban", dept: "OBS - Cases", clockIn: 36, clockOut: 72, hours: { 42: "Break 1", 53: "Break 2", 59: "Lunch", 60: "Lunch", 61: "Lunch", 62: "Lunch" } },
         { name: "Diana Orozco", dept: "OBS - Cases", clockIn: 40, clockOut: 76, hours: { 48: "Break 1", 60: "Break 2", 67: "Lunch", 68: "Lunch", 69: "Lunch", 70: "Lunch" } },
         { name: "Rudy Herrera", dept: "OBS - Cases", clockIn: 40, clockOut: 76, hours: { 54: "Break 1", 64: "Break 2", 70: "Lunch", 71: "Lunch", 72: "Lunch", 73: "Lunch" } },
-
-        // ELD - Phones
         { name: "Sergio Chigüil", dept: "ELD - Phones", clockIn: 32, clockOut: 68, hours: { 36: "Break 1", 44: "Lunch", 45: "Lunch", 46: "Lunch", 47: "Lunch", 55: "Break 2" } },
         { name: "Edgar Castillo", dept: "ELD - Phones", clockIn: 32, clockOut: 68, hours: { 32: "Break 1", 40: "Break 2", 48: "Lunch", 49: "Lunch", 50: "Lunch", 51: "Lunch" } },
         { name: "Samantha Chinchilla", dept: "ELD - Phones", clockIn: 32, clockOut: 68, hours: { 40: "Break 1", 52: "Lunch", 53: "Lunch", 54: "Lunch", 55: "Lunch", 60: "Break 2" } },
@@ -1323,8 +1332,6 @@
         { name: "Kia Francis", dept: "ELD - Phones", clockIn: 40, clockOut: 76, hours: { 51: "Break 1", 64: "Lunch", 65: "Lunch", 66: "Lunch" } },
         { name: "Tevin Smallwood", dept: "ELD - Phones", clockIn: 40, clockOut: 76, hours: { 51: "Break 1", 65: "Lunch", 66: "Lunch", 67: "Lunch" } },
         { name: "Shiyan Lee", dept: "ELD - Phones", clockIn: 40, clockOut: 76, hours: { 50: "Break 1", 60: "Lunch", 61: "Lunch", 62: "Lunch" } },
-
-        // INS - Phones
         { name: "Keyren Fuertes", dept: "INS - Phones", clockIn: 32, clockOut: 68, hours: { 33: "Break 1", 45: "Lunch", 46: "Lunch", 55: "Break 2" } },
         { name: "Otto de la Cruz", dept: "INS - Phones", clockIn: 32, clockOut: 68, hours: { 33: "Break 1", 46: "Lunch", 47: "Lunch", 48: "Lunch", 49: "Lunch", 55: "Break 2" } },
         { name: "Manfredo Monterroso", dept: "INS - Phones", clockIn: 32, clockOut: 68, hours: { 37: "Break 1", 46: "Break 2", 54: "Lunch", 55: "Lunch", 56: "Lunch", 57: "Lunch" } },
@@ -1346,8 +1353,6 @@
         { name: "Marielys Tejada", dept: "INS - Phones", clockIn: 36, clockOut: 72, hours: { 47: "Break 1", 54: "Lunch", 55: "Lunch", 65: "Break 2" } },
         { name: "Cesar Colaj", dept: "INS - Phones", clockIn: 40, clockOut: 76, hours: { 48: "Break 1", 56: "Break 2", 63: "Lunch", 64: "Lunch", 65: "Lunch", 66: "Lunch" } },
         { name: "Juan Avedaño", dept: "INS - Phones", clockIn: 40, clockOut: 76, hours: { 46: "Break 1", 57: "Break 2", 66: "Lunch", 67: "Lunch", 68: "Lunch", 69: "Lunch" } },
-
-        // LL+ Team
         { name: "Julio Cortez", dept: "LL+", clockIn: 32, clockOut: 68, hours: { 32: "Break 1", 40: "Break 2", 48: "Lunch", 49: "Lunch", 50: "Lunch", 51: "Lunch" } },
         { name: "Alex Coyote", dept: "LL+", clockIn: 32, clockOut: 68, hours: { 32: "Break 1", 40: "Break 2", 50: "Lunch", 51: "Lunch", 52: "Lunch", 53: "Lunch" } },
         { name: "Omar Gomez", dept: "LL+", clockIn: 32, clockOut: 68, hours: { 41: "Break 1", 49: "Break 2", 54: "Lunch", 55: "Lunch", 56: "Lunch", 57: "Lunch" } },
@@ -1356,8 +1361,6 @@
         { name: "Edgar Palomo", dept: "LL+", clockIn: 32, clockOut: 68, hours: { 41: "Break 1", 48: "Break 2", 57: "Lunch", 58: "Lunch", 59: "Lunch", 60: "Lunch" } },
         { name: "Jonathan Pirir", dept: "LL+", clockIn: 32, clockOut: 68, hours: { 40: "Break 1", 48: "Break 2", 58: "Lunch", 59: "Lunch", 60: "Lunch", 61: "Lunch" } },
         { name: "Yossi Martinez", dept: "LL+", clockIn: 36, clockOut: 72, hours: { 46: "Break 1", 52: "Break 2", 60: "Lunch", 61: "Lunch", 62: "Lunch", 63: "Lunch" } },
-
-        // TFX Team
         { name: "Fernando Ramirez", dept: "TFX", clockIn: 32, clockOut: 68, hours: { 38: "Break 1", 46: "Lunch", 47: "Lunch", 48: "Lunch", 49: "Lunch", 54: "Break 2" } },
         { name: "Maria Saucedo", dept: "TFX", clockIn: 36, clockOut: 72, hours: { 50: "Break 1", 56: "Lunch", 57: "Lunch", 58: "Lunch", 59: "Lunch", 63: "Break 2" } },
         { name: "Mariana Velasquez", dept: "TFX", clockIn: 32, clockOut: 68, hours: { 40: "Break 1", 52: "Lunch", 53: "Lunch", 54: "Lunch", 55: "Lunch", 62: "Break 2" } }
@@ -1365,27 +1368,20 @@
 
     function buildDefaultMasterAgents() {
         let idCounter = 1;
-        return rawRosterData.map(ag => {
-            return {
-                id: idCounter++,
-                name: ag.name,
-                dept: ag.dept,
-                clockIn: ag.clockIn !== undefined ? ag.clockIn : 32,
-                clockOut: ag.clockOut !== undefined ? ag.clockOut : 68,
-                hours: ag.hours || {}
-            };
-        });
+        return rawRosterData.map(ag => ({
+            id: idCounter++,
+            name: ag.name,
+            dept: ag.dept,
+            clockIn: ag.clockIn !== undefined ? ag.clockIn : 32,
+            clockOut: ag.clockOut !== undefined ? ag.clockOut : 68,
+            hours: ag.hours || {}
+        }));
     }
 
     let hourlyDataPattern = {};
     let multiPeriodVolumeDB = {};
     let rawTextsDB = {};
-    
-    let volumeDataCombined = {
-        phones: {},
-        cases: {}
-    };
-    
+    let volumeDataCombined = { phones: {}, cases: {} };
     let masterAgentsDB = buildDefaultMasterAgents();
 
     function cleanKey(str) {
@@ -1475,7 +1471,6 @@
 
     let isAuthenticated = false;
     let pendingAction = null;
-
     let volumeCapacityChartInstance = null;
     let deptDistributionChartInstance = null;
 
@@ -1483,20 +1478,13 @@
         const body = document.body;
         const icon = document.getElementById('themeIcon');
         const isLight = body.classList.toggle('light-mode');
-
-        if (isLight) {
-            icon.className = 'fa-solid fa-moon';
-            localStorage.setItem('capacity_dashboard_theme', 'light');
-        } else {
-            icon.className = 'fa-solid fa-sun';
-            localStorage.setItem('capacity_dashboard_theme', 'dark');
-        }
+        icon.className = isLight ? 'fa-solid fa-moon' : 'fa-solid fa-sun';
+        localStorage.setItem('capacity_dashboard_theme', isLight ? 'light' : 'dark');
     };
 
     function initTheme() {
         const savedTheme = localStorage.getItem('capacity_dashboard_theme') || 'dark';
         const icon = document.getElementById('themeIcon');
-
         if (savedTheme === 'light') {
             document.body.classList.add('light-mode');
             if (icon) icon.className = 'fa-solid fa-moon';
@@ -1509,15 +1497,11 @@
     window.switchChannel = function(channel) {
         activeChannel = channel;
         selectedDeptFilter = 'ALL_CHANNEL';
-
         document.getElementById('btnChannelPhone').classList.toggle('active', channel === 'PHONES');
         document.getElementById('btnChannelCases').classList.toggle('active', channel === 'CASES');
         document.getElementById('channelNameLabel').textContent = channel === 'PHONES' ? 'Phones Teams' : 'Cases Teams';
-
-        // Toggle controls visibility
         document.getElementById('phoneParams').style.display = channel === 'PHONES' ? 'flex' : 'none';
         document.getElementById('casesParams').style.display = channel === 'CASES' ? 'flex' : 'none';
-
         renderSlicerButtons();
         loadActivePeriodVolume();
         renderAllUI();
@@ -1526,7 +1510,6 @@
     function renderSlicerButtons() {
         const container = document.getElementById('slicerContainer');
         container.innerHTML = '';
-
         const currentDepts = activeChannel === 'PHONES' ? phoneDepts : casesDepts;
 
         const allBtn = document.createElement('button');
@@ -1578,12 +1561,9 @@
 
         const periodStore = multiPeriodVolumeDB[monthKey][weekKey];
         volumeDataCombined = { phones: {}, cases: {} };
-
-        // Departamentos seleccionados según filtro
         const activeDepts = getActiveVisibleDepts();
 
         for (let h = 0; h < 24; h++) {
-            // PHONES VOLUMES
             let pAns = 0, pAbCSAT = 0, pAbQ = 0, pAbH = 0, pAbR = 0;
             const phoneMap = {
                 'OBS - Phones': 'obs',
@@ -1607,7 +1587,6 @@
                 });
             }
 
-            // Total Abandono y Total Ofrecido Real
             const pTotAbnd = pAbCSAT + pAbQ + pAbH + pAbR;
             const pTotOffered = pAns + pTotAbnd;
             const pAbndRate = pTotOffered > 0 ? (pTotAbnd / pTotOffered) * 100 : 0;
@@ -1619,12 +1598,11 @@
                 abH: Math.round(pAbH),
                 abR: Math.round(pAbR),
                 totAbnd: Math.round(pTotAbnd),
-                tot: Math.round(pTotOffered),      // Total Llamadas Ofrecidas (Entrantes)
-                abndRate: pAbndRate.toFixed(1),   // Tasa de Abandono Real
+                tot: Math.round(pTotOffered),
+                abndRate: pAbndRate.toFixed(1),
                 max: Math.round(pTotOffered * 1.1)
             };
 
-            // CASES VOLUMES (Assigned, Replied, Closed)
             let cAssigned = 0, cReplied = 0, cClosed = 0;
             if (periodStore.cases) {
                 if (selectedDeptFilter === 'ALL_CHANNEL') {
@@ -1651,13 +1629,13 @@
                 assigned: Math.round(cAssigned),
                 replied: Math.round(cReplied),
                 closed: Math.round(cClosed),
-                tot: cTot, 
+                tot: cTot,
                 max: Math.round(cTot * 1.1)
             };
         }
 
         document.querySelectorAll('.periodLabel').forEach(el => el.textContent = `${getActiveMonth()} - ${getActiveWeek()}`);
-        document.getElementById('chart1Title').textContent = `Volume vs. Capacity (${activeChannel} - ${getActiveMonth()} ${getActiveWeek()})`;
+        document.getElementById('chart1Title').textContent = `Volume vs. Zero-Abandonment Capacity (${activeChannel} - ${getActiveMonth()} ${getActiveWeek()})`;
     }
 
     function getActiveVisibleDepts() {
@@ -1678,16 +1656,13 @@
         const tbody = document.getElementById('scheduleTableBody');
         const theadTr = document.getElementById('scheduleTableHeader');
         const tfootTr = document.getElementById('scheduleTableFooter');
-        
         tbody.innerHTML = '';
         const visibleDepts = getActiveVisibleDepts();
 
-        // Reconstruir Encabezados Dinámicos
         theadTr.innerHTML = `<th>Time Slot</th>` + 
             visibleDepts.map(d => `<th>${d}</th>`).join('') +
             `<th class="col-total">Total Away Agents</th><th class="col-details">Away Agents &amp; Activity Details</th>`;
 
-        // Reconstruir Pie de Tabla Dinámico
         let totalHeadcount = 0;
         let footCellsHtml = `<td>TOTAL ROSTER</td>`;
         visibleDepts.forEach(d => {
@@ -1699,10 +1674,8 @@
         footCellsHtml += `<td id="footNote" style="text-align: left; font-style: italic;">Selected Headcount Total = ${totalHeadcount} Agents</td>`;
         tfootTr.innerHTML = footCellsHtml;
 
-        // Filas Horarias
         hourlySlots.forEach(slot => {
             const tr = document.createElement('tr');
-            
             const tdTime = document.createElement('td');
             tdTime.className = 'time-col';
             tdTime.textContent = slot.time12;
@@ -1714,9 +1687,7 @@
             visibleDepts.forEach(dept => {
                 const td = document.createElement('td');
                 td.className = 'dept-cell';
-
                 let rawEntries = (hourlyDataPattern[slot.h24] && hourlyDataPattern[slot.h24][dept]) ? hourlyDataPattern[slot.h24][dept] : [];
-                
                 let uniqueAgents = {};
                 rawEntries.forEach(ag => {
                     if (!uniqueAgents[ag.name]) uniqueAgents[ag.name] = [];
@@ -1823,33 +1794,30 @@
         const theadTr = document.getElementById('comparisonTableHeader');
         tbody.innerHTML = '';
 
-        let itemsPerHourPerAgent = 12;
+        const aht = parseFloat(document.getElementById('ahtInput').value) || 5;
+        const targetSec = parseFloat(document.getElementById('targetSecInput').value) || 20;
+        const shrinkage = (parseFloat(document.getElementById('shrinkageInput').value) || 15) / 100;
 
         if (activeChannel === 'PHONES') {
-            const aht = parseFloat(document.getElementById('ahtInput').value) || 5;
-            const occ = (parseFloat(document.getElementById('occInput').value) || 85) / 100;
-            itemsPerHourPerAgent = (60 / aht) * occ;
-
             theadTr.innerHTML = `
                 <th>Time Slot</th>
-                <th style="background-color: var(--accent-yellow); color: #000;">Total Offered Volume</th>
-                <th>Answered vs Abandoned</th>
+                <th style="background-color: var(--accent-yellow); color: #000;">Total Offered Calls</th>
+                <th>Answered / Abandoned</th>
                 <th>Scheduled Agents</th>
-                <th>Available Agents (Queue)</th>
-                <th>Required Agents (Full Demand)</th>
-                <th>Net Gap / Coverage</th>
-                <th>Recommended Action (Zero Abandonment)</th>
+                <th>Available in Queue</th>
+                <th style="background-color: var(--accent-yellow); color: #000; font-weight:bold;">Needed for 0% Abandon</th>
+                <th>Staffing Gap</th>
+                <th>Action Required</th>
             `;
         } else {
-            itemsPerHourPerAgent = parseFloat(document.getElementById('cphInput').value) || 15;
             theadTr.innerHTML = `
                 <th>Time Slot</th>
                 <th style="background-color: var(--accent-yellow); color: #000;">Avg Volume</th>
-                <th>Scheduled Agents (Shift Active)</th>
-                <th>Available Agents (Net On Queue)</th>
-                <th>Required Agents</th>
-                <th>Net Gap / Coverage</th>
-                <th>Recommended Action</th>
+                <th>Scheduled Agents</th>
+                <th>Available in Queue</th>
+                <th style="background-color: var(--accent-yellow); color: #000;">Required Agents</th>
+                <th>Staffing Gap</th>
+                <th>Action Required</th>
             `;
         }
 
@@ -1871,7 +1839,6 @@
                     for (let sIdx = hourStartSlot; sIdx < hourEndSlot; sIdx++) {
                         if (sIdx >= cIn && sIdx < cOut) {
                             scheduledAgentsCount += 0.25;
-                            
                             if (!ag.hours || ag.hours[sIdx] === undefined) {
                                 availableAgentsCount += 0.25;
                             }
@@ -1887,51 +1854,37 @@
 
             if (activeChannel === 'PHONES') {
                 const vItem = currentVolSet[slot.h24] || { ans: 0, totAbnd: 0, tot: 0 };
-                activeVol = vItem.tot; // Total Offered = Answered + Abandoned
+                activeVol = vItem.tot;
                 answeredCount = vItem.ans;
                 abandonedCount = vItem.totAbnd;
-                // Agentes necesarios para atender 100% del volumen ofrecido
-                reqAgents = activeVol > 0 ? Math.ceil(activeVol / itemsPerHourPerAgent) : 0;
+
+                // Cálculo Erlang C para Cero Abandono
+                reqAgents = calculateZeroAbandonAgents(activeVol, aht, targetSec, 0.98, shrinkage);
             } else {
                 const vItem = currentVolSet[slot.h24] || { assigned: 0, replied: 0, closed: 0 };
-                const avgVolumeSum = (vItem.assigned + vItem.replied + vItem.closed) / 3;
-                activeVol = Math.round(avgVolumeSum);
-
-                const hoursNeeded = activeVol / itemsPerHourPerAgent;
-                reqAgents = activeVol > 0 ? Math.ceil(hoursNeeded / 8) : 0;
+                activeVol = Math.round((vItem.assigned + vItem.replied + vItem.closed) / 3);
+                const cph = parseFloat(document.getElementById('cphInput').value) || 15;
+                reqAgents = activeVol > 0 ? Math.ceil(activeVol / cph) : 0;
             }
 
             const availAgents = Math.round(Math.max(0, availableAgentsCount));
-            const gap = Math.round(availAgents - reqAgents);
+            const gap = availAgents - reqAgents;
 
             let recText = "";
             if (activeChannel === 'PHONES') {
-                if (gap < 0) {
-                    const needed = Math.abs(gap);
-                    recText = `<span class="status-deficit"><i class="fa-solid fa-triangle-exclamation"></i> <b>Add +${needed} agent${needed > 1 ? 's' : ''} on queue</b> (Eliminates ${abandonedCount} abandoned calls)</span>`;
-                } else if (gap === 0 && reqAgents > 0) {
-                    if (abandonedCount > 0) {
-                        recText = `<span class="status-tight"><i class="fa-solid fa-circle-exclamation"></i> <b>Add +1 backup agent</b> to absorb micro-surges & zero out abandonment</span>`;
-                    } else {
-                        recText = `<span class="status-ok"><i class="fa-solid fa-circle-check"></i> Balanced headcount (0 extra needed)</span>`;
-                    }
-                } else if (gap > 0 && reqAgents > 0) {
-                    if (abandonedCount > 2) {
-                        recText = `<span class="status-tight"><i class="fa-solid fa-triangle-exclamation"></i> +${gap} Surplus on average, but ${abandonedCount} dropped. Realign away/break slots.</span>`;
-                    } else {
-                        recText = `<span class="status-ok"><i class="fa-solid fa-check"></i> Zero abandonment expected (+${gap} buffer agent${gap > 1 ? 's' : ''})</span>`;
-                    }
+                if (reqAgents === 0) {
+                    recText = `<span class="none-text">Off-hours / No calls expected</span>`;
+                } else if (gap < 0) {
+                    const deficit = Math.abs(gap);
+                    recText = `<span class="status-deficit"><i class="fa-solid fa-triangle-exclamation"></i> <b>Faltan +${deficit} agentes</b> en cola para no perder llamadas</span>`;
+                } else if (gap === 0) {
+                    recText = `<span class="status-tight"><i class="fa-solid fa-check"></i> Exacto para 0% abandono (Sin margen de imprevistos)</span>`;
                 } else {
-                    recText = `<span class="none-text">No active volume / Off-hours</span>`;
+                    recText = `<span class="status-ok"><i class="fa-solid fa-shield-halved"></i> Cobertura garantizada (+${gap} colchón de seguridad)</span>`;
                 }
             } else {
-                if (gap < 0) {
-                    recText = `<span class="status-deficit">Deficit of ${Math.abs(gap)} Agent(s). Add Reinforcement.</span>`;
-                } else if (gap <= 2 && reqAgents > 0) {
-                    recText = `<span class="status-tight">Tight Capacity / SLA Risk. Monitor Spikes.</span>`;
-                } else {
-                    recText = `<span class="status-ok">Optimal Service Level (+${gap} Avail.)</span>`;
-                }
+                if (gap < 0) recText = `<span class="status-deficit">Déficit de ${Math.abs(gap)} agentes</span>`;
+                else recText = `<span class="status-ok">Capacidad suficiente (+${gap})</span>`;
             }
 
             const tr = document.createElement('tr');
@@ -1942,7 +1895,7 @@
                     <td><span style="color:var(--success-color); font-weight:bold;">${answeredCount}</span> / <span style="color:var(--danger-color); font-weight:bold;">${abandonedCount}</span></td>
                     <td>${Math.round(scheduledAgentsCount)}</td>
                     <td><b>${availAgents}</b></td>
-                    <td><b style="color:var(--accent-yellow); font-size: 0.95rem;">${reqAgents}</b></td>
+                    <td style="background-color: rgba(255, 183, 3, 0.35); font-weight: bold; font-size: 1.05rem; color: #ffb703;">${reqAgents}</td>
                     <td style="font-weight:bold; color:${gap < 0 ? 'var(--danger-color)' : 'var(--success-color)'}">${gap >= 0 ? '+' + gap : gap}</td>
                     <td style="text-align: left; padding-left: 10px;">${recText}</td>
                 `;
@@ -1952,8 +1905,8 @@
                     <td style="background-color: rgba(255, 183, 3, 0.25); color: var(--accent-yellow);"><b>${Math.round(activeVol)}</b></td>
                     <td>${Math.round(scheduledAgentsCount)}</td>
                     <td><b>${availAgents}</b></td>
-                    <td>${reqAgents}</td>
-                    <td>${gap >= 0 ? '+' + gap : gap}</td>
+                    <td style="background-color: rgba(255, 183, 3, 0.35); font-weight: bold; font-size: 1.05rem; color: #ffb703;">${reqAgents}</td>
+                    <td style="font-weight:bold; color:${gap < 0 ? 'var(--danger-color)' : 'var(--success-color)'}">${gap >= 0 ? '+' + gap : gap}</td>
                     <td style="text-align: left; padding-left: 10px;">${recText}</td>
                 `;
             }
@@ -1966,29 +1919,25 @@
         const month = getActiveMonth();
         const week = getActiveWeek();
 
-        let maxVol = 0, peakHour = 9;
-        let peakAns = 0, peakAbnd = 0;
-        let worstDeficit = 0, worstDeficitHour = -1;
+        let worstGap = 0;
+        let worstHour = -1;
+        let peakHour = 9;
+        let peakVol = 0;
+        let peakReqAgents = 0;
+
         const currentVolSet = getActiveVolumeSet();
         const visibleDepts = getActiveVisibleDepts();
-
         const aht = parseFloat(document.getElementById('ahtInput').value) || 5;
-        const occ = (parseFloat(document.getElementById('occInput').value) || 85) / 100;
-        const itemsPerHourPerAgent = (60 / aht) * occ;
+        const targetSec = parseFloat(document.getElementById('targetSecInput').value) || 20;
+        const shrinkage = (parseFloat(document.getElementById('shrinkageInput').value) || 15) / 100;
 
         for (let h = 0; h < 24; h++) {
             let v = 0;
             if (activeChannel === 'PHONES') {
-                let item = currentVolSet[h] || { ans: 0, totAbnd: 0, tot: 0 };
+                const item = currentVolSet[h] || { ans: 0, totAbnd: 0, tot: 0 };
                 v = item.tot;
-                if (v > maxVol) {
-                    maxVol = v;
-                    peakHour = h;
-                    peakAns = item.ans;
-                    peakAbnd = item.totAbnd;
-                }
+                const req = calculateZeroAbandonAgents(v, aht, targetSec, 0.98, shrinkage);
 
-                // Calcular déficit en agentes disponibles
                 let avail = 0;
                 let sStart = h * 4;
                 let sEnd = sStart + 4;
@@ -2003,51 +1952,47 @@
                         }
                     }
                 });
-                let req = v > 0 ? Math.ceil(v / itemsPerHourPerAgent) : 0;
-                let def = Math.round(req - avail);
-                if (def > worstDeficit) {
-                    worstDeficit = def;
-                    worstDeficitHour = h;
+
+                let gap = Math.round(avail) - req;
+                if (gap < worstGap) {
+                    worstGap = gap;
+                    worstHour = h;
                 }
-            } else {
-                let item = currentVolSet[h] || { assigned: 0, replied: 0, closed: 0 };
-                v = (item.assigned + item.replied + item.closed) / 3;
-                if (v > maxVol) { maxVol = v; peakHour = h; }
+
+                if (v > peakVol) {
+                    peakVol = v;
+                    peakHour = h;
+                    peakReqAgents = req;
+                }
             }
         }
 
-        let slot = hourlySlots.find(s => s.h24 === peakHour);
-        let worstSlot = hourlySlots.find(s => s.h24 === worstDeficitHour);
+        let worstSlot = hourlySlots.find(s => s.h24 === worstHour);
+        let peakSlot = hourlySlots.find(s => s.h24 === peakHour);
 
         let html = '';
         if (activeChannel === 'PHONES') {
-            const reqPeakAgents = Math.ceil(maxVol / itemsPerHourPerAgent);
-
             html = `
                 <div class="recommendation-card">
-                    <h3>📞 Zero-Abandonment Action Plan (${month} - ${week})</h3>
-                    <p><b>Peak Offered Volume:</b> Around <b>${slot ? slot.time12 : "Peak Hour"}</b> with <b>${Math.round(maxVol)} calls offered</b> (${peakAns} answered vs <b>${peakAbnd} abandoned</b>). Exactly <b>${reqPeakAgents} available agents on queue</b> are required at this interval to handle 100% of the traffic.</p>
-                    ${worstDeficit > 0 ? `
-                        <p style="margin-top: 8px; color: var(--warning-color);">
-                            <b>Critical Staffing Gap:</b> The largest deficit occurs at <b>${worstSlot ? worstSlot.time12 : "Peak Window"}</b>, where you are missing <b>+${worstDeficit} agent(s) on queue</b>. Adding these ${worstDeficit} agents directly prevents unhandled call spikes and drops abandonment to 0%.
+                    <h3>📞 Plan de Dotación para 0% Abandono (${month} - ${week})</h3>
+                    <p><b>Pico Máximo de Llamadas:</b> Ocurre a las <b>${peakSlot ? peakSlot.time12 : "Hora Pico"}</b> con <b>${Math.round(peakVol)} llamadas ofrecidas</b>. Para evitar totalmente el abandono necesitas exactamente <b>${peakReqAgents} agentes conectados en cola</b> en ese intervalo.</p>
+                    ${worstGap < 0 ? `
+                        <p style="margin-top: 8px; color: var(--danger-color);">
+                            <b>⚠️ Déficit Crítico:</b> A las <b>${worstSlot ? worstSlot.time12 : "Ventana Crítica"}</b> tienes un faltante de <b>+${Math.abs(worstGap)} agente(s)</b> en cola. Esta es la causa directa de las llamadas perdidas en ese bloque.
                         </p>
                     ` : `
                         <p style="margin-top: 8px; color: var(--success-color);">
-                            <b>Status:</b> Scheduled capacity matches or exceeds gross call demand across active intervals.
+                            <b>✅ Meta Cumplida:</b> Tienes suficientes agentes en cola en todas las horas para mantener las llamadas abandonadas en 0%.
                         </p>
                     `}
-                    <p style="margin-top: 8px;"><b>Staffing Strategy:</b> Reassign break/lunch overlaps between 11:00 AM and 2:00 PM to keep headcount on queue aligned with incoming call curves.</p>
+                    <p style="margin-top: 8px;"><b>Estrategia de Solución:</b> Reubica los breaks y almuerzos de los agentes que coinciden entre las 11:00 AM y 2:00 PM hacia ventanas de menor tráfico (10:00 AM o después de las 3:00 PM).</p>
                 </div>
             `;
         } else {
-            const targetCPH = parseFloat(document.getElementById('cphInput').value) || 15;
-            const reqPeakAgents = Math.ceil((maxVol / targetCPH) / 8);
             html = `
                 <div class="recommendation-card">
-                    <h3>✉️ Cases &amp; Messaging Service Level Recommendations (${month} - ${week})</h3>
-                    <p>Case volume reaches maximum activity around <b>${slot ? slot.time12 : "Peak Hour"}</b> with an average of <b>${Math.round(maxVol)} conversations/hour</b> across Case teams. 
-                    Targeting <b>${targetCPH} conversations/hour/agent</b> in 8-hour daily shifts requires <b>${reqPeakAgents} full-time agents</b>.
-                    <b>Action:</b> Enforce real-time queue management and backlog sweep sessions during non-peak windows to maintain hourly Service Level.</p>
+                    <h3>✉️ Recomendación Operativa Cases (${month} - ${week})</h3>
+                    <p>Monitorea la acumulación de mensajes y ajusta turnos en los horarios de mayor ingreso.</p>
                 </div>
             `;
         }
@@ -2063,7 +2008,7 @@
                 labels: hourlySlots.map(s => s.time12),
                 datasets: [
                     {
-                        label: 'Total Offered Volume (Ans + Abnd)',
+                        label: 'Total Offered Volume',
                         data: [],
                         borderColor: '#ffb703',
                         backgroundColor: 'rgba(255, 183, 3, 0.25)',
@@ -2072,7 +2017,7 @@
                         tension: 0.3
                     },
                     {
-                        label: 'Answered Volume Only',
+                        label: 'Available Agents in Queue',
                         data: [],
                         borderColor: '#00e676',
                         backgroundColor: 'transparent',
@@ -2081,11 +2026,11 @@
                         tension: 0.3
                     },
                     {
-                        label: 'Available Capacity',
+                        label: 'Agents Required for 0% Abandon',
                         data: [],
-                        borderColor: '#ffffff',
+                        borderColor: '#ff5252',
                         borderDash: [5, 5],
-                        borderWidth: 2,
+                        borderWidth: 2.5,
                         fill: false
                     }
                 ]
@@ -2138,38 +2083,27 @@
     }
 
     function updateCharts() {
-        let itemsPerHourPerAgent = 12;
-
-        if (activeChannel === 'PHONES') {
-            const aht = parseFloat(document.getElementById('ahtInput').value) || 5;
-            const occ = (parseFloat(document.getElementById('occInput').value) || 85) / 100;
-            itemsPerHourPerAgent = (60 / aht) * occ;
-        } else {
-            itemsPerHourPerAgent = parseFloat(document.getElementById('cphInput').value) || 15;
-        }
+        const aht = parseFloat(document.getElementById('ahtInput').value) || 5;
+        const targetSec = parseFloat(document.getElementById('targetSecInput').value) || 20;
+        const shrinkage = (parseFloat(document.getElementById('shrinkageInput').value) || 15) / 100;
 
         const volumeData = [];
-        const answeredData = [];
-        const capacityData = [];
+        const availAgentsData = [];
+        const requiredAgentsData = [];
         const visibleDepts = getActiveVisibleDepts();
         const currentVolSet = getActiveVolumeSet();
 
         hourlySlots.forEach(slot => {
             let v = 0;
-            let ansV = 0;
-
             if (activeChannel === 'PHONES') {
-                const item = currentVolSet[slot.h24] || { ans: 0, tot: 0 };
+                const item = currentVolSet[slot.h24] || { tot: 0 };
                 v = item.tot;
-                ansV = item.ans;
             } else {
-                let item = currentVolSet[slot.h24] || { assigned: 0, replied: 0, closed: 0 };
+                const item = currentVolSet[slot.h24] || { assigned: 0, replied: 0, closed: 0 };
                 v = (item.assigned + item.replied + item.closed) / 3;
-                ansV = item.closed || 0;
             }
 
             let availableAgentsCount = 0;
-
             const hourStartSlot = slot.h24 * 4;
             const hourEndSlot = hourStartSlot + 4;
 
@@ -2188,25 +2122,23 @@
                 }
             });
 
-            const avail = Math.max(0, availableAgentsCount);
-            let cap = 0;
-
+            const avail = Math.round(Math.max(0, availableAgentsCount));
+            let req = 0;
             if (activeChannel === 'PHONES') {
-                cap = Math.round(avail * itemsPerHourPerAgent);
+                req = calculateZeroAbandonAgents(v, aht, targetSec, 0.98, shrinkage);
             } else {
-                cap = Math.round(avail * itemsPerHourPerAgent * 8);
+                const cph = parseFloat(document.getElementById('cphInput').value) || 15;
+                req = v > 0 ? Math.ceil(v / cph) : 0;
             }
 
             volumeData.push(Math.round(v));
-            answeredData.push(Math.round(ansV));
-            capacityData.push(cap);
+            availAgentsData.push(avail);
+            requiredAgentsData.push(req);
         });
 
-        volumeCapacityChartInstance.data.datasets[0].label = activeChannel === 'PHONES' ? 'Total Offered (Ans + Abnd)' : 'Total Closed Volume';
         volumeCapacityChartInstance.data.datasets[0].data = volumeData;
-        volumeCapacityChartInstance.data.datasets[1].data = answeredData;
-        volumeCapacityChartInstance.data.datasets[1].hidden = activeChannel !== 'PHONES';
-        volumeCapacityChartInstance.data.datasets[2].data = capacityData;
+        volumeCapacityChartInstance.data.datasets[1].data = availAgentsData;
+        volumeCapacityChartInstance.data.datasets[2].data = requiredAgentsData;
         volumeCapacityChartInstance.update();
 
         const totalHeadcounts = visibleDepts.map(d => deptRosterCounts[d]);
@@ -2330,7 +2262,12 @@
             renderRecommendations();
             updateCharts();
         });
-        document.getElementById('occInput').addEventListener('input', () => {
+        document.getElementById('targetSecInput').addEventListener('input', () => {
+            renderComparisonTable();
+            renderRecommendations();
+            updateCharts();
+        });
+        document.getElementById('shrinkageInput').addEventListener('input', () => {
             renderComparisonTable();
             renderRecommendations();
             updateCharts();
@@ -2408,7 +2345,6 @@
     function parsePastedTable(rawText) {
         if (!rawText || !rawText.trim()) return {};
         const result = {};
-
         const lines = rawText.split(/\r?\n/);
         const hourlyAccumulator = {};
 
@@ -2483,7 +2419,6 @@
 
     function parseCasesTable(rawText) {
         if (!rawText || !rawText.trim()) return {};
-
         const deptCasesAcc = {
             'OBS - Cases': {},
             'INS - Cases': {},
@@ -2536,64 +2471,13 @@
                     });
                 }
             });
-        } else {
-            const text = rawText.replace(/\r/g, '');
-            const regex = /([A-Za-z\s.\-áéíóúÁÉÍÓÚñÑ]+?)([\d,]+)\s*([\d,]+)?\s*([\d,]+)?/g;
-            let match;
-
-            const hourlyDistributionFactors = {
-                8: 0.05, 9: 0.12, 10: 0.16, 11: 0.18, 12: 0.13, 13: 0.11, 14: 0.12, 15: 0.08, 16: 0.05
-            };
-
-            while ((match = regex.exec(text)) !== null) {
-                let name = match[1].trim();
-                if (!name || name.toLowerCase().includes('teammate') || name.toLowerCase().includes('conversations')) continue;
-
-                let num1 = match[2] ? parseInt(match[2].replace(/,/g, ''), 10) : 0;
-                let num2 = match[3] ? parseInt(match[3].replace(/,/g, ''), 10) : 0;
-                let num3 = match[4] ? parseInt(match[4].replace(/,/g, ''), 10) : 0;
-
-                let assignedVal = num1;
-                let repliedVal = num2;
-                let closedVal = num3;
-
-                if (match[4] === undefined) {
-                    if (match[3] !== undefined) {
-                        assignedVal = num1;
-                        repliedVal = 0;
-                        closedVal = num2;
-                    } else {
-                        assignedVal = num1;
-                        repliedVal = 0;
-                        closedVal = num1;
-                    }
-                }
-
-                if (assignedVal > 0 || closedVal > 0) {
-                    let matchedAgent = masterAgentsDB.find(ag => ag.name.toLowerCase().includes(name.toLowerCase()) || name.toLowerCase().includes(ag.name.toLowerCase()));
-                    let targetDept = matchedAgent ? matchedAgent.dept : 'OBS - Cases';
-
-                    if (!casesDepts.includes(targetDept)) targetDept = 'OBS - Cases';
-
-                    Object.keys(hourlyDistributionFactors).forEach(hStr => {
-                        let h = parseInt(hStr, 10);
-                        let factor = hourlyDistributionFactors[h];
-
-                        deptCasesAcc[targetDept][h].assigned += Math.round(assignedVal * factor);
-                        deptCasesAcc[targetDept][h].replied += Math.round(repliedVal * factor);
-                        deptCasesAcc[targetDept][h].closed += Math.round(closedVal * factor);
-                    });
-                }
-            }
         }
-
         return deptCasesAcc;
     }
 
     function processTeamTabsData() {
         const targetMonth = document.getElementById('importMonthSelect').value;
         const targetWeek = document.getElementById('importWeekSelect').value;
-
         const monthKey = cleanKey(targetMonth);
         const weekKey = cleanKey(targetWeek);
 
@@ -2782,7 +2666,6 @@
     function populateClockSelectors(selectedIn = 32, selectedOut = 68) {
         const clockInSelect = document.getElementById('clockInSelect');
         const clockOutSelect = document.getElementById('clockOutSelect');
-
         clockInSelect.innerHTML = '';
         clockOutSelect.innerHTML = '';
 
@@ -2804,10 +2687,8 @@
     function openAgentForm(agentId = null) {
         const card = document.getElementById('agentFormCard');
         card.style.display = 'block';
-        
         const chipsContainer = document.getElementById('hourChipsContainer');
         chipsContainer.innerHTML = '';
-
         const currentDept = document.getElementById('mgmtDeptSelect').value;
 
         if (agentId) {
@@ -2836,7 +2717,6 @@
                 `;
                 chipsContainer.appendChild(div);
             });
-
         } else {
             document.getElementById('agentFormTitle').textContent = 'Add New Agent & Shift Schedule';
             document.getElementById('editAgentId').value = '';

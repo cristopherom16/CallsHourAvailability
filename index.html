@@ -937,12 +937,13 @@
             <thead>
                 <tr id="comparisonTableHeader">
                     <th>Time Slot</th>
-                    <th style="background-color: var(--accent-yellow); color: #000;">Avg Volume (Offered)</th>
-                    <th>Scheduled Agents (Shift Active)</th>
-                    <th>Available Agents (Net On Queue)</th>
-                    <th>Required Agents</th>
+                    <th style="background-color: var(--accent-yellow); color: #000;">Total Offered Volume</th>
+                    <th>Answered vs Abandoned</th>
+                    <th>Scheduled Agents</th>
+                    <th>Available Agents (Queue)</th>
+                    <th>Required Agents (Full Demand)</th>
                     <th>Net Gap / Coverage</th>
-                    <th>Recommended Action</th>
+                    <th>Recommended Action (Zero Abandonment)</th>
                 </tr>
             </thead>
             <tbody id="comparisonTableBody"></tbody>
@@ -1087,7 +1088,6 @@
 </div>
 
 <!-- MODAL: Manage Agents & Schedules -->
-<div class="modal-card" style="display:none;" id="mgmtModalWrapper"></div>
 <div class="modal-overlay" id="mgmtModal">
     <div class="modal-card" style="max-width: 950px;">
         <div class="modal-header">
@@ -1607,7 +1607,7 @@
                 });
             }
 
-            // AJUSTE CLAVE WFM: Total Abandono y Total Ofrecido Real
+            // Total Abandono y Total Ofrecido Real
             const pTotAbnd = pAbCSAT + pAbQ + pAbH + pAbR;
             const pTotOffered = pAns + pTotAbnd;
             const pAbndRate = pTotOffered > 0 ? (pTotAbnd / pTotOffered) * 100 : 0;
@@ -1838,7 +1838,7 @@
                 <th>Available Agents (Queue)</th>
                 <th>Required Agents (Full Demand)</th>
                 <th>Net Gap / Coverage</th>
-                <th>Recommended Action</th>
+                <th>Recommended Action (Zero Abandonment)</th>
             `;
         } else {
             itemsPerHourPerAgent = parseFloat(document.getElementById('cphInput').value) || 15;
@@ -1887,10 +1887,10 @@
 
             if (activeChannel === 'PHONES') {
                 const vItem = currentVolSet[slot.h24] || { ans: 0, totAbnd: 0, tot: 0 };
-                activeVol = vItem.tot; // LÓGICA CORREGIDA: Oferta real = Ans + Abnd
+                activeVol = vItem.tot; // Total Offered = Answered + Abandoned
                 answeredCount = vItem.ans;
                 abandonedCount = vItem.totAbnd;
-                // Agentes necesarios para atender TODO el tráfico entrante sin abandono
+                // Agentes necesarios para atender 100% del volumen ofrecido
                 reqAgents = activeVol > 0 ? Math.ceil(activeVol / itemsPerHourPerAgent) : 0;
             } else {
                 const vItem = currentVolSet[slot.h24] || { assigned: 0, replied: 0, closed: 0 };
@@ -1905,12 +1905,33 @@
             const gap = Math.round(availAgents - reqAgents);
 
             let recText = "";
-            if (gap < 0) {
-                recText = `<span class="status-deficit">Deficit of ${Math.abs(gap)} Agent(s). Causes Abandonment.</span>`;
-            } else if (gap <= 2 && reqAgents > 0) {
-                recText = `<span class="status-tight">Tight Capacity / SLA Risk. Monitor Surges.</span>`;
+            if (activeChannel === 'PHONES') {
+                if (gap < 0) {
+                    const needed = Math.abs(gap);
+                    recText = `<span class="status-deficit"><i class="fa-solid fa-triangle-exclamation"></i> <b>Add +${needed} agent${needed > 1 ? 's' : ''} on queue</b> (Eliminates ${abandonedCount} abandoned calls)</span>`;
+                } else if (gap === 0 && reqAgents > 0) {
+                    if (abandonedCount > 0) {
+                        recText = `<span class="status-tight"><i class="fa-solid fa-circle-exclamation"></i> <b>Add +1 backup agent</b> to absorb micro-surges & zero out abandonment</span>`;
+                    } else {
+                        recText = `<span class="status-ok"><i class="fa-solid fa-circle-check"></i> Balanced headcount (0 extra needed)</span>`;
+                    }
+                } else if (gap > 0 && reqAgents > 0) {
+                    if (abandonedCount > 2) {
+                        recText = `<span class="status-tight"><i class="fa-solid fa-triangle-exclamation"></i> +${gap} Surplus on average, but ${abandonedCount} dropped. Realign away/break slots.</span>`;
+                    } else {
+                        recText = `<span class="status-ok"><i class="fa-solid fa-check"></i> Zero abandonment expected (+${gap} buffer agent${gap > 1 ? 's' : ''})</span>`;
+                    }
+                } else {
+                    recText = `<span class="none-text">No active volume / Off-hours</span>`;
+                }
             } else {
-                recText = `<span class="status-ok">Optimal Service Level (+${gap} Avail.)</span>`;
+                if (gap < 0) {
+                    recText = `<span class="status-deficit">Deficit of ${Math.abs(gap)} Agent(s). Add Reinforcement.</span>`;
+                } else if (gap <= 2 && reqAgents > 0) {
+                    recText = `<span class="status-tight">Tight Capacity / SLA Risk. Monitor Spikes.</span>`;
+                } else {
+                    recText = `<span class="status-ok">Optimal Service Level (+${gap} Avail.)</span>`;
+                }
             }
 
             const tr = document.createElement('tr');
@@ -1921,9 +1942,9 @@
                     <td><span style="color:var(--success-color); font-weight:bold;">${answeredCount}</span> / <span style="color:var(--danger-color); font-weight:bold;">${abandonedCount}</span></td>
                     <td>${Math.round(scheduledAgentsCount)}</td>
                     <td><b>${availAgents}</b></td>
-                    <td><b style="color:var(--accent-yellow);">${reqAgents}</b></td>
+                    <td><b style="color:var(--accent-yellow); font-size: 0.95rem;">${reqAgents}</b></td>
                     <td style="font-weight:bold; color:${gap < 0 ? 'var(--danger-color)' : 'var(--success-color)'}">${gap >= 0 ? '+' + gap : gap}</td>
-                    <td>${recText}</td>
+                    <td style="text-align: left; padding-left: 10px;">${recText}</td>
                 `;
             } else {
                 tr.innerHTML = `
@@ -1933,7 +1954,7 @@
                     <td><b>${availAgents}</b></td>
                     <td>${reqAgents}</td>
                     <td>${gap >= 0 ? '+' + gap : gap}</td>
-                    <td>${recText}</td>
+                    <td style="text-align: left; padding-left: 10px;">${recText}</td>
                 `;
             }
             tbody.appendChild(tr);
@@ -1947,7 +1968,13 @@
 
         let maxVol = 0, peakHour = 9;
         let peakAns = 0, peakAbnd = 0;
+        let worstDeficit = 0, worstDeficitHour = -1;
         const currentVolSet = getActiveVolumeSet();
+        const visibleDepts = getActiveVisibleDepts();
+
+        const aht = parseFloat(document.getElementById('ahtInput').value) || 5;
+        const occ = (parseFloat(document.getElementById('occInput').value) || 85) / 100;
+        const itemsPerHourPerAgent = (60 / aht) * occ;
 
         for (let h = 0; h < 24; h++) {
             let v = 0;
@@ -1960,6 +1987,28 @@
                     peakAns = item.ans;
                     peakAbnd = item.totAbnd;
                 }
+
+                // Calcular déficit en agentes disponibles
+                let avail = 0;
+                let sStart = h * 4;
+                let sEnd = sStart + 4;
+                masterAgentsDB.forEach(ag => {
+                    if (visibleDepts.includes(ag.dept)) {
+                        let cIn = ag.clockIn !== undefined ? ag.clockIn : 32;
+                        let cOut = ag.clockOut !== undefined ? ag.clockOut : 68;
+                        for (let sIdx = sStart; sIdx < sEnd; sIdx++) {
+                            if (sIdx >= cIn && sIdx < cOut && (!ag.hours || ag.hours[sIdx] === undefined)) {
+                                avail += 0.25;
+                            }
+                        }
+                    }
+                });
+                let req = v > 0 ? Math.ceil(v / itemsPerHourPerAgent) : 0;
+                let def = Math.round(req - avail);
+                if (def > worstDeficit) {
+                    worstDeficit = def;
+                    worstDeficitHour = h;
+                }
             } else {
                 let item = currentVolSet[h] || { assigned: 0, replied: 0, closed: 0 };
                 v = (item.assigned + item.replied + item.closed) / 3;
@@ -1968,20 +2017,26 @@
         }
 
         let slot = hourlySlots.find(s => s.h24 === peakHour);
+        let worstSlot = hourlySlots.find(s => s.h24 === worstDeficitHour);
 
         let html = '';
         if (activeChannel === 'PHONES') {
-            const aht = parseFloat(document.getElementById('ahtInput').value) || 5;
-            const occ = (parseFloat(document.getElementById('occInput').value) || 85) / 100;
-            const itemsPerHourPerAgent = (60 / aht) * occ;
             const reqPeakAgents = Math.ceil(maxVol / itemsPerHourPerAgent);
 
             html = `
                 <div class="recommendation-card">
-                    <h3>📞 Phone Support Volume &amp; Abandonment Analysis (${month} - ${week})</h3>
-                    <p>Total call flow (Offered) peaks at <b>${slot ? slot.time12 : "Peak Hour"}</b> with an average of <b>${Math.round(maxVol)} calls offered</b> (${peakAns} answered vs. <b>${peakAbnd} abandoned</b>).
-                    <br>To absorb the entire incoming flow without call drops at AHT ${aht}m &amp; ${Math.round(occ*100)}% Occ, exactly <b>${reqPeakAgents} available agents on queue</b> are required at this peak hour.
-                    <br><b>Recommended Action:</b> Stagger away activities and avoid simultaneous breaks/lunches between 11:00 AM and 2:00 PM across Phone departments to cover unhandled call abandonment.</p>
+                    <h3>📞 Zero-Abandonment Action Plan (${month} - ${week})</h3>
+                    <p><b>Peak Offered Volume:</b> Around <b>${slot ? slot.time12 : "Peak Hour"}</b> with <b>${Math.round(maxVol)} calls offered</b> (${peakAns} answered vs <b>${peakAbnd} abandoned</b>). Exactly <b>${reqPeakAgents} available agents on queue</b> are required at this interval to handle 100% of the traffic.</p>
+                    ${worstDeficit > 0 ? `
+                        <p style="margin-top: 8px; color: var(--warning-color);">
+                            <b>Critical Staffing Gap:</b> The largest deficit occurs at <b>${worstSlot ? worstSlot.time12 : "Peak Window"}</b>, where you are missing <b>+${worstDeficit} agent(s) on queue</b>. Adding these ${worstDeficit} agents directly prevents unhandled call spikes and drops abandonment to 0%.
+                        </p>
+                    ` : `
+                        <p style="margin-top: 8px; color: var(--success-color);">
+                            <b>Status:</b> Scheduled capacity matches or exceeds gross call demand across active intervals.
+                        </p>
+                    `}
+                    <p style="margin-top: 8px;"><b>Staffing Strategy:</b> Reassign break/lunch overlaps between 11:00 AM and 2:00 PM to keep headcount on queue aligned with incoming call curves.</p>
                 </div>
             `;
         } else {

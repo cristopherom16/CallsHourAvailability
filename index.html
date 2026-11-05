@@ -789,7 +789,7 @@
         </div>
     </div>
 
-    <!-- SELECCIÓN DE CANAL DE DASHBOARD -->
+    <!-- DASHBOARD CHANNEL SELECTOR -->
     <div class="channel-tab-group">
         <button class="btn-channel active" id="btnChannelPhone" onclick="switchChannel('PHONES')">
             <i class="fa-solid fa-phone"></i> Phones Dashboard (OBS, INS, ELD Phones, LL+, TFX)
@@ -1196,8 +1196,8 @@
     };
 
     /**
-     * MOTOR MATEMÁTICO ERLANG C PARA CERO ABANDONO
-     * Calcula los agentes mínimos para alcanzar >98% de llamadas atendidas en menos de targetWaitSec
+     * ERLANG C ZERO ABANDONMENT ENGINE
+     * Computes the exact minimum number of queue agents needed to reach SLA >= 98% in <= targetWaitSec.
      */
     function calculateZeroAbandonAgents(callsPerHour, ahtMinutes, targetWaitSec = 20, targetSL = 0.98, shrinkage = 0.15) {
         if (!callsPerHour || callsPerHour <= 0) return 0;
@@ -1206,7 +1206,7 @@
         const arrivalRatePerSec = callsPerHour / 3600;
         const trafficIntensityErlangs = arrivalRatePerSec * ahtSec;
         
-        let agents = Math.ceil(trafficIntensityErlangs) + 1; // Debe ser estrictamente mayor a los Erlangs
+        let agents = Math.ceil(trafficIntensityErlangs) + 1; // Must be strictly greater than Erlangs
         
         while (agents < 300) {
             let sumTerms = 0;
@@ -1221,7 +1221,7 @@
             let pWaitDenominator = sumTerms + (lastPower * (agents / (agents - trafficIntensityErlangs)));
             let probWait = (lastPower * (agents / (agents - trafficIntensityErlangs))) / pWaitDenominator;
             
-            // Probabilidad de ser atendido antes de targetWaitSec
+            // Probability of call answered within targetWaitSec
             let exponent = - (agents - trafficIntensityErlangs) * (targetWaitSec / ahtSec);
             let serviceLevel = 1 - (probWait * Math.exp(exponent));
             
@@ -1231,7 +1231,7 @@
             agents++;
         }
         
-        // Compensación por shrinkage (desconexiones, aux, breaks no programados)
+        // Shrinkage adjustment (micro-breaks, aux drift, unplanned offline time)
         const netRequiredWithShrinkage = Math.ceil(agents / (1 - (shrinkage || 0)));
         return netRequiredWithShrinkage;
     }
@@ -1264,7 +1264,6 @@
     }
     const agentSlots15Min = generate15MinSlots();
 
-    // Roster base idéntico
     const rawRosterData = [
         { name: "Dean Spencer", dept: "OBS - Phones", clockIn: 32, clockOut: 68, hours: { 35: "Break 1", 44: "Lunch", 45: "Lunch", 55: "Break 2" } },
         { name: "Daneil Facey", dept: "OBS - Phones", clockIn: 32, clockOut: 68, hours: { 40: "Lunch", 41: "Lunch", 42: "Lunch", 51: "Break 2" } },
@@ -1858,7 +1857,7 @@
                 answeredCount = vItem.ans;
                 abandonedCount = vItem.totAbnd;
 
-                // Cálculo Erlang C para Cero Abandono
+                // Erlang C computation for zero abandonment
                 reqAgents = calculateZeroAbandonAgents(activeVol, aht, targetSec, 0.98, shrinkage);
             } else {
                 const vItem = currentVolSet[slot.h24] || { assigned: 0, replied: 0, closed: 0 };
@@ -1876,15 +1875,15 @@
                     recText = `<span class="none-text">Off-hours / No calls expected</span>`;
                 } else if (gap < 0) {
                     const deficit = Math.abs(gap);
-                    recText = `<span class="status-deficit"><i class="fa-solid fa-triangle-exclamation"></i> <b>Faltan +${deficit} agentes</b> en cola para no perder llamadas</span>`;
+                    recText = `<span class="status-deficit"><i class="fa-solid fa-triangle-exclamation"></i> <b>Need +${deficit} agent${deficit > 1 ? 's' : ''} on queue</b> to eliminate abandoned calls</span>`;
                 } else if (gap === 0) {
-                    recText = `<span class="status-tight"><i class="fa-solid fa-check"></i> Exacto para 0% abandono (Sin margen de imprevistos)</span>`;
+                    recText = `<span class="status-tight"><i class="fa-solid fa-check"></i> Exact match for 0% abandonment (Zero safety buffer)</span>`;
                 } else {
-                    recText = `<span class="status-ok"><i class="fa-solid fa-shield-halved"></i> Cobertura garantizada (+${gap} colchón de seguridad)</span>`;
+                    recText = `<span class="status-ok"><i class="fa-solid fa-shield-halved"></i> Full coverage guaranteed (+${gap} buffer agent${gap > 1 ? 's' : ''})</span>`;
                 }
             } else {
-                if (gap < 0) recText = `<span class="status-deficit">Déficit de ${Math.abs(gap)} agentes</span>`;
-                else recText = `<span class="status-ok">Capacidad suficiente (+${gap})</span>`;
+                if (gap < 0) recText = `<span class="status-deficit">Deficit of ${Math.abs(gap)} agent(s)</span>`;
+                else recText = `<span class="status-ok">Optimal capacity (+${gap} available)</span>`;
             }
 
             const tr = document.createElement('tr');
@@ -1974,25 +1973,25 @@
         if (activeChannel === 'PHONES') {
             html = `
                 <div class="recommendation-card">
-                    <h3>📞 Plan de Dotación para 0% Abandono (${month} - ${week})</h3>
-                    <p><b>Pico Máximo de Llamadas:</b> Ocurre a las <b>${peakSlot ? peakSlot.time12 : "Hora Pico"}</b> con <b>${Math.round(peakVol)} llamadas ofrecidas</b>. Para evitar totalmente el abandono necesitas exactamente <b>${peakReqAgents} agentes conectados en cola</b> en ese intervalo.</p>
+                    <h3>📞 Zero-Abandonment Staffing Action Plan (${month} - ${week})</h3>
+                    <p><b>Peak Offered Volume:</b> Reaches its high at <b>${peakSlot ? peakSlot.time12 : "Peak Window"}</b> with <b>${Math.round(peakVol)} calls offered</b>. To ensure zero abandonment at that peak, exactly <b>${peakReqAgents} agents on queue</b> must be actively handling calls.</p>
                     ${worstGap < 0 ? `
                         <p style="margin-top: 8px; color: var(--danger-color);">
-                            <b>⚠️ Déficit Crítico:</b> A las <b>${worstSlot ? worstSlot.time12 : "Ventana Crítica"}</b> tienes un faltante de <b>+${Math.abs(worstGap)} agente(s)</b> en cola. Esta es la causa directa de las llamadas perdidas en ese bloque.
+                            <b>⚠️ Critical Staffing Gap:</b> At <b>${worstSlot ? worstSlot.time12 : "Critical Window"}</b>, you are missing <b>+${Math.abs(worstGap)} agent(s) on queue</b>. This gap is the root cause of incoming call drops.
                         </p>
                     ` : `
                         <p style="margin-top: 8px; color: var(--success-color);">
-                            <b>✅ Meta Cumplida:</b> Tienes suficientes agentes en cola en todas las horas para mantener las llamadas abandonadas en 0%.
+                            <b>✅ Coverage Met:</b> Scheduled queue capacity matches or exceeds required thresholds for 0% abandonment across all active intervals.
                         </p>
                     `}
-                    <p style="margin-top: 8px;"><b>Estrategia de Solución:</b> Reubica los breaks y almuerzos de los agentes que coinciden entre las 11:00 AM y 2:00 PM hacia ventanas de menor tráfico (10:00 AM o después de las 3:00 PM).</p>
+                    <p style="margin-top: 8px;"><b>Staffing Strategy:</b> Reschedule overlapping lunch/break windows between 11:00 AM and 2:00 PM to align queue availability with incoming traffic waves.</p>
                 </div>
             `;
         } else {
             html = `
                 <div class="recommendation-card">
-                    <h3>✉️ Recomendación Operativa Cases (${month} - ${week})</h3>
-                    <p>Monitorea la acumulación de mensajes y ajusta turnos en los horarios de mayor ingreso.</p>
+                    <h3>✉️ Cases &amp; Messaging SLA Recommendations (${month} - ${week})</h3>
+                    <p>Track backlog growth and balance agent rosters during peak inbound conversation windows.</p>
                 </div>
             `;
         }

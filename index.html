@@ -846,9 +846,12 @@
                 <label style="font-size: 0.8rem; font-weight: bold; color: var(--accent-yellow);" title="Shrinkage (Breaks/Unplanned/Aux)">Shrinkage (%):</label>
                 <input type="number" id="shrinkageInput" class="input-number" value="15" min="0" max="50" style="width: 50px;">
             </div>
-            <div id="casesParams" style="display: none; gap: 10px; align-items: center;">
-                <label style="font-size: 0.8rem; font-weight: bold; color: var(--accent-yellow);">Conv / Hr / Agent Target:</label>
+            <div id="casesParams" style="display: none; gap: 10px; align-items: center; flex-wrap: wrap;">
+                <label style="font-size: 0.8rem; font-weight: bold; color: var(--accent-yellow);">Max Replies / Agent / Hr (CPH):</label>
                 <input type="number" id="cphInput" class="input-number" value="15" min="1" max="100" style="width: 65px;">
+                
+                <label style="font-size: 0.8rem; font-weight: bold; color: var(--accent-yellow);" title="Cases Shrinkage %">Shrinkage (%):</label>
+                <input type="number" id="casesShrinkageInput" class="input-number" value="10" min="0" max="50" style="width: 50px;">
             </div>
         </div>
     </div>
@@ -908,21 +911,12 @@
 
     <!-- Table 3: Capacity & Staffing Gap -->
     <h2 class="section-title">
-        <span>3. Zero Abandonment Capacity &amp; Staffing Requirements (<span class="periodLabel">October - Week 2</span>)</span>
+        <span id="comparisonTableTitle">3. Zero Abandonment Capacity &amp; Staffing Requirements (<span class="periodLabel">October - Week 2</span>)</span>
     </h2>
     <div class="table-responsive">
         <table>
             <thead>
-                <tr id="comparisonTableHeader">
-                    <th>Time Slot</th>
-                    <th style="background-color: var(--accent-yellow); color: #000;">Total Offered Volume</th>
-                    <th>Answered vs Abandoned</th>
-                    <th>Scheduled Agents</th>
-                    <th>Available in Queue</th>
-                    <th style="background-color: rgba(255,183,3,0.3); color: var(--accent-yellow);">Required for 0% Abandon</th>
-                    <th>Staffing Gap</th>
-                    <th>Action Required</th>
-                </tr>
+                <tr id="comparisonTableHeader"></tr>
             </thead>
             <tbody id="comparisonTableBody"></tbody>
         </table>
@@ -1196,7 +1190,7 @@
     };
 
     /**
-     * ERLANG C ZERO ABANDONMENT ENGINE
+     * ERLANG C ZERO ABANDONMENT ENGINE (FOR PHONES)
      * Computes the exact minimum number of queue agents needed to reach SLA >= 98% in <= targetWaitSec.
      */
     function calculateZeroAbandonAgents(callsPerHour, ahtMinutes, targetWaitSec = 20, targetSL = 0.98, shrinkage = 0.15) {
@@ -1206,7 +1200,7 @@
         const arrivalRatePerSec = callsPerHour / 3600;
         const trafficIntensityErlangs = arrivalRatePerSec * ahtSec;
         
-        let agents = Math.ceil(trafficIntensityErlangs) + 1; // Must be strictly greater than Erlangs
+        let agents = Math.ceil(trafficIntensityErlangs) + 1;
         
         while (agents < 300) {
             let sumTerms = 0;
@@ -1221,7 +1215,6 @@
             let pWaitDenominator = sumTerms + (lastPower * (agents / (agents - trafficIntensityErlangs)));
             let probWait = (lastPower * (agents / (agents - trafficIntensityErlangs))) / pWaitDenominator;
             
-            // Probability of call answered within targetWaitSec
             let exponent = - (agents - trafficIntensityErlangs) * (targetWaitSec / ahtSec);
             let serviceLevel = 1 - (probWait * Math.exp(exponent));
             
@@ -1231,9 +1224,20 @@
             agents++;
         }
         
-        // Shrinkage adjustment (micro-breaks, aux drift, unplanned offline time)
         const netRequiredWithShrinkage = Math.ceil(agents / (1 - (shrinkage || 0)));
         return netRequiredWithShrinkage;
+    }
+
+    /**
+     * CASES 100% RESPONSE STAFFING ENGINE
+     * Computes agents needed to reply to 100% of assigned conversations based on max CPH.
+     */
+    function calculateCasesRequiredAgents(assignedVolume, maxCphPerAgent, shrinkage = 0.10) {
+        if (!assignedVolume || assignedVolume <= 0) return 0;
+        const cph = maxCphPerAgent > 0 ? maxCphPerAgent : 15;
+        const baseAgents = assignedVolume / cph;
+        const requiredWithShrinkage = Math.ceil(baseAgents / (1 - (shrinkage || 0)));
+        return Math.max(1, requiredWithShrinkage);
     }
 
     function generate24HourlySlots() {
@@ -1501,6 +1505,11 @@
         document.getElementById('channelNameLabel').textContent = channel === 'PHONES' ? 'Phones Teams' : 'Cases Teams';
         document.getElementById('phoneParams').style.display = channel === 'PHONES' ? 'flex' : 'none';
         document.getElementById('casesParams').style.display = channel === 'CASES' ? 'flex' : 'none';
+        
+        document.getElementById('comparisonTableTitle').innerHTML = channel === 'PHONES' 
+            ? `3. Zero Abandonment Capacity &amp; Staffing Requirements (<span class="periodLabel">${getActiveMonth()} - ${getActiveWeek()}</span>)`
+            : `3. Assigned vs. Replied Cases Staffing Gap (<span class="periodLabel">${getActiveMonth()} - ${getActiveWeek()}</span>)`;
+
         renderSlicerButtons();
         loadActivePeriodVolume();
         renderAllUI();
@@ -1623,18 +1632,24 @@
                 }
             }
 
-            const cTot = Math.round(cClosed);
+            const unreplied = Math.max(0, cAssigned - cReplied);
+            const responseRate = cAssigned > 0 ? Math.min(100, (cReplied / cAssigned) * 100) : 100;
+
             volumeDataCombined.cases[h] = {
                 assigned: Math.round(cAssigned),
                 replied: Math.round(cReplied),
                 closed: Math.round(cClosed),
-                tot: cTot,
-                max: Math.round(cTot * 1.1)
+                unreplied: Math.round(unreplied),
+                responseRate: responseRate.toFixed(1),
+                tot: Math.round(cAssigned),
+                max: Math.round(cAssigned * 1.1)
             };
         }
 
         document.querySelectorAll('.periodLabel').forEach(el => el.textContent = `${getActiveMonth()} - ${getActiveWeek()}`);
-        document.getElementById('chart1Title').textContent = `Volume vs. Zero-Abandonment Capacity (${activeChannel} - ${getActiveMonth()} ${getActiveWeek()})`;
+        document.getElementById('chart1Title').textContent = activeChannel === 'PHONES' 
+            ? `Calls Offered vs. Zero-Abandonment Capacity (${getActiveMonth()} ${getActiveWeek()})`
+            : `Assigned vs. Replied Cases & Required Staffing (${getActiveMonth()} ${getActiveWeek()})`;
     }
 
     function getActiveVisibleDepts() {
@@ -1765,22 +1780,24 @@
         } else {
             theadTr.innerHTML = `
                 <th>Time Slot</th>
-                <th>Avg. Conversations Assigned</th>
-                <th>Avg. Conversations Replied To</th>
-                <th>Avg. Closed Conversations</th>
-                <th style="background-color: var(--accent-yellow); color: #000;">Avg. Total Volume (Closed)</th>
+                <th style="background-color: rgba(255, 183, 3, 0.25); color: var(--accent-yellow);">Assigned Conversations</th>
+                <th style="color: var(--success-color);">Replied Conversations</th>
+                <th style="color: var(--danger-color);">Unreplied / Backlog</th>
+                <th>Response Rate</th>
+                <th>Closed Conversations</th>
                 <th>Max Historical</th>
             `;
 
             hourlySlots.forEach(slot => {
-                const v = currentVolSet[slot.h24] || { assigned:0, replied:0, closed:0, tot:0, max:0 };
+                const v = currentVolSet[slot.h24] || { assigned:0, replied:0, closed:0, unreplied:0, responseRate:"100.0", max:0 };
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td class="time-col">${slot.time12}</td>
-                    <td>${Math.round(v.assigned)}</td>
-                    <td>${Math.round(v.replied)}</td>
+                    <td style="background-color: rgba(255, 183, 3, 0.25); font-weight: bold; color: var(--accent-yellow);"><b>${Math.round(v.assigned)}</b></td>
+                    <td style="color: var(--success-color); font-weight: bold;">${Math.round(v.replied)}</td>
+                    <td style="color: ${v.unreplied > 0 ? 'var(--danger-color)' : '#aaa'}; font-weight: bold;">${Math.round(v.unreplied)}</td>
+                    <td style="font-weight:bold; color:${parseFloat(v.responseRate) < 95 ? 'var(--danger-color)' : 'var(--success-color)'}">${v.responseRate}%</td>
                     <td>${Math.round(v.closed)}</td>
-                    <td style="background-color: rgba(255, 183, 3, 0.25); font-weight: bold; color: var(--accent-yellow);"><b>${Math.round(v.tot)}</b></td>
                     <td>${Math.round(v.max)}</td>
                 `;
                 tbody.appendChild(tr);
@@ -1795,7 +1812,10 @@
 
         const aht = parseFloat(document.getElementById('ahtInput').value) || 5;
         const targetSec = parseFloat(document.getElementById('targetSecInput').value) || 20;
-        const shrinkage = (parseFloat(document.getElementById('shrinkageInput').value) || 15) / 100;
+        const phoneShrinkage = (parseFloat(document.getElementById('shrinkageInput').value) || 15) / 100;
+        
+        const cph = parseFloat(document.getElementById('cphInput').value) || 15;
+        const casesShrinkage = (parseFloat(document.getElementById('casesShrinkageInput').value) || 10) / 100;
 
         if (activeChannel === 'PHONES') {
             theadTr.innerHTML = `
@@ -1811,10 +1831,11 @@
         } else {
             theadTr.innerHTML = `
                 <th>Time Slot</th>
-                <th style="background-color: var(--accent-yellow); color: #000;">Avg Volume</th>
+                <th style="background-color: var(--accent-yellow); color: #000;">Assigned Cases</th>
+                <th>Replied vs. Unreplied</th>
                 <th>Scheduled Agents</th>
                 <th>Available in Queue</th>
-                <th style="background-color: var(--accent-yellow); color: #000;">Required Agents</th>
+                <th style="background-color: var(--accent-yellow); color: #000; font-weight:bold;">Agents Needed (100% Replied)</th>
                 <th>Staffing Gap</th>
                 <th>Action Required</th>
             `;
@@ -1846,31 +1867,20 @@
                 }
             });
 
-            let activeVol = 0;
             let reqAgents = 0;
-            let answeredCount = 0;
-            let abandonedCount = 0;
+            let gap = 0;
+            let recText = "";
+            const availAgents = Math.round(Math.max(0, availableAgentsCount));
 
             if (activeChannel === 'PHONES') {
                 const vItem = currentVolSet[slot.h24] || { ans: 0, totAbnd: 0, tot: 0 };
-                activeVol = vItem.tot;
-                answeredCount = vItem.ans;
-                abandonedCount = vItem.totAbnd;
+                const activeVol = vItem.tot;
+                const answeredCount = vItem.ans;
+                const abandonedCount = vItem.totAbnd;
 
-                // Erlang C computation for zero abandonment
-                reqAgents = calculateZeroAbandonAgents(activeVol, aht, targetSec, 0.98, shrinkage);
-            } else {
-                const vItem = currentVolSet[slot.h24] || { assigned: 0, replied: 0, closed: 0 };
-                activeVol = Math.round((vItem.assigned + vItem.replied + vItem.closed) / 3);
-                const cph = parseFloat(document.getElementById('cphInput').value) || 15;
-                reqAgents = activeVol > 0 ? Math.ceil(activeVol / cph) : 0;
-            }
+                reqAgents = calculateZeroAbandonAgents(activeVol, aht, targetSec, 0.98, phoneShrinkage);
+                gap = availAgents - reqAgents;
 
-            const availAgents = Math.round(Math.max(0, availableAgentsCount));
-            const gap = availAgents - reqAgents;
-
-            let recText = "";
-            if (activeChannel === 'PHONES') {
                 if (reqAgents === 0) {
                     recText = `<span class="none-text">Off-hours / No calls expected</span>`;
                 } else if (gap < 0) {
@@ -1881,13 +1891,8 @@
                 } else {
                     recText = `<span class="status-ok"><i class="fa-solid fa-shield-halved"></i> Full coverage guaranteed (+${gap} buffer agent${gap > 1 ? 's' : ''})</span>`;
                 }
-            } else {
-                if (gap < 0) recText = `<span class="status-deficit">Deficit of ${Math.abs(gap)} agent(s)</span>`;
-                else recText = `<span class="status-ok">Optimal capacity (+${gap} available)</span>`;
-            }
 
-            const tr = document.createElement('tr');
-            if (activeChannel === 'PHONES') {
+                const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td class="time-col">${slot.time12}</td>
                     <td style="background-color: rgba(255, 183, 3, 0.25); color: var(--accent-yellow);"><b>${Math.round(activeVol)}</b></td>
@@ -1898,18 +1903,41 @@
                     <td style="font-weight:bold; color:${gap < 0 ? 'var(--danger-color)' : 'var(--success-color)'}">${gap >= 0 ? '+' + gap : gap}</td>
                     <td style="text-align: left; padding-left: 10px;">${recText}</td>
                 `;
+                tbody.appendChild(tr);
+
             } else {
+                const cItem = currentVolSet[slot.h24] || { assigned: 0, replied: 0, unreplied: 0 };
+                const assignedCount = cItem.assigned;
+                const repliedCount = cItem.replied;
+                const unrepliedCount = cItem.unreplied;
+
+                reqAgents = calculateCasesRequiredAgents(assignedCount, cph, casesShrinkage);
+                gap = availAgents - reqAgents;
+
+                if (assignedCount === 0) {
+                    recText = `<span class="none-text">Off-hours / No cases assigned</span>`;
+                } else if (gap < 0) {
+                    const deficit = Math.abs(gap);
+                    recText = `<span class="status-deficit"><i class="fa-solid fa-triangle-exclamation"></i> <b>Short by ${deficit} agent${deficit > 1 ? 's' : ''}</b> (${unrepliedCount} assigned cases risk going unreplied)</span>`;
+                } else if (gap === 0) {
+                    recText = `<span class="status-tight"><i class="fa-solid fa-check"></i> Balanced headcount (100% of assigned cases will be replied)</span>`;
+                } else {
+                    recText = `<span class="status-ok"><i class="fa-solid fa-circle-check"></i> 100% Reply rate guaranteed (+${gap} agent surplus to sweep backlogs)</span>`;
+                }
+
+                const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td class="time-col">${slot.time12}</td>
-                    <td style="background-color: rgba(255, 183, 3, 0.25); color: var(--accent-yellow);"><b>${Math.round(activeVol)}</b></td>
+                    <td style="background-color: rgba(255, 183, 3, 0.25); color: var(--accent-yellow);"><b>${Math.round(assignedCount)}</b></td>
+                    <td><span style="color:var(--success-color); font-weight:bold;">${repliedCount}</span> / <span style="color:${unrepliedCount > 0 ? 'var(--danger-color)' : '#aaa'}; font-weight:bold;">${unrepliedCount}</span></td>
                     <td>${Math.round(scheduledAgentsCount)}</td>
                     <td><b>${availAgents}</b></td>
                     <td style="background-color: rgba(255, 183, 3, 0.35); font-weight: bold; font-size: 1.05rem; color: #ffb703;">${reqAgents}</td>
                     <td style="font-weight:bold; color:${gap < 0 ? 'var(--danger-color)' : 'var(--success-color)'}">${gap >= 0 ? '+' + gap : gap}</td>
                     <td style="text-align: left; padding-left: 10px;">${recText}</td>
                 `;
+                tbody.appendChild(tr);
             }
-            tbody.appendChild(tr);
         });
     }
 
@@ -1926,43 +1954,53 @@
 
         const currentVolSet = getActiveVolumeSet();
         const visibleDepts = getActiveVisibleDepts();
+        
         const aht = parseFloat(document.getElementById('ahtInput').value) || 5;
         const targetSec = parseFloat(document.getElementById('targetSecInput').value) || 20;
-        const shrinkage = (parseFloat(document.getElementById('shrinkageInput').value) || 15) / 100;
+        const phoneShrinkage = (parseFloat(document.getElementById('shrinkageInput').value) || 15) / 100;
+        
+        const cph = parseFloat(document.getElementById('cphInput').value) || 15;
+        const casesShrinkage = (parseFloat(document.getElementById('casesShrinkageInput').value) || 10) / 100;
 
         for (let h = 0; h < 24; h++) {
             let v = 0;
+            let req = 0;
+
             if (activeChannel === 'PHONES') {
                 const item = currentVolSet[h] || { ans: 0, totAbnd: 0, tot: 0 };
                 v = item.tot;
-                const req = calculateZeroAbandonAgents(v, aht, targetSec, 0.98, shrinkage);
+                req = calculateZeroAbandonAgents(v, aht, targetSec, 0.98, phoneShrinkage);
+            } else {
+                const item = currentVolSet[h] || { assigned: 0 };
+                v = item.assigned;
+                req = calculateCasesRequiredAgents(v, cph, casesShrinkage);
+            }
 
-                let avail = 0;
-                let sStart = h * 4;
-                let sEnd = sStart + 4;
-                masterAgentsDB.forEach(ag => {
-                    if (visibleDepts.includes(ag.dept)) {
-                        let cIn = ag.clockIn !== undefined ? ag.clockIn : 32;
-                        let cOut = ag.clockOut !== undefined ? ag.clockOut : 68;
-                        for (let sIdx = sStart; sIdx < sEnd; sIdx++) {
-                            if (sIdx >= cIn && sIdx < cOut && (!ag.hours || ag.hours[sIdx] === undefined)) {
-                                avail += 0.25;
-                            }
+            let avail = 0;
+            let sStart = h * 4;
+            let sEnd = sStart + 4;
+            masterAgentsDB.forEach(ag => {
+                if (visibleDepts.includes(ag.dept)) {
+                    let cIn = ag.clockIn !== undefined ? ag.clockIn : 32;
+                    let cOut = ag.clockOut !== undefined ? ag.clockOut : 68;
+                    for (let sIdx = sStart; sIdx < sEnd; sIdx++) {
+                        if (sIdx >= cIn && sIdx < cOut && (!ag.hours || ag.hours[sIdx] === undefined)) {
+                            avail += 0.25;
                         }
                     }
-                });
-
-                let gap = Math.round(avail) - req;
-                if (gap < worstGap) {
-                    worstGap = gap;
-                    worstHour = h;
                 }
+            });
 
-                if (v > peakVol) {
-                    peakVol = v;
-                    peakHour = h;
-                    peakReqAgents = req;
-                }
+            let gap = Math.round(avail) - req;
+            if (gap < worstGap) {
+                worstGap = gap;
+                worstHour = h;
+            }
+
+            if (v > peakVol) {
+                peakVol = v;
+                peakHour = h;
+                peakReqAgents = req;
             }
         }
 
@@ -1990,8 +2028,18 @@
         } else {
             html = `
                 <div class="recommendation-card">
-                    <h3>✉️ Cases &amp; Messaging SLA Recommendations (${month} - ${week})</h3>
-                    <p>Track backlog growth and balance agent rosters during peak inbound conversation windows.</p>
+                    <h3>✉️ 100% Case Response Rate &amp; Staffing Strategy (${month} - ${week})</h3>
+                    <p><b>Peak Assigned Conversations:</b> Highest inbound arrival occurs at <b>${peakSlot ? peakSlot.time12 : "Peak Window"}</b> with <b>${Math.round(peakVol)} assigned conversations</b>. At a maximum target throughput of <b>${cph} replies/agent/hour</b>, you need exactly <b>${peakReqAgents} active agents</b> at this hour so zero conversations remain unanswered.</p>
+                    ${worstGap < 0 ? `
+                        <p style="margin-top: 8px; color: var(--danger-color);">
+                            <b>⚠️ Response Rate Deficit:</b> At <b>${worstSlot ? worstSlot.time12 : "Deficit Hour"}</b>, you are short by <b>+${Math.abs(worstGap)} agent(s)</b>. Without these agents on queue, conversations assigned in this interval roll over into an unreplied customer backlog.
+                        </p>
+                    ` : `
+                        <p style="margin-top: 8px; color: var(--success-color);">
+                            <b>✅ 100% Reply Target Met:</b> Available agents in queue meet or exceed assigned conversation demands across all active hours.
+                        </p>
+                    `}
+                    <p style="margin-top: 8px;"><b>Optimization Tip:</b> If assigned volumes exceed reply capacity during peak afternoon hours, stagger team lunch periods to prevent unreplied case buildup.</p>
                 </div>
             `;
         }
@@ -2007,7 +2055,7 @@
                 labels: hourlySlots.map(s => s.time12),
                 datasets: [
                     {
-                        label: 'Total Offered Volume',
+                        label: 'Total Inbound Demand (Calls Offered / Assigned Cases)',
                         data: [],
                         borderColor: '#ffb703',
                         backgroundColor: 'rgba(255, 183, 3, 0.25)',
@@ -2025,7 +2073,7 @@
                         tension: 0.3
                     },
                     {
-                        label: 'Agents Required for 0% Abandon',
+                        label: 'Required Agents (100% Handled)',
                         data: [],
                         borderColor: '#ff5252',
                         borderDash: [5, 5],
@@ -2084,7 +2132,10 @@
     function updateCharts() {
         const aht = parseFloat(document.getElementById('ahtInput').value) || 5;
         const targetSec = parseFloat(document.getElementById('targetSecInput').value) || 20;
-        const shrinkage = (parseFloat(document.getElementById('shrinkageInput').value) || 15) / 100;
+        const phoneShrinkage = (parseFloat(document.getElementById('shrinkageInput').value) || 15) / 100;
+        
+        const cph = parseFloat(document.getElementById('cphInput').value) || 15;
+        const casesShrinkage = (parseFloat(document.getElementById('casesShrinkageInput').value) || 10) / 100;
 
         const volumeData = [];
         const availAgentsData = [];
@@ -2094,12 +2145,16 @@
 
         hourlySlots.forEach(slot => {
             let v = 0;
+            let req = 0;
+
             if (activeChannel === 'PHONES') {
                 const item = currentVolSet[slot.h24] || { tot: 0 };
                 v = item.tot;
+                req = calculateZeroAbandonAgents(v, aht, targetSec, 0.98, phoneShrinkage);
             } else {
-                const item = currentVolSet[slot.h24] || { assigned: 0, replied: 0, closed: 0 };
-                v = (item.assigned + item.replied + item.closed) / 3;
+                const item = currentVolSet[slot.h24] || { assigned: 0 };
+                v = item.assigned;
+                req = calculateCasesRequiredAgents(v, cph, casesShrinkage);
             }
 
             let availableAgentsCount = 0;
@@ -2122,21 +2177,15 @@
             });
 
             const avail = Math.round(Math.max(0, availableAgentsCount));
-            let req = 0;
-            if (activeChannel === 'PHONES') {
-                req = calculateZeroAbandonAgents(v, aht, targetSec, 0.98, shrinkage);
-            } else {
-                const cph = parseFloat(document.getElementById('cphInput').value) || 15;
-                req = v > 0 ? Math.ceil(v / cph) : 0;
-            }
-
             volumeData.push(Math.round(v));
             availAgentsData.push(avail);
             requiredAgentsData.push(req);
         });
 
+        volumeCapacityChartInstance.data.datasets[0].label = activeChannel === 'PHONES' ? 'Calls Offered (Inbound)' : 'Assigned Conversations (Inbound)';
         volumeCapacityChartInstance.data.datasets[0].data = volumeData;
         volumeCapacityChartInstance.data.datasets[1].data = availAgentsData;
+        volumeCapacityChartInstance.data.datasets[2].label = activeChannel === 'PHONES' ? 'Agents Required for 0% Abandon' : 'Agents Required for 100% Replied';
         volumeCapacityChartInstance.data.datasets[2].data = requiredAgentsData;
         volumeCapacityChartInstance.update();
 
@@ -2272,6 +2321,11 @@
             updateCharts();
         });
         document.getElementById('cphInput').addEventListener('input', () => {
+            renderComparisonTable();
+            renderRecommendations();
+            updateCharts();
+        });
+        document.getElementById('casesShrinkageInput').addEventListener('input', () => {
             renderComparisonTable();
             renderRecommendations();
             updateCharts();

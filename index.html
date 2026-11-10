@@ -4,12 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AVAILABILITY VS CALLS VOLUME DASHBOARD</title>
-    <!-- Chart.js and SheetJS Libraries -->
+    <!-- Chart.js, SheetJS, and Firebase SDKs -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
     <style>
         :root {
-            /* Theme Colors - Light Theme with Pale Egg Yolk Yellow */
             --amber-dominant: #FFBF00;
             --amber-light: #FFF2B2;       
             --amber-hover: #E6AC00;
@@ -19,7 +20,6 @@
             --alert-red: #D32F2F;
             --success-green: #2E7D32;
             
-            /* Dynamic Palette */
             --bg-color: #FFBF00;
             --card-bg: #FFF2B2;          
             --text-color: #0A192F;
@@ -45,14 +45,12 @@
             transition: background-color 0.3s ease;
         }
 
-        /* Container positioned exactly 10mm from floating buttons */
         .container {
             margin-left: calc(68px + 10mm);
             margin-right: calc(190px + 10mm);
             box-sizing: border-box;
         }
 
-        /* Header */
         .header {
             display: flex;
             justify-content: space-between;
@@ -81,7 +79,22 @@
             font-weight: 600;
         }
 
-        /* Top Header Selectors */
+        .cloud-badge {
+            display: inline-block;
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 12px;
+            background: rgba(255, 191, 0, 0.2);
+            color: var(--amber-dominant);
+            margin-left: 10px;
+            font-weight: bold;
+        }
+
+        .cloud-badge.connected {
+            background: var(--success-green);
+            color: #FFF;
+        }
+
         .header-selects {
             display: flex;
             gap: 10px;
@@ -145,14 +158,14 @@
         .nav-actions {
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
             flex-wrap: wrap;
         }
 
         .btn {
             background-color: var(--amber-dominant);
             color: var(--navy-deep);
-            padding: 9px 16px;
+            padding: 9px 15px;
             font-size: 13px;
             font-weight: bold;
             border: none;
@@ -163,6 +176,15 @@
 
         .btn:hover { background-color: var(--amber-hover); }
         .btn:active { transform: scale(0.98); }
+
+        .btn-secondary {
+            background-color: transparent;
+            color: var(--amber-dominant);
+            border: 1px solid var(--amber-dominant);
+        }
+        .btn-secondary:hover {
+            background-color: rgba(255, 191, 0, 0.15);
+        }
 
         /* KPI Scorecards */
         .kpi-grid {
@@ -194,7 +216,7 @@
             margin-top: 6px;
         }
 
-        /* Main Dashboard Sections */
+        /* Dashboard Sections */
         .section-title {
             font-size: 16px;
             font-weight: bold;
@@ -219,7 +241,6 @@
             align-items: start;
         }
 
-        /* Chart Canvas Containers */
         .chart-box { position: relative; height: 440px; width: 100%; }
         .chart-box-secondary { position: relative; height: 300px; width: 100%; }
 
@@ -232,7 +253,6 @@
         .deficit { color: var(--alert-red); font-weight: bold; }
         .surplus { color: var(--success-green); font-weight: bold; }
 
-        /* Actions in Tables */
         .action-btns {
             display: flex;
             justify-content: center;
@@ -340,18 +360,19 @@
 <body>
 
 <div id="toastContainer"></div>
+<input type="file" id="databaseFileInput" accept=".json" style="display: none;" onchange="handleDatabaseFileUpload(event)">
 
 <div class="container">
     <!-- Header -->
     <div class="header">
         <div>
-            <h1>AVAILABILITY VS CALLS VOLUME DASHBOARD</h1>
+            <h1>AVAILABILITY VS CALLS VOLUME DASHBOARD <span id="cloudStatus" class="cloud-badge">Local Mode</span></h1>
             <div id="currentContext" class="dashboard-subtitle">Displaying: Select data</div>
         </div>
         <div class="nav-actions">
             <!-- View Navigators with Dynamic Date Picker -->
             <div class="header-selects">
-                <select id="viewMonthSelect" class="header-select" onchange="loadSavedView()">
+                <select id="viewMonthSelect" class="header-select" onchange="syncFromMonthWeek()">
                     <option value="January">January</option>
                     <option value="February">February</option>
                     <option value="March">March</option>
@@ -365,9 +386,9 @@
                     <option value="November" selected>November</option>
                     <option value="December">December</option>
                 </select>
-                <select id="viewWeekSelect" class="header-select" onchange="loadSavedView()">
+                <select id="viewWeekSelect" class="header-select" onchange="syncFromMonthWeek()">
                     <option value="Week 1">Week 1</option>
-                    <option value="Week 2">Week 2</option>
+                    <option value="Week 2" selected>Week 2</option>
                     <option value="Week 3">Week 3</option>
                     <option value="Week 4">Week 4</option>
                     <option value="Week 5">Week 5</option>
@@ -376,11 +397,11 @@
                 <!-- Dynamic Date Picker -->
                 <div class="date-nav">
                     <button class="btn-arrow" onclick="changeDate(-1)">◀</button>
-                    <input type="date" id="viewDateSelect" class="header-select" onchange="loadSavedView()">
+                    <input type="date" id="viewDateSelect" class="header-select" onchange="syncFromDate()">
                     <button class="btn-arrow" onclick="changeDate(1)">▶</button>
                 </div>
 
-                <select id="viewTeamSelect" class="header-select" onchange="loadSavedView()">
+                <select id="viewTeamSelect" class="header-select" onchange="renderDashboard()">
                     <option value="ALL">All Teams (Consolidated)</option>
                     <option value="OBS" selected>OBS</option>
                     <option value="ELD">ELD</option>
@@ -390,6 +411,9 @@
                 </select>
             </div>
             
+            <button class="btn btn-secondary" onclick="exportDatabaseJSON()" title="Download a JSON backup to share with your team">💾 Backup DB</button>
+            <button class="btn btn-secondary" onclick="document.getElementById('databaseFileInput').click()" title="Load a JSON backup shared by someone else">📂 Load DB</button>
+            <button class="btn btn-secondary" onclick="openModal('cloudModal')" title="Set up Realtime multi-computer sync">☁️ Cloud Sync</button>
             <button class="btn" onclick="checkPasswordAndOpenModal('scheduleModal')">👥 Manage Schedules</button>
             <button class="btn" onclick="openModal('importModal')">📥 Paste Weekly Data</button>
         </div>
@@ -410,14 +434,14 @@
             <div class="kpi-value" id="kpi-rate">0.00%</div>
         </div>
         <div class="kpi-card">
-            <div class="kpi-title">Peak Staffing Deficit</div>
+            <div class="kpi-title">Peak Agents Missing</div>
             <div class="kpi-value" id="kpi-peak-deficit">0</div>
         </div>
     </div>
 
     <!-- Recommendations Engine -->
     <div class="card">
-        <div class="section-title">System Recommendations (Zero-Abandon Target)</div>
+        <div class="section-title">System Recommendations (Zero-Abandon Target &bull; Benchmark: 4-5 Calls/Agent/Hr)</div>
         <div class="rec-grid">
             <div class="rec-card" id="rec-1">
                 <div class="rec-icon">⚠️</div>
@@ -444,9 +468,9 @@
             </div>
         </div>
 
-        <!-- Updated Staffing Table: Hour, Agents Active, Total Abandoned, Variance -->
+        <!-- Staffing Required Table: Hour, Agents Active, Total Abandoned, Variance -->
         <div class="card">
-            <div class="section-title">Staffing Required (0 Abandons)</div>
+            <div class="section-title">Staffing Required (0 Abandons &bull; 4.5 Calls/Agent Avg)</div>
             <div class="table-complete-view">
                 <table>
                     <thead>
@@ -506,7 +530,7 @@
                 <label for="importWeekSelect">Week</label>
                 <select id="importWeekSelect">
                     <option value="Week 1">Week 1</option>
-                    <option value="Week 2">Week 2</option>
+                    <option value="Week 2" selected>Week 2</option>
                     <option value="Week 3">Week 3</option>
                     <option value="Week 4">Week 4</option>
                     <option value="Week 5">Week 5</option>
@@ -535,6 +559,32 @@
         <div class="action-row">
             <button type="button" class="btn" style="background-color: transparent; border: 1px solid var(--navy-deep);" onclick="closeModal('importModal')">Cancel</button>
             <button type="button" class="btn" onclick="processPastedData()">Save & Render Dashboard</button>
+        </div>
+    </div>
+</div>
+
+<!-- Cloud Sync Modal (Firebase) -->
+<div id="cloudModal" class="modal">
+    <div class="modal-content" style="max-width: 650px;">
+        <span class="close-btn" onclick="closeModal('cloudModal')">&times;</span>
+        <h2 class="section-title">☁️ Multi-Computer Real-Time Cloud Sync</h2>
+        <p style="font-size: 13px; line-height: 1.5;">
+            By connecting a free <strong>Firebase Realtime Database</strong>, every person on your team who opens this dashboard will see and upload data in real time across any computer without manually sending files.
+        </p>
+
+        <div class="form-control" style="margin-bottom: 15px;">
+            <label>Firebase Config JSON (from Firebase Console &gt; Project Settings &gt; General &gt; Web App)</label>
+            <textarea id="firebaseConfigInput" rows="6" placeholder='{
+  "apiKey": "AIzaSy...",
+  "authDomain": "your-app.firebaseapp.com",
+  "databaseURL": "https://your-app-default-rtdb.firebaseio.com",
+  "projectId": "your-app"
+}'></textarea>
+        </div>
+
+        <div class="action-row">
+            <button class="btn" style="background-color: transparent; border: 1px solid var(--navy-deep);" onclick="disconnectCloudSync()">Disconnect / Use Local Mode</button>
+            <button class="btn" onclick="saveCloudSyncConfig()">Connect & Sync Live</button>
         </div>
     </div>
 </div>
@@ -627,6 +677,9 @@
 <script>
     const allTeamsList = ['OBS', 'ELD', 'INS', 'LL+', 'TFX'];
     const hours = ['06:00', '07:00', '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'];
+    const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+    const AVG_CALLS_PER_AGENT = 4.5;
 
     // Master Default Schedules
     const initialRosters = {
@@ -712,10 +765,11 @@
         ]
     };
 
-    // Safe LocalStorage Handlers
+    // Safe Local Storage Handlers
     function safeGet(key) {
         try {
-            return JSON.parse(localStorage.getItem(key));
+            const val = localStorage.getItem(key);
+            return val ? JSON.parse(val) : null;
         } catch(e) {
             return null;
         }
@@ -725,34 +779,42 @@
         try {
             localStorage.setItem(key, JSON.stringify(value));
         } catch(e) {
-            console.warn("Storage restricted or unavailable, session continuing in-memory.");
+            console.warn("Local storage write prevented:", e);
         }
     }
 
+    // Load Rosters
     let savedRosters = safeGet('teamRosters');
-    let teamRosters = (savedRosters && Object.keys(savedRosters).length > 0 && savedRosters.OBS && savedRosters.OBS.length > 0)
+    let teamRosters = (savedRosters && savedRosters.OBS && savedRosters.OBS.length > 0)
         ? savedRosters 
         : JSON.parse(JSON.stringify(initialRosters));
-    
     safeSet('teamRosters', teamRosters);
 
-    let volumeDatabase = safeGet('volumeDatabase') || {};
+    // Primary Volume Storage: volumeStore[TEAM][DATE_STR]
+    let volumeStore = safeGet('WFM_MASTER_VOLUME_STORE');
+    if(!volumeStore || typeof volumeStore !== 'object') {
+        volumeStore = { OBS: {}, ELD: {}, INS: {}, "LL+": {}, TFX: {} };
+    }
+    allTeamsList.forEach(t => { if(!volumeStore[t]) volumeStore[t] = {}; });
+    safeSet('WFM_MASTER_VOLUME_STORE', volumeStore);
 
-    const todayStr = "2026-11-09";
-    document.getElementById('viewDateSelect').value = todayStr;
+    // Initial Date: Restore last viewed state or default to Nov 9, 2026
+    const savedState = safeGet('WFM_LAST_STATE');
+    const defaultDate = (savedState && savedState.dateStr) ? savedState.dateStr : "2026-11-09";
+    document.getElementById('viewDateSelect').value = defaultDate;
+    if(savedState && savedState.team) {
+        document.getElementById('viewTeamSelect').value = savedState.team;
+    }
 
-    let currentActiveView = { month: 'November', week: 'Week 1', dateStr: todayStr, team: 'OBS' };
-    let currentRenderedTableData = [];
     let editingIndex = null;
     let editingTeam = null;
+    let currentRenderedTableData = [];
+    let firebaseDB = null;
 
-    // Toast Notification
+    // Toast Notifications
     function showToast(message) {
         const container = document.getElementById('toastContainer');
-        if (!container) {
-            alert(message);
-            return;
-        }
+        if (!container) return alert(message);
         const toast = document.createElement('div');
         toast.className = 'toast';
         toast.innerText = message;
@@ -764,7 +826,7 @@
         }, 3500);
     }
 
-    // Theme Logic
+    // Theme Toggle
     function toggleTheme() {
         document.body.classList.toggle('dark-mode');
         const isDark = document.body.classList.contains('dark-mode');
@@ -776,13 +838,17 @@
         document.getElementById('themeToggleBtn').innerText = '☀️';
     }
 
-    // Modal Handlers & Security
+    // Modal Control
     function openModal(id) {
         const el = document.getElementById(id);
         if (el) el.style.display = "block";
         if(id === 'scheduleModal') {
             resetEditMode();
             renderScheduleTable();
+        }
+        if(id === 'cloudModal') {
+            const cfg = safeGet('WFM_FIREBASE_CONFIG');
+            if(cfg) document.getElementById('firebaseConfigInput').value = JSON.stringify(cfg, null, 2);
         }
     }
 
@@ -805,41 +871,80 @@
     }
 
     function resetAllRostersToDefault() {
-        if(confirm("Are you sure you want to restore the default schedules for all teams? Any manual changes will be reset.")) {
+        if(confirm("Are you sure you want to restore default rosters? Manual edits will be reset.")) {
             teamRosters = JSON.parse(JSON.stringify(initialRosters));
             safeSet('teamRosters', teamRosters);
+            if(firebaseDB) firebaseDB.ref('teamRosters').set(teamRosters);
             resetEditMode();
             renderScheduleTable();
             renderDashboard();
-            showToast("Default rosters restored successfully!");
+            showToast("Default rosters restored!");
         }
     }
 
-    // Date Navigation
+    // Date & Dropdown Synchronization
+    function getWeekOfMonth(dayNum) {
+        if (dayNum <= 7) return "Week 1";
+        if (dayNum <= 14) return "Week 2";
+        if (dayNum <= 21) return "Week 3";
+        if (dayNum <= 28) return "Week 4";
+        return "Week 5";
+    }
+
+    function syncFromDate() {
+        const dateInput = document.getElementById('viewDateSelect').value;
+        if (!dateInput) return;
+        const [y, m, d] = dateInput.split('-').map(Number);
+        
+        document.getElementById('viewMonthSelect').value = monthNames[m - 1];
+        document.getElementById('viewWeekSelect').value = getWeekOfMonth(d);
+        saveState();
+        renderDashboard();
+    }
+
+    function syncFromMonthWeek() {
+        const monthName = document.getElementById('viewMonthSelect').value;
+        const weekName = document.getElementById('viewWeekSelect').value;
+        const monthIndex = monthNames.indexOf(monthName);
+        
+        let startDay = 1;
+        if (weekName === 'Week 2') startDay = 8;
+        else if (weekName === 'Week 3') startDay = 15;
+        else if (weekName === 'Week 4') startDay = 22;
+        else if (weekName === 'Week 5') startDay = 29;
+
+        const dateInput = document.getElementById('viewDateSelect');
+        const curDate = dateInput.value ? new Date(dateInput.value) : new Date(2026, monthIndex, startDay);
+        const yyyy = curDate.getFullYear() || 2026;
+        const mm = String(monthIndex + 1).padStart(2, '0');
+        const dd = String(startDay).padStart(2, '0');
+        
+        dateInput.value = `${yyyy}-${mm}-${dd}`;
+        saveState();
+        renderDashboard();
+    }
+
     function changeDate(offset) {
         const dateInput = document.getElementById('viewDateSelect');
         if (!dateInput.value) return;
         
-        let parts = dateInput.value.split('-');
-        let current = new Date(parts[0], parts[1] - 1, parts[2]);
-        current.setDate(current.getDate() + offset);
+        let [y, m, d] = dateInput.value.split('-').map(Number);
+        let cur = new Date(y, m - 1, d);
+        cur.setDate(cur.getDate() + offset);
         
-        const yyyy = current.getFullYear();
-        const mm = String(current.getMonth() + 1).padStart(2, '0');
-        const dd = String(current.getDate()).padStart(2, '0');
+        const yyyy = cur.getFullYear();
+        const mm = String(cur.getMonth() + 1).padStart(2, '0');
+        const dd = String(cur.getDate()).padStart(2, '0');
         
         dateInput.value = `${yyyy}-${mm}-${dd}`;
-        loadSavedView();
+        syncFromDate();
     }
 
-    function loadSavedView() {
-        currentActiveView = {
-            month: document.getElementById('viewMonthSelect').value,
-            week: document.getElementById('viewWeekSelect').value,
+    function saveState() {
+        safeSet('WFM_LAST_STATE', {
             dateStr: document.getElementById('viewDateSelect').value,
             team: document.getElementById('viewTeamSelect').value
-        };
-        renderDashboard();
+        });
     }
 
     // Chart Initializations
@@ -951,7 +1056,6 @@
         });
     }
 
-    // Helper for Demo Data
     function loadSamplePaste() {
         const sample = 
 `Date & Hour\tAnswered\tAbandoned in CSAT\tAbandoned in queue\tAbandoned on hold\tAbandoned in routing
@@ -972,37 +1076,32 @@
         document.getElementById('pastedData').value = sample;
     }
 
-    // Universal Robust Process Pasted Data
+    // Process & Save Data
     function processPastedData() {
         try {
-            const month = document.getElementById('importMonthSelect').value;
-            const week = document.getElementById('importWeekSelect').value;
+            const selectedMonth = document.getElementById('importMonthSelect').value;
+            const targetMonthNum = monthNames.indexOf(selectedMonth) + 1 || 11;
             const team = document.getElementById('importTeamSelect').value;
             const rawText = document.getElementById('pastedData').value.trim();
 
             if(!rawText) {
-                showToast("Please paste table data before clicking save.");
+                showToast("Please paste table data first.");
                 return;
             }
 
-            const monthNames = ["january","february","march","april","may","june","july","august","september","october","november","december"];
-            const targetMonthNum = monthNames.indexOf(month.toLowerCase()) + 1 || 11;
-
             const lines = rawText.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
-            let importedDatesMap = {};
-            let parsedRows = 0;
-            let earliestDate = null;
-            const fallbackDate = document.getElementById('viewDateSelect').value || "2026-11-09";
+            let importedRows = 0;
+            let earliestDateFound = null;
+            const defaultDate = document.getElementById('viewDateSelect').value || "2026-11-09";
+
+            if(!volumeStore[team]) volumeStore[team] = {};
 
             lines.forEach(line => {
                 const lower = line.toLowerCase();
-                
-                // Skip header lines that have no numbers
                 if((lower.includes('date') || lower.includes('answered') || lower.includes('abandoned')) && !/\d{2,}/.test(line)) {
                     return;
                 }
 
-                // Identify tokens by tabs, commas, semicolons, pipes, or spaces
                 let tokens = [];
                 if(line.includes('\t')) tokens = line.split('\t');
                 else if(line.includes(',')) tokens = line.split(',');
@@ -1014,7 +1113,7 @@
                 tokens = tokens.map(t => t.trim()).filter(t => t !== '');
                 if(tokens.length === 0) return;
 
-                // 1. Identify Date
+                // 1. Extract Date
                 let foundDate = null;
                 const mIso = line.match(/\b(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})\b/);
                 if(mIso) {
@@ -1022,18 +1121,18 @@
                 } else {
                     const mSlash = line.match(/\b(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})\b/);
                     if(mSlash) {
-                        let p1 = parseInt(mSlash[1]), p2 = parseInt(mSlash[2]), p3 = parseInt(mSlash[3]);
+                        let p1 = parseInt(mSlash[1], 10), p2 = parseInt(mSlash[2], 10), p3 = parseInt(mSlash[3], 10);
                         if(p3 < 100) p3 += 2000;
                         let m = p1, d = p2;
-                        if(p1 === targetMonthNum) { m = p1; d = p2; }
-                        else if(p2 === targetMonthNum) { m = p2; d = p1; }
+                        if(p2 === targetMonthNum) { d = p1; m = p2; }
+                        else if(p1 === targetMonthNum) { m = p1; d = p2; }
                         else if(p1 > 12) { d = p1; m = p2; }
                         foundDate = `${p3}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
                     }
                 }
-                if(!foundDate) foundDate = fallbackDate;
+                if(!foundDate) foundDate = defaultDate;
 
-                // 2. Identify Hour Slot
+                // 2. Extract Hour
                 let foundHour = null;
                 const mTime = line.match(/\b(\d{1,2}):(\d{2})(?::\d{2})?\s*(AM|PM)?\b/i);
                 if(mTime) {
@@ -1044,7 +1143,6 @@
                     const slot = `${String(h).padStart(2, '0')}:00`;
                     if(hours.includes(slot)) foundHour = slot;
                 } else {
-                    // Check for standalone hour format like "08 AM" or single digit
                     const mAh = line.match(/\b(\d{1,2})\s*(AM|PM)\b/i);
                     if(mAh) {
                         let h = parseInt(mAh[1], 10);
@@ -1061,10 +1159,9 @@
 
                 if(!foundHour) return;
 
-                // 3. Extract Numerical metrics
+                // 3. Extract Metrics
                 let nums = [];
                 tokens.forEach(tok => {
-                    // Ignore date or timestamp tokens
                     if(/[\/\-:]/.test(tok) && !/^\-?\d+$/.test(tok)) return;
                     const clean = tok.replace(/[^0-9\-]/g, '');
                     if(clean !== '' && (/^\-?\d+$/).test(clean)) {
@@ -1080,66 +1177,68 @@
                 const hold = nums[3] || 0;
                 const routing = nums[4] || 0;
 
-                if(!importedDatesMap[foundDate]) {
-                    importedDatesMap[foundDate] = {};
-                    hours.forEach(h => importedDatesMap[foundDate][h] = { answered: 0, csat: 0, queue: 0, hold: 0, routing: 0, total: 0 });
+                if(!volumeStore[team][foundDate]) {
+                    volumeStore[team][foundDate] = {};
+                    hours.forEach(h => {
+                        volumeStore[team][foundDate][h] = { answered: 0, csat: 0, queue: 0, hold: 0, routing: 0, total: 0 };
+                    });
                 }
 
-                if(!earliestDate || foundDate < earliestDate) earliestDate = foundDate;
+                if(!earliestDateFound || foundDate < earliestDateFound) earliestDateFound = foundDate;
 
-                if(importedDatesMap[foundDate][foundHour]) {
-                    importedDatesMap[foundDate][foundHour].answered += ans;
-                    importedDatesMap[foundDate][foundHour].csat += csat;
-                    importedDatesMap[foundDate][foundHour].queue += queue;
-                    importedDatesMap[foundDate][foundHour].hold += hold;
-                    importedDatesMap[foundDate][foundHour].routing += routing;
-                    importedDatesMap[foundDate][foundHour].total += (ans + csat + queue + hold + routing);
-                    parsedRows++;
-                }
+                const slot = volumeStore[team][foundDate][foundHour];
+                slot.answered += ans;
+                slot.csat += csat;
+                slot.queue += queue;
+                slot.hold += hold;
+                slot.routing += routing;
+                slot.total += (ans + csat + queue + hold + routing);
+                importedRows++;
             });
 
-            if(parsedRows === 0) {
-                alert("Could not recognize hourly call records in the pasted text.\n\nPlease ensure your data includes hours (e.g. 08:00) and numeric volumes.");
+            if(importedRows === 0) {
+                alert("Could not detect valid hourly records in the pasted text.\n\nPlease ensure your paste contains hours (e.g. 08:00) and numeric call volumes.");
                 return;
             }
 
-            const key = `${month}_${week}_${team}`;
-            volumeDatabase[key] = { ...(volumeDatabase[key] || {}), ...importedDatesMap };
-            safeSet('volumeDatabase', volumeDatabase);
+            // Save locally
+            safeSet('WFM_MASTER_VOLUME_STORE', volumeStore);
 
-            // Auto-align view
-            document.getElementById('viewMonthSelect').value = month;
-            document.getElementById('viewWeekSelect').value = week;
-            document.getElementById('viewTeamSelect').value = team;
-            if(earliestDate) {
-                document.getElementById('viewDateSelect').value = earliestDate;
-                currentActiveView.dateStr = earliestDate;
+            // Sync to Firebase Cloud if connected
+            if(firebaseDB) {
+                firebaseDB.ref(`volumeStore/${team}`).set(volumeStore[team]);
             }
 
-            currentActiveView.month = month;
-            currentActiveView.week = week;
-            currentActiveView.team = team;
+            // Auto-align view
+            document.getElementById('viewTeamSelect').value = team;
+            if(earliestDateFound) {
+                document.getElementById('viewDateSelect').value = earliestDateFound;
+                syncFromDate();
+            } else {
+                saveState();
+                renderDashboard();
+            }
 
             closeModal('importModal');
             document.getElementById('pastedData').value = '';
-            showToast(`Success! Loaded ${parsedRows} intervals for ${team}.`);
-            renderDashboard();
+            showToast(`Saved! Loaded ${importedRows} hourly records for ${team}.`);
 
         } catch (err) {
             console.error(err);
-            alert("An error occurred while parsing data: " + err.message);
+            alert("Error parsing data: " + err.message);
         }
     }
 
     // Render Dashboard
     function renderDashboard() {
-        const { month, week, dateStr, team } = currentActiveView;
+        const team = document.getElementById('viewTeamSelect').value;
+        const dateStr = document.getElementById('viewDateSelect').value;
         const contextLabel = team === 'ALL' ? 'All Teams' : team;
         
         let dayName = "Selected Day";
         if(dateStr) {
-            let parts = dateStr.split('-');
-            let dObj = new Date(parts[0], parts[1] - 1, parts[2]);
+            let [y, m, d] = dateStr.split('-').map(Number);
+            let dObj = new Date(y, m - 1, d);
             if(!isNaN(dObj.getTime())) {
                 dayName = dObj.toLocaleDateString('en-US', {weekday: 'long'});
             }
@@ -1155,24 +1254,23 @@
             hours.forEach(h => aggregated[h] = { answered: 0, csat: 0, queue: 0, hold: 0, routing: 0, total: 0 });
 
             allTeamsList.forEach(t => {
-                const key = `${month}_${week}_${t}`;
-                if(volumeDatabase[key] && volumeDatabase[key][dateStr]) {
+                if(volumeStore[t] && volumeStore[t][dateStr]) {
                     hasAny = true;
                     hours.forEach(h => {
-                        aggregated[h].answered += volumeDatabase[key][dateStr][h].answered;
-                        aggregated[h].csat += volumeDatabase[key][dateStr][h].csat;
-                        aggregated[h].queue += volumeDatabase[key][dateStr][h].queue;
-                        aggregated[h].hold += volumeDatabase[key][dateStr][h].hold;
-                        aggregated[h].routing += volumeDatabase[key][dateStr][h].routing;
-                        aggregated[h].total += volumeDatabase[key][dateStr][h].total;
+                        const src = volumeStore[t][dateStr][h];
+                        aggregated[h].answered += src.answered;
+                        aggregated[h].csat += src.csat;
+                        aggregated[h].queue += src.queue;
+                        aggregated[h].hold += src.hold;
+                        aggregated[h].routing += src.routing;
+                        aggregated[h].total += src.total;
                     });
                 }
             });
             if(hasAny) dailyVolData = aggregated;
         } else {
-            const key = `${month}_${week}_${team}`;
-            if(volumeDatabase[key] && volumeDatabase[key][dateStr]) {
-                dailyVolData = volumeDatabase[key][dateStr];
+            if(volumeStore[team] && volumeStore[team][dateStr]) {
+                dailyVolData = volumeStore[team][dateStr];
             }
         }
 
@@ -1195,31 +1293,32 @@
             abanRouting.push(hourStat.routing);
             abanCsat.push(hourStat.csat);
 
-            // Capacity logic: ~7 calls per hour per agent
-            const required = Math.ceil(hourStat.total / 7);
-            const scheduled = scheduledAgents[idx];
-            const variance = scheduled - required;
-            const agentsNeeded = Math.max(0, required - scheduled);
+            // Capacity logic: 4.5 calls per agent average
+            const requiredAgents = hourStat.total > 0 ? Math.ceil(hourStat.total / AVG_CALLS_PER_AGENT) : 0;
+            const activeAgents = scheduledAgents[idx];
+            
+            const agentsMissing = Math.max(0, requiredAgents - activeAgents);
+            const surplusAgents = Math.max(0, activeAgents - requiredAgents);
 
             currentRenderedTableData.push({ 
                 hour: h, 
-                scheduled: scheduled, 
+                scheduled: activeAgents, 
                 abandoned: hourAban, 
-                required: required, 
-                variance: variance, 
-                agentsNeeded: agentsNeeded, 
+                required: requiredAgents, 
+                agentsMissing: agentsMissing,
+                surplusAgents: surplusAgents,
                 volume: hourStat.total 
             });
         });
 
         const grandTotal = totalAnswered + totalAbandoned;
         const abanRate = grandTotal > 0 ? ((totalAbandoned / grandTotal) * 100).toFixed(2) : "0.00";
-        const maxDeficit = Math.min(...currentRenderedTableData.map(d => d.variance));
+        const peakMissing = Math.max(0, ...currentRenderedTableData.map(d => d.agentsMissing));
 
         document.getElementById('kpi-answered').innerText = totalAnswered.toLocaleString();
         document.getElementById('kpi-abandoned').innerText = totalAbandoned.toLocaleString();
         document.getElementById('kpi-rate').innerText = `${abanRate}%`;
-        document.getElementById('kpi-peak-deficit').innerText = maxDeficit < 0 ? Math.abs(maxDeficit) : 0;
+        document.getElementById('kpi-peak-deficit').innerText = peakMissing;
 
         mainChart.data.datasets[0].data = scheduledAgents;
         mainChart.data.datasets[1].data = totalVolumeArray;
@@ -1231,11 +1330,13 @@
         abanChart.data.datasets[3].data = abanCsat;
         abanChart.update();
 
-        // Render Table: Hour, Agents Active, Total Abandoned, Variance
+        // Render Table: Hour | Agents Active | Total Abandoned | Variance
         let tableHTML = '';
         if(!dailyVolData) {
             tableHTML = `<tr><td colspan="4" style="color: var(--navy-deep); font-weight: bold; padding: 25px;">No volume data recorded for ${contextLabel} on ${dateStr}. Paste data to view variance.</td></tr>`;
-            document.getElementById('rec-1').classList.remove('active'); document.getElementById('rec-2').classList.remove('active'); document.getElementById('rec-3').classList.remove('active');
+            document.getElementById('rec-1').classList.remove('active'); 
+            document.getElementById('rec-2').classList.remove('active'); 
+            document.getElementById('rec-3').classList.remove('active');
             document.getElementById('rec-text-1').innerText = "Awaiting data entry to formulate break adjustments.";
             document.getElementById('rec-text-2').innerText = "Awaiting data entry to analyze peak shift alignments.";
             document.getElementById('rec-text-3').innerText = "Awaiting data entry to compute cross-team balance.";
@@ -1243,12 +1344,13 @@
             currentRenderedTableData.forEach(row => {
                 let varDisplay = '';
                 let varClass = '';
-                if (row.agentsNeeded > 0) {
+                
+                if (row.agentsMissing > 0) {
                     varClass = 'deficit';
-                    varDisplay = `+${row.agentsNeeded} Needed`;
-                } else if (row.scheduled > row.required) {
+                    varDisplay = `+${row.agentsMissing} Missing`;
+                } else if (row.surplusAgents > 0) {
                     varClass = 'surplus';
-                    varDisplay = `0 (+${row.scheduled - row.required} Surplus)`;
+                    varDisplay = `0 (+${row.surplusAgents} Surplus)`;
                 } else {
                     varClass = 'surplus';
                     varDisplay = '0';
@@ -1267,27 +1369,29 @@
     }
 
     function updateRecommendations(data, teamLabel) {
-        const peakDeficitHour = [...data].sort((a,b) => a.variance - b.variance)[0];
-        const peakSurplusHour = [...data].sort((a,b) => b.variance - a.variance)[0];
+        const peakMissingHour = [...data].sort((a,b) => b.agentsMissing - a.agentsMissing)[0];
+        const peakSurplusHour = [...data].sort((a,b) => b.surplusAgents - a.surplusAgents)[0];
 
-        document.getElementById('rec-1').classList.add('active'); document.getElementById('rec-2').classList.add('active'); document.getElementById('rec-3').classList.add('active');
+        document.getElementById('rec-1').classList.add('active'); 
+        document.getElementById('rec-2').classList.add('active'); 
+        document.getElementById('rec-3').classList.add('active');
 
-        if(peakDeficitHour && peakDeficitHour.variance < 0) {
-            document.getElementById('rec-text-1').innerHTML = `<strong>Critical Shortage at ${peakDeficitHour.hour}:</strong> You are short ${Math.abs(peakDeficitHour.variance)} agents for 0 abandons in ${teamLabel}. Stagger breaks away from this interval.`;
+        if(peakMissingHour && peakMissingHour.agentsMissing > 0) {
+            document.getElementById('rec-text-1').innerHTML = `<strong>Critical Shortage at ${peakMissingHour.hour}:</strong> Missing ${peakMissingHour.agentsMissing} agents to achieve 0 abandons based on the 4-5 calls/hr benchmark. Shift scheduled breaks away from this hour.`;
         } else {
-            document.getElementById('rec-text-1').innerHTML = `<strong>Coverage Balanced:</strong> Minimum required staffing target met across peak hours for ${teamLabel}.`;
+            document.getElementById('rec-text-1').innerHTML = `<strong>Coverage Balanced:</strong> Active agents are sufficient to maintain 0 abandoned calls across all hours for ${teamLabel}.`;
         }
 
-        if(peakSurplusHour && peakSurplusHour.variance > 2) {
-            document.getElementById('rec-text-2').innerHTML = `<strong>Excess Staffing at ${peakSurplusHour.hour}:</strong> Surplus of +${peakSurplusHour.variance} agents. Optimal window for offline tickets or coaching.`;
+        if(peakSurplusHour && peakSurplusHour.surplusAgents > 2) {
+            document.getElementById('rec-text-2').innerHTML = `<strong>Surplus Capacity at ${peakSurplusHour.hour}:</strong> You have a surplus of +${peakSurplusHour.surplusAgents} agents. Ideal window to assign email queue, coaching, or QA evaluations.`;
         } else {
-            document.getElementById('rec-text-2').innerHTML = `<strong>Balanced Coverage:</strong> No extreme surplus detected. Ensure lunches remain strictly staggered.`;
+            document.getElementById('rec-text-2').innerHTML = `<strong>Balanced Coverage:</strong> No extreme overstaffing detected. Ensure lunches remain strictly staggered between 11:30 and 14:00.`;
         }
 
-        document.getElementById('rec-text-3').innerHTML = `<strong>Cross-Utilization:</strong> Leverage cross-skilled resources during 10:00 - 13:00 to mitigate surge abandonment.`;
+        document.getElementById('rec-text-3').innerHTML = `<strong>Cross-Team Flexibility:</strong> Leverage cross-skilled Tier 2 / LL+ agents during peak call arrival intervals to support queue spikes.`;
     }
 
-    // Roster Editing & Table
+    // Schedule Roster Management
     function renderScheduleTable() {
         const team = document.getElementById('rosterTeamSelect').value;
         const roster = teamRosters[team] || [];
@@ -1330,7 +1434,6 @@
         
         document.getElementById('agentFormTitle').innerText = `Editing: ${agent.name} (${team})`;
         document.getElementById('saveAgentBtn').innerText = "Update Agent";
-        
         renderScheduleTable();
     }
 
@@ -1344,7 +1447,6 @@
         document.getElementById('schedB1').value = '';
         document.getElementById('schedLunch').value = '';
         document.getElementById('schedB2').value = '';
-        
         renderScheduleTable();
     }
 
@@ -1365,14 +1467,15 @@
 
         if(editingIndex !== null && editingTeam === team) {
             teamRosters[team][editingIndex] = agentData;
-            showToast(`Agent ${name} updated successfully!`);
+            showToast(`Agent ${name} updated!`);
         } else {
             if(!teamRosters[team]) teamRosters[team] = [];
             teamRosters[team].push(agentData);
-            showToast(`New agent ${name} saved successfully!`);
+            showToast(`New agent ${name} saved!`);
         }
 
         safeSet('teamRosters', teamRosters);
+        if(firebaseDB) firebaseDB.ref('teamRosters').set(teamRosters);
         resetEditMode();
         renderDashboard();
     }
@@ -1381,6 +1484,7 @@
         if(confirm("Are you sure you want to delete this agent?")) {
             teamRosters[team].splice(index, 1);
             safeSet('teamRosters', teamRosters);
+            if(firebaseDB) firebaseDB.ref('teamRosters').set(teamRosters);
             if(editingIndex === index) resetEditMode();
             renderScheduleTable();
             renderDashboard();
@@ -1390,16 +1494,17 @@
 
     // Export to Excel
     function exportToExcel() {
-        const { month, week, dateStr, team } = currentActiveView;
+        const team = document.getElementById('viewTeamSelect').value;
+        const dateStr = document.getElementById('viewDateSelect').value;
         const wb = XLSX.utils.book_new();
         const contextTitle = team === 'ALL' ? 'All Teams' : team;
 
-        const varianceHeaders = ["Hour", "Agents Active", "Total Abandoned", "Variance (Agents Needed)", "Call Volume"];
+        const varianceHeaders = ["Hour", "Agents Active", "Total Abandoned", "Variance (Agents Missing)", "Call Volume"];
         const varianceData = currentRenderedTableData.map(r => [
             r.hour, 
             r.scheduled, 
             r.abandoned, 
-            r.agentsNeeded > 0 ? `${r.agentsNeeded} Needed` : (r.scheduled > r.required ? `+${r.scheduled - r.required} Surplus` : `0`),
+            r.agentsMissing > 0 ? `${r.agentsMissing} Missing` : (r.surplusAgents > 0 ? `0 (+${r.surplusAgents} Surplus)` : `0`),
             r.volume
         ]);
         const ws1 = XLSX.utils.aoa_to_sheet([["DAILY AVAILABILITY VS VOLUME REPORT"], [`Context: ${contextTitle} - ${dateStr}`], [], varianceHeaders, ...varianceData]);
@@ -1419,8 +1524,119 @@
         showToast("Excel report exported successfully!");
     }
 
-    // Initial Dashboard Paint
-    renderDashboard();
+    // Backup & Load JSON (Share with team without servers)
+    function exportDatabaseJSON() {
+        const payload = {
+            version: "2026.1",
+            exportDate: new Date().toISOString(),
+            teamRosters: teamRosters,
+            volumeStore: volumeStore
+        };
+        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `WFM_Dashboard_Backup_${new Date().toISOString().slice(0, 10)}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        showToast("Database downloaded! You can share this file with other teammates.");
+    }
+
+    function handleDatabaseFileUpload(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const data = JSON.parse(e.target.result);
+                if (data && data.volumeStore && data.teamRosters) {
+                    volumeStore = data.volumeStore;
+                    teamRosters = data.teamRosters;
+                    safeSet('WFM_MASTER_VOLUME_STORE', volumeStore);
+                    safeSet('teamRosters', teamRosters);
+                    if(firebaseDB) {
+                        firebaseDB.ref('volumeStore').set(volumeStore);
+                        firebaseDB.ref('teamRosters').set(teamRosters);
+                    }
+                    renderDashboard();
+                    showToast("Database restored successfully from backup!");
+                } else {
+                    alert("Invalid backup file structure.");
+                }
+            } catch(err) {
+                alert("Failed to parse backup file: " + err.message);
+            }
+        };
+        reader.readAsText(file);
+        event.target.value = "";
+    }
+
+    // Firebase Cloud Realtime Sync (Live multi-user across any computer)
+    function initFirebaseCloudSync() {
+        const cfg = safeGet('WFM_FIREBASE_CONFIG');
+        if (!cfg) return;
+
+        try {
+            if (!firebase.apps.length) {
+                firebase.initializeApp(cfg);
+            }
+            firebaseDB = firebase.database();
+            
+            const badge = document.getElementById('cloudStatus');
+            badge.innerText = "☁️ Cloud Synced";
+            badge.classList.add('connected');
+
+            // Listen to real-time volume updates from other users
+            firebaseDB.ref('volumeStore').on('value', (snapshot) => {
+                const val = snapshot.val();
+                if (val) {
+                    volumeStore = val;
+                    safeSet('WFM_MASTER_VOLUME_STORE', volumeStore);
+                    renderDashboard();
+                }
+            });
+
+            // Listen to real-time roster updates
+            firebaseDB.ref('teamRosters').on('value', (snapshot) => {
+                const val = snapshot.val();
+                if (val) {
+                    teamRosters = val;
+                    safeSet('teamRosters', teamRosters);
+                    renderDashboard();
+                }
+            });
+        } catch(e) {
+            console.error("Firebase connection error:", e);
+            document.getElementById('cloudStatus').innerText = "Cloud Error";
+        }
+    }
+
+    function saveCloudSyncConfig() {
+        const raw = document.getElementById('firebaseConfigInput').value.trim();
+        if(!raw) return alert("Please paste your Firebase configuration JSON.");
+        try {
+            const parsed = JSON.parse(raw);
+            safeSet('WFM_FIREBASE_CONFIG', parsed);
+            closeModal('cloudModal');
+            showToast("Firebase Config saved! Reloading sync...");
+            setTimeout(() => location.reload(), 800);
+        } catch(err) {
+            alert("Invalid JSON format. Please verify your Firebase snippet.");
+        }
+    }
+
+    function disconnectCloudSync() {
+        localStorage.removeItem('WFM_FIREBASE_CONFIG');
+        closeModal('cloudModal');
+        showToast("Switched back to Local Storage mode.");
+        setTimeout(() => location.reload(), 600);
+    }
+
+    // Startup
+    syncFromDate();
+    initFirebaseCloudSync();
 </script>
 </body>
 </html>

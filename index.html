@@ -331,9 +331,9 @@
         .floating-action-btn {
             width: 200px;
             height: 44px;
-            background-color: var(--navy-deep); /* Blue Background */
+            background-color: var(--navy-deep);
             color: var(--amber-dominant);
-            border: 2px solid var(--amber-dominant); /* Amber Gridline */
+            border: 2px solid var(--amber-dominant);
             border-radius: 6px;
             font-size: 13px;
             font-weight: bold;
@@ -479,7 +479,7 @@
 
     <!-- Recommendations Engine -->
     <div class="card">
-        <div class="section-title">System Recommendations (Zero-Abandon Target &bull; Benchmark: 6 Calls/Agent/Hr)</div>
+        <div class="section-title">System Recommendations (Zero-Abandon Target &bull; Benchmark: 7 Calls/Agent/Hr)</div>
         <div class="rec-grid">
             <div class="rec-card" id="rec-1">
                 <div class="rec-icon">⚠️</div>
@@ -508,7 +508,7 @@
 
         <!-- Staffing Required Table: Hour, Agents Active, Total Abandoned, Variance -->
         <div class="card">
-            <div class="section-title">Staffing Required (0 Abandons &bull; 6 Calls/Agent Avg)</div>
+            <div class="section-title">Staffing Required (0 Abandons &bull; 7 Calls/Agent Avg)</div>
             <div class="table-complete-view">
                 <table>
                     <thead>
@@ -548,13 +548,11 @@
                         <th>Scheduled Hours</th>
                         <th>Calls Handled</th>
                         <th>Avg Handle Time (AHT)</th>
-                        <th>Adherence %</th>
-                        <th>CSAT %</th>
                         <th>Daily Status</th>
                     </tr>
                 </thead>
                 <tbody id="teammatePerfTableBody">
-                    <tr><td colspan="10">Loading teammate metrics...</td></tr>
+                    <tr><td colspan="8">Loading teammate metrics...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -750,8 +748,8 @@
     const hours = ['06:00', '07:00', '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'];
     const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
-    // Benchmark capacity: 6 calls per agent per hour
-    const AVG_CALLS_PER_AGENT = 6;
+    // Benchmark capacity: minimum 7 calls per agent per hour
+    const AVG_CALLS_PER_AGENT = 7;
 
     // Master Default Schedules
     const initialRosters = {
@@ -1230,7 +1228,7 @@
                 // 3. Extract Metrics
                 let nums = [];
                 tokens.forEach(tok => {
-                    if(/[\/\-:]/.test(tok) && !/^\-?\d+$/.test(tok)) return;
+                    if(/[\/\-:]/.test(tok) && !/^\-?\d+$/).test(tok)) return;
                     const clean = tok.replace(/[^0-9\-]/g, '');
                     if(clean !== '' && (/^\-?\d+$/).test(clean)) {
                         nums.push(parseInt(clean, 10));
@@ -1340,7 +1338,7 @@
         return Math.max(4, +(mins / 60).toFixed(1));
     }
 
-    // Render Teammate Performance (Updates dynamically per selected day)
+    // Render Teammate Performance (Updates dynamically per selected day, minimum 7 calls/hour)
     function renderTeammatePerformance(team, dateStr, dailyVolData) {
         const tableBody = document.getElementById('teammatePerfTableBody');
         const dateLabel = document.getElementById('perfDateLabel');
@@ -1377,7 +1375,7 @@
         }
 
         if (agentsList.length === 0) {
-            tableBody.innerHTML = `<tr><td colspan="10" style="padding: 20px; font-weight: bold;">No active teammates found for this selection.</td></tr>`;
+            tableBody.innerHTML = `<tr><td colspan="8" style="padding: 20px; font-weight: bold;">No active teammates found for this selection.</td></tr>`;
             currentTeammatePerfData = [];
             return;
         }
@@ -1393,47 +1391,38 @@
         currentTeammatePerfData = [];
         let totalHandled = 0;
         let sumAHTSec = 0;
-        let sumAdherence = 0;
-        let sumCSAT = 0;
 
         const rowsHTML = agentsList.map(agent => {
             const shiftDurationHours = getAgentNetHours(agent);
             const seed = pseudoHash(dateStr + agent.name + agent.teamName);
 
-            // Compute Daily Calls Handled
+            // Compute Daily Calls Handled (Guaranteed at least 7 calls/hr minimum)
+            const minExpectedCalls = Math.round(shiftDurationHours * AVG_CALLS_PER_AGENT);
             let handled = 0;
             if (totalDayAnswered > 0) {
                 const basePortion = (totalDayAnswered / agentsList.length);
-                const variance = ((seed % 31) - 15) / 100; // -15% to +15%
-                handled = Math.max(1, Math.round(basePortion * (1 + variance)));
+                const variance = ((seed % 25) - 5) / 100; // -5% to +20%
+                handled = Math.max(minExpectedCalls, Math.round(basePortion * (1 + variance)));
             } else {
-                const callsPerHour = 5.2 + ((seed % 20) / 10);
+                const callsPerHour = 7.0 + ((seed % 25) / 10); // 7.0 to 9.4 calls/hr
                 handled = Math.round(shiftDurationHours * callsPerHour);
             }
             totalHandled += handled;
 
-            // AHT (Average Handle Time): 280 to 430 seconds
-            const ahtSec = 280 + (seed % 150);
+            // AHT (Average Handle Time): 280 to 420 seconds
+            const ahtSec = 280 + (seed % 140);
             sumAHTSec += ahtSec;
             const ahtMin = Math.floor(ahtSec / 60);
             const ahtRemSec = String(ahtSec % 60).padStart(2, '0');
             const ahtDisplay = `${ahtMin}m ${ahtRemSec}s`;
 
-            // Adherence % (92% - 99.4%)
-            const adherence = +(92.0 + ((seed % 75) / 10)).toFixed(1);
-            sumAdherence += adherence;
-
-            // CSAT % (91% - 99.5%)
-            const csat = +(91.0 + (((seed * 3) % 86) / 10)).toFixed(1);
-            sumCSAT += csat;
-
-            // Rating
+            // Performance Rating based on target benchmark (>= 7 calls/hr)
             let statusBadge = '';
             let statusText = '';
-            if (adherence >= 96.0 && csat >= 95.0 && handled >= Math.round(shiftDurationHours * 5.8)) {
+            if (handled >= Math.round(shiftDurationHours * 8.2) && ahtSec <= 350) {
                 statusBadge = `<span style="background-color: rgba(0, 123, 255, 0.15); color: var(--blue-accent); border: 1px solid var(--blue-accent); padding: 3px 8px; border-radius: 12px; font-weight: bold; font-size: 11px;">★ Top Performer</span>`;
                 statusText = 'Top Performer';
-            } else if (adherence >= 93.0 && csat >= 92.0) {
+            } else if (handled >= minExpectedCalls) {
                 statusBadge = `<span style="background-color: rgba(46, 125, 50, 0.15); color: var(--success-green); border: 1px solid var(--success-green); padding: 3px 8px; border-radius: 12px; font-weight: bold; font-size: 11px;">● On Target</span>`;
                 statusText = 'On Target';
             } else {
@@ -1449,8 +1438,6 @@
                 hours: `${shiftDurationHours} hrs`,
                 handled: handled,
                 aht: ahtDisplay,
-                adherence: `${adherence}%`,
-                csat: `${csat}%`,
                 status: statusText
             });
 
@@ -1463,8 +1450,6 @@
                     <td>${shiftDurationHours} hrs</td>
                     <td><strong>${handled}</strong></td>
                     <td>${ahtDisplay}</td>
-                    <td style="font-weight: bold; color: ${adherence >= 94 ? 'var(--navy-deep)' : 'var(--alert-red)'};">${adherence}%</td>
-                    <td style="font-weight: bold; color: ${csat >= 93 ? 'var(--navy-deep)' : 'var(--alert-red)'};">${csat}%</td>
                     <td>${statusBadge}</td>
                 </tr>
             `;
@@ -1473,8 +1458,6 @@
         // Summary Row
         const avgAHTTotalSec = Math.round(sumAHTSec / agentsList.length);
         const avgAHTDisplay = `${Math.floor(avgAHTTotalSec / 60)}m ${String(avgAHTTotalSec % 60).padStart(2, '0')}s`;
-        const avgAdherence = (sumAdherence / agentsList.length).toFixed(1);
-        const avgCSAT = (sumCSAT / agentsList.length).toFixed(1);
 
         const summaryRowHTML = `
             <tr style="background-color: rgba(10, 25, 47, 0.12); font-weight: bold; border-top: 2px solid var(--navy-deep);">
@@ -1485,8 +1468,6 @@
                 <td>-</td>
                 <td>${totalHandled} calls</td>
                 <td>${avgAHTDisplay}</td>
-                <td>${avgAdherence}%</td>
-                <td>${avgCSAT}%</td>
                 <td><span style="color: var(--navy-deep); font-weight: 800;">Team Metric</span></td>
             </tr>
         `;
@@ -1558,7 +1539,7 @@
             abanRouting.push(hourStat.routing);
             abanCsat.push(hourStat.csat);
 
-            // Capacity logic: 6 calls per agent average
+            // Capacity logic: minimum 7 calls per agent average
             const requiredAgents = hourStat.total > 0 ? Math.ceil(hourStat.total / AVG_CALLS_PER_AGENT) : 0;
             const activeAgents = scheduledAgents[idx];
             
@@ -1645,7 +1626,7 @@
         document.getElementById('rec-3').classList.add('active');
 
         if(peakMissingHour && peakMissingHour.agentsMissing > 0) {
-            document.getElementById('rec-text-1').innerHTML = `<strong>Critical Shortage at ${peakMissingHour.hour}:</strong> Missing ${peakMissingHour.agentsMissing} agents to achieve 0 abandons based on the 6 calls/hr benchmark. Shift scheduled breaks away from this hour.`;
+            document.getElementById('rec-text-1').innerHTML = `<strong>Critical Shortage at ${peakMissingHour.hour}:</strong> Missing ${peakMissingHour.agentsMissing} agents to achieve 0 abandons based on the 7 calls/hr benchmark. Shift scheduled breaks away from this hour.`;
         } else {
             document.getElementById('rec-text-1').innerHTML = `<strong>Coverage Balanced:</strong> Active agents are sufficient to maintain 0 abandoned calls across all hours for ${teamLabel}.`;
         }
@@ -1779,8 +1760,8 @@
         const ws1 = XLSX.utils.aoa_to_sheet([["DAILY AVAILABILITY VS VOLUME REPORT"], [`Context: ${contextTitle} - ${dateStr}`], [], varianceHeaders, ...varianceData]);
         XLSX.utils.book_append_sheet(wb, ws1, "Staffing Analysis");
 
-        // Sheet 2: Teammate Performance
-        const perfHeaders = ["Teammate Name", "Team", "Branch", "Shift Window", "Scheduled Hours", "Calls Handled", "Avg Handle Time (AHT)", "Adherence %", "CSAT %", "Status"];
+        // Sheet 2: Teammate Performance (Without Adherence & CSAT)
+        const perfHeaders = ["Teammate Name", "Team", "Branch", "Shift Window", "Scheduled Hours", "Calls Handled", "Avg Handle Time (AHT)", "Status"];
         const perfData = currentTeammatePerfData.map(p => [
             p.name,
             p.team,
@@ -1789,8 +1770,6 @@
             p.hours,
             p.handled,
             p.aht,
-            p.adherence,
-            p.csat,
             p.status
         ]);
         const ws2 = XLSX.utils.aoa_to_sheet([[`Teammate Daily Performance - ${dateStr}`], [`Team: ${contextTitle}`], [], perfHeaders, ...perfData]);

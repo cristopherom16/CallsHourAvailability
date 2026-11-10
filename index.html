@@ -445,7 +445,7 @@
 
     <!-- Recommendations Engine -->
     <div class="card">
-        <div class="section-title">System Recommendations (Zero-Abandon Target &bull; Benchmark: 4-5 Calls/Agent/Hr)</div>
+        <div class="section-title">System Recommendations (Zero-Abandon Target &bull; Benchmark: 6 Calls/Agent/Hr)</div>
         <div class="rec-grid">
             <div class="rec-card" id="rec-1">
                 <div class="rec-icon">⚠️</div>
@@ -474,7 +474,7 @@
 
         <!-- Staffing Required Table: Hour, Agents Active, Total Abandoned, Variance -->
         <div class="card">
-            <div class="section-title">Staffing Required (0 Abandons &bull; 4.5 Calls/Agent Avg)</div>
+            <div class="section-title">Staffing Required (0 Abandons &bull; 6 Calls/Agent Avg)</div>
             <div class="table-complete-view">
                 <table>
                     <thead>
@@ -671,7 +671,8 @@
     const hours = ['06:00', '07:00', '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'];
     const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
-    const AVG_CALLS_PER_AGENT = 4.5;
+    // Benchmark capacity: 6 calls per agent per hour
+    const AVG_CALLS_PER_AGENT = 6;
 
     // Master Default Schedules
     const initialRosters = {
@@ -1298,7 +1299,7 @@
             abanRouting.push(hourStat.routing);
             abanCsat.push(hourStat.csat);
 
-            // Capacity logic: 4.5 calls per agent average
+            // Capacity logic: 6 calls per agent average
             const requiredAgents = hourStat.total > 0 ? Math.ceil(hourStat.total / AVG_CALLS_PER_AGENT) : 0;
             const activeAgents = scheduledAgents[idx];
             
@@ -1382,7 +1383,7 @@
         document.getElementById('rec-3').classList.add('active');
 
         if(peakMissingHour && peakMissingHour.agentsMissing > 0) {
-            document.getElementById('rec-text-1').innerHTML = `<strong>Critical Shortage at ${peakMissingHour.hour}:</strong> Missing ${peakMissingHour.agentsMissing} agents to achieve 0 abandons based on the 4-5 calls/hr benchmark. Shift scheduled breaks away from this hour.`;
+            document.getElementById('rec-text-1').innerHTML = `<strong>Critical Shortage at ${peakMissingHour.hour}:</strong> Missing ${peakMissingHour.agentsMissing} agents to achieve 0 abandons based on the 6 calls/hr benchmark. Shift scheduled breaks away from this hour.`;
         } else {
             document.getElementById('rec-text-1').innerHTML = `<strong>Coverage Balanced:</strong> Active agents are sufficient to maintain 0 abandoned calls across all hours for ${teamLabel}.`;
         }

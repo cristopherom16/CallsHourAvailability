@@ -30,11 +30,11 @@
         }
 
         body.dark-mode {
-            --bg-color: #0A192F;
-            --card-bg: #FFF2B2;          
-            --text-color: #0A192F;
-            --modal-bg: #FFF2B2;
-            --table-row-alt: rgba(255, 191, 0, 0.25);
+            --bg-color: #07111E;
+            --card-bg: #112240;          
+            --text-color: #E2E8F0;
+            --modal-bg: #112240;
+            --table-row-alt: rgba(255, 191, 0, 0.08);
         }
 
         body {
@@ -44,7 +44,7 @@
             margin: 0;
             padding-top: 20px;
             padding-bottom: 90px;
-            transition: background-color 0.3s ease;
+            transition: background-color 0.3s ease, color 0.3s ease;
         }
 
         /* Container positioned exactly 10mm from floating controls */
@@ -209,6 +209,7 @@
             padding: 18px 20px;
             border-radius: 8px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.15);
+            transition: background-color 0.3s ease;
         }
 
         .kpi-title {
@@ -241,6 +242,7 @@
             border-radius: 8px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.15);
             margin-bottom: 20px;
+            transition: background-color 0.3s ease;
         }
 
         .dashboard-grid {
@@ -286,7 +288,7 @@
             align-items: flex-start;
             gap: 10px;
             opacity: 0.6;
-            transition: opacity 0.3s;
+            transition: opacity 0.3s, background-color 0.3s ease;
         }
         .rec-card.active { opacity: 1; }
         .rec-icon { font-size: 22px; }
@@ -399,6 +401,60 @@
             font-family: inherit; font-size: 13px; background-color: #FFF9D2; color: var(--text-color);
         }
         .action-row { display: flex; justify-content: flex-end; gap: 10px; margin-top: 15px; align-items: center; }
+
+        /* --- DARK MODE SPECIALIZED OVERRIDES --- */
+        body.dark-mode .section-title {
+            color: var(--amber-dominant);
+            border-bottom-color: var(--amber-dominant);
+        }
+
+        body.dark-mode .kpi-card {
+            border-left-color: var(--amber-dominant);
+        }
+
+        body.dark-mode .kpi-title {
+            color: var(--amber-light);
+        }
+
+        body.dark-mode table th {
+            background-color: #07111E;
+            color: var(--amber-dominant);
+            border-color: rgba(255, 191, 0, 0.35);
+        }
+
+        body.dark-mode table td {
+            color: var(--text-color);
+            border-color: rgba(255, 191, 0, 0.2);
+        }
+
+        body.dark-mode .rec-card {
+            background-color: #172A45;
+            color: #E2E8F0;
+            border-color: var(--amber-dominant);
+        }
+
+        body.dark-mode label {
+            color: var(--amber-dominant);
+        }
+
+        body.dark-mode select:not(.header-select),
+        body.dark-mode textarea,
+        body.dark-mode input[type="text"],
+        body.dark-mode input[type="time"],
+        body.dark-mode input[type="date"]:not(.header-select) {
+            background-color: #0A192F;
+            color: #FFF;
+            border-color: var(--amber-dominant);
+        }
+
+        body.dark-mode .modal-content {
+            border-color: var(--amber-dominant);
+            box-shadow: 0 8px 30px rgba(0,0,0,0.85);
+        }
+
+        body.dark-mode #perfTeamSummary {
+            color: var(--amber-dominant) !important;
+        }
     </style>
 </head>
 <body>
@@ -623,7 +679,7 @@
                     <option value="OBS">Onboarding Support (OBS)</option>
                     <option value="ELD">ELD Support</option>
                     <option value="INS">INS Support</option>
-                    <option value="LL+">LL+ Support</option>
+                    <option value="LL+">LL+</option>
                     <option value="TFX">TFX Support</option>
                 </select>
             </div>
@@ -860,21 +916,47 @@
         : JSON.parse(JSON.stringify(initialRosters));
     safeSet('teamRosters', teamRosters);
 
-    // Primary Volume Storage: volumeStore[TEAM][DATE_STR]
-    let volumeStore = safeGet('WFM_MASTER_VOLUME_STORE');
-    if(!volumeStore || typeof volumeStore !== 'object') {
-        volumeStore = { OBS: {}, ELD: {}, INS: {}, "LL+": {}, TFX: {} };
+    // Resilient Volume Storage Loader (Checks primary & backup storage to prevent accidental loss)
+    function loadStoredVolume() {
+        let store = safeGet('WFM_MASTER_VOLUME_STORE') || safeGet('volumeStore') || safeGet('WFM_VOLUME_BACKUP');
+        if(!store || typeof store !== 'object') {
+            store = { OBS: {}, ELD: {}, INS: {}, "LL+": {}, TFX: {} };
+        }
+        allTeamsList.forEach(t => { if(!store[t]) store[t] = {}; });
+        return store;
     }
-    allTeamsList.forEach(t => { if(!volumeStore[t]) volumeStore[t] = {}; });
-    safeSet('WFM_MASTER_VOLUME_STORE', volumeStore);
 
-    // Initial Date: Restore last viewed state or default to Nov 9, 2026
-    const savedState = safeGet('WFM_LAST_STATE');
-    const defaultDate = (savedState && savedState.dateStr) ? savedState.dateStr : "2026-11-09";
-    document.getElementById('viewDateSelect').value = defaultDate;
-    if(savedState && savedState.team) {
-        document.getElementById('viewTeamSelect').value = savedState.team;
+    let volumeStore = loadStoredVolume();
+
+    function persistVolumeStore() {
+        safeSet('WFM_MASTER_VOLUME_STORE', volumeStore);
+        safeSet('WFM_VOLUME_BACKUP', volumeStore);
     }
+    persistVolumeStore();
+
+    // Auto-detect best date that actually contains recorded data
+    function findBestInitialDate(team) {
+        const saved = safeGet('WFM_LAST_STATE');
+        if (saved && saved.dateStr && volumeStore[team] && volumeStore[team][saved.dateStr]) {
+            return saved.dateStr;
+        }
+        if (volumeStore[team]) {
+            const teamDates = Object.keys(volumeStore[team]);
+            if (teamDates.length > 0) return teamDates.sort().reverse()[0];
+        }
+        for (let t of allTeamsList) {
+            if (volumeStore[t]) {
+                const dates = Object.keys(volumeStore[t]);
+                if (dates.length > 0) return dates.sort().reverse()[0];
+            }
+        }
+        return (saved && saved.dateStr) ? saved.dateStr : "2026-11-09";
+    }
+
+    const savedState = safeGet('WFM_LAST_STATE');
+    const initialTeam = (savedState && savedState.team) ? savedState.team : "OBS";
+    document.getElementById('viewTeamSelect').value = initialTeam;
+    document.getElementById('viewDateSelect').value = findBestInitialDate(initialTeam);
 
     let editingIndex = null;
     let editingTeam = null;
@@ -896,16 +978,51 @@
         }, 3500);
     }
 
-    // Theme Toggle
+    // Full Dynamic Theme Toggle (Updates DOM, Charts, and LocalStorage)
+    function updateChartTheme(isDark) {
+        const textColor = isDark ? '#E2E8F0' : '#0A192F';
+        const gridColor = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+
+        if (window.mainChart && mainChart.options) {
+            mainChart.options.scales.y.ticks.color = textColor;
+            mainChart.options.scales.y.title.color = textColor;
+            mainChart.options.scales.y.grid.color = gridColor;
+
+            mainChart.options.scales.y1.ticks.color = textColor;
+            mainChart.options.scales.y1.title.color = textColor;
+
+            mainChart.options.scales.x.ticks.color = textColor;
+            mainChart.options.scales.x.grid.color = gridColor;
+            mainChart.update();
+        }
+
+        if (window.abanChart && abanChart.options) {
+            abanChart.options.scales.y.ticks.color = textColor;
+            abanChart.options.scales.y.title.color = textColor;
+            abanChart.options.scales.y.grid.color = gridColor;
+
+            abanChart.options.scales.x.ticks.color = textColor;
+            abanChart.options.scales.x.grid.color = gridColor;
+            abanChart.update();
+        }
+    }
+
     function toggleTheme() {
         document.body.classList.toggle('dark-mode');
         const isDark = document.body.classList.contains('dark-mode');
         safeSet('theme', isDark ? 'dark' : 'light');
-        document.getElementById('themeToggleBtn').innerText = isDark ? '☀️' : '🌓';
+        const btn = document.getElementById('themeToggleBtn');
+        if (btn) btn.innerText = isDark ? '☀️' : '🌓';
+        updateChartTheme(isDark);
     }
-    if(safeGet('theme') === 'dark') {
-        document.body.classList.add('dark-mode');
-        document.getElementById('themeToggleBtn').innerText = '☀️';
+
+    function applyInitialTheme() {
+        const isDark = safeGet('theme') === 'dark';
+        if (isDark) {
+            document.body.classList.add('dark-mode');
+            const btn = document.getElementById('themeToggleBtn');
+            if (btn) btn.innerText = '☀️';
+        }
     }
 
     // Modal Control
@@ -1228,7 +1345,7 @@
                 // 3. Extract Metrics
                 let nums = [];
                 tokens.forEach(tok => {
-                    if(/[\/\-:]/.test(tok) && !/^\-?\d+$/).test(tok)) return;
+                    if(/[\/\-:]/.test(tok) && !/^\-?\d+$/.test(tok)) return;
                     const clean = tok.replace(/[^0-9\-]/g, '');
                     if(clean !== '' && (/^\-?\d+$/).test(clean)) {
                         nums.push(parseInt(clean, 10));
@@ -1267,8 +1384,8 @@
                 return;
             }
 
-            // Save locally
-            safeSet('WFM_MASTER_VOLUME_STORE', volumeStore);
+            // Save locally and backup
+            persistVolumeStore();
 
             // Sync automatically to Firebase Realtime Database
             if(firebaseDB) {
@@ -1287,7 +1404,7 @@
 
             closeModal('importModal');
             document.getElementById('pastedData').value = '';
-            showToast(`Saved to Cloud & Loaded ${importedRows} hourly records for ${team}!`);
+            showToast(`Saved & Loaded ${importedRows} hourly records for ${team}!`);
 
         } catch (err) {
             console.error(err);
@@ -1338,7 +1455,7 @@
         return Math.max(4, +(mins / 60).toFixed(1));
     }
 
-    // Render Teammate Performance (Updates dynamically per selected day, minimum 7 calls/hour)
+    // Render Teammate Performance (Guaranteed >= 7 calls/hr benchmark, no Adherence or CSAT)
     function renderTeammatePerformance(team, dateStr, dailyVolData) {
         const tableBody = document.getElementById('teammatePerfTableBody');
         const dateLabel = document.getElementById('perfDateLabel');
@@ -1396,15 +1513,15 @@
             const shiftDurationHours = getAgentNetHours(agent);
             const seed = pseudoHash(dateStr + agent.name + agent.teamName);
 
-            // Compute Daily Calls Handled (Guaranteed at least 7 calls/hr minimum)
+            // Compute Daily Calls Handled (Enforces at least 7 calls/hr minimum)
             const minExpectedCalls = Math.round(shiftDurationHours * AVG_CALLS_PER_AGENT);
             let handled = 0;
             if (totalDayAnswered > 0) {
                 const basePortion = (totalDayAnswered / agentsList.length);
-                const variance = ((seed % 25) - 5) / 100; // -5% to +20%
+                const variance = ((seed % 25) - 5) / 100;
                 handled = Math.max(minExpectedCalls, Math.round(basePortion * (1 + variance)));
             } else {
-                const callsPerHour = 7.0 + ((seed % 25) / 10); // 7.0 to 9.4 calls/hr
+                const callsPerHour = 7.0 + ((seed % 25) / 10);
                 handled = Math.round(shiftDurationHours * callsPerHour);
             }
             totalHandled += handled;
@@ -1460,7 +1577,7 @@
         const avgAHTDisplay = `${Math.floor(avgAHTTotalSec / 60)}m ${String(avgAHTTotalSec % 60).padStart(2, '0')}s`;
 
         const summaryRowHTML = `
-            <tr style="background-color: rgba(10, 25, 47, 0.12); font-weight: bold; border-top: 2px solid var(--navy-deep);">
+            <tr style="background-color: var(--table-row-alt); font-weight: bold; border-top: 2px solid var(--navy-deep);">
                 <td style="text-align: left;">TEAM TOTAL / AVERAGE</td>
                 <td>-</td>
                 <td>-</td>
@@ -1468,7 +1585,7 @@
                 <td>-</td>
                 <td>${totalHandled} calls</td>
                 <td>${avgAHTDisplay}</td>
-                <td><span style="color: var(--navy-deep); font-weight: 800;">Team Metric</span></td>
+                <td><span style="color: var(--blue-accent); font-weight: 800;">Team Metric</span></td>
             </tr>
         `;
 
@@ -1790,7 +1907,7 @@
         showToast("Excel report exported successfully!");
     }
 
-    // Firebase Real-time Initialization
+    // Firebase Real-time Initialization with Safe Merging (Never wipes out local imports)
     function initFirebase() {
         try {
             if (!firebase.apps.length) {
@@ -1798,20 +1915,31 @@
             }
             firebaseDB = firebase.database();
 
-            // Listen to real-time changes in Volume
+            // Merge real-time changes in Volume into local store
             firebaseDB.ref('volumeStore').on('value', (snapshot) => {
-                const val = snapshot.val();
-                if (val) {
-                    volumeStore = val;
-                    safeSet('WFM_MASTER_VOLUME_STORE', volumeStore);
-                    renderDashboard();
+                const remoteVal = snapshot.val();
+                if (remoteVal && typeof remoteVal === 'object') {
+                    let updated = false;
+                    allTeamsList.forEach(t => {
+                        if (remoteVal[t] && typeof remoteVal[t] === 'object') {
+                            if (!volumeStore[t]) volumeStore[t] = {};
+                            Object.keys(remoteVal[t]).forEach(d => {
+                                volumeStore[t][d] = remoteVal[t][d];
+                                updated = true;
+                            });
+                        }
+                    });
+                    if (updated) {
+                        persistVolumeStore();
+                        renderDashboard();
+                    }
                 }
             });
 
             // Listen to real-time changes in Rosters
             firebaseDB.ref('teamRosters').on('value', (snapshot) => {
                 const val = snapshot.val();
-                if (val) {
+                if (val && typeof val === 'object' && Object.keys(val).length > 0) {
                     teamRosters = val;
                     safeSet('teamRosters', teamRosters);
                     renderDashboard();
@@ -1823,6 +1951,7 @@
     }
 
     // Startup
+    applyInitialTheme();
     syncFromDate();
     initFirebase();
 </script>

@@ -525,7 +525,7 @@
         </div>
 
         <div class="form-control" style="margin-bottom: 15px;">
-            <label for="pastedData">Paste Full Week Data (Date & Hour, Answered, Abandoned CSAT, Abandoned Queue, Abandoned Hold, Abandoned Routing)</label>
+            <label for="pastedData">Paste Data from Excel (Date & Hour, Answered, Abandoned CSAT, Abandoned Queue, Abandoned Hold, Abandoned Routing)</label>
             <textarea id="pastedData" rows="8" placeholder="2026-11-09 08:00	45	2	5	1	0"></textarea>
         </div>
 
@@ -624,7 +624,7 @@
     const allTeamsList = ['OBS', 'ELD', 'INS', 'LL+', 'TFX'];
     const hours = ['06:00', '07:00', '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'];
 
-    // --- Master Default Schedules for all 5 Teams ---
+    // Master Default Schedules
     const initialRosters = {
         OBS: [
             {name: "Dean Spencer", task: "Phones", branch: "PAN", in: "06:00", b1: "08:00-08:15", lunch: "10:30-11:00", b2: "13:15-13:30", out: "15:30"},
@@ -708,7 +708,7 @@
         ]
     };
 
-    // Auto-load and repair team rosters from storage
+    // Auto-repair storage if corrupted or empty
     let savedRosters = null;
     try {
         savedRosters = JSON.parse(localStorage.getItem('teamRosters'));
@@ -718,7 +718,6 @@
         ? savedRosters 
         : JSON.parse(JSON.stringify(initialRosters));
     
-    // Ensure persistence
     localStorage.setItem('teamRosters', JSON.stringify(teamRosters));
 
     let volumeDatabase = JSON.parse(localStorage.getItem('volumeDatabase')) || {};
@@ -742,7 +741,7 @@
         setTimeout(() => {
             toast.classList.remove('show');
             setTimeout(() => toast.remove(), 400);
-        }, 3000);
+        }, 3200);
     }
 
     // Theme Logic
@@ -832,7 +831,7 @@
                     label: 'Net Available Agents',
                     type: 'line',
                     data: [],
-                    borderColor: '#D97706', /* High-contrast Dark Amber */
+                    borderColor: '#D97706',
                     backgroundColor: '#D97706',
                     pointBackgroundColor: '#0A192F',
                     pointBorderColor: '#FFBF00',
@@ -856,8 +855,8 @@
             maintainAspectRatio: false,
             interaction: { mode: 'index', intersect: false },
             scales: {
-                y: { type: 'linear', display: true, position: 'left', title: { display: true, text: 'Agents' }, ticks: { stepSize: 1, precision: 0 } },
-                y1: { type: 'linear', display: true, position: 'right', title: { display: true, text: 'Calls' }, grid: { drawOnChartArea: false } }
+                y: { type: 'linear', display: true, position: 'left', title: { display: true, text: 'Agents' }, ticks: { stepSize: 1, precision: 0 }, beginAtZero: true },
+                y1: { type: 'linear', display: true, position: 'right', title: { display: true, text: 'Calls' }, grid: { drawOnChartArea: false }, beginAtZero: true }
             }
         }
     });
@@ -880,7 +879,7 @@
             interaction: { mode: 'index', intersect: false },
             scales: {
                 x: { stacked: true },
-                y: { stacked: true, title: { display: true, text: 'Abandoned Calls' }, ticks: { stepSize: 1 } }
+                y: { stacked: true, title: { display: true, text: 'Abandoned Calls' }, ticks: { stepSize: 1 }, beginAtZero: true }
             }
         }
     });
@@ -929,76 +928,143 @@
         });
     }
 
-    // Process Pasted Data
+    // Parsing Helpers
+    function extractDateOnly(str) {
+        if (!str) return null;
+        let iso = str.match(/(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/);
+        if (iso) return `${iso[1]}-${String(iso[2]).padStart(2, '0')}-${String(iso[3]).padStart(2, '0')}`;
+        
+        let us = str.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+        if (us) return `${us[3]}-${String(us[1]).padStart(2, '0')}-${String(us[2]).padStart(2, '0')}`;
+        return null;
+    }
+
+    function extractHourSlot(str) {
+        if (!str) return null;
+        let match = str.match(/(\d{1,2}):(\d{2})(?::\d{2})?\s*(AM|PM)?/i);
+        if (!match) return null;
+        let h = parseInt(match[1], 10);
+        let ampm = match[3] ? match[3].toUpperCase() : null;
+        if (ampm === 'PM' && h < 12) h += 12;
+        if (ampm === 'AM' && h === 12) h = 0;
+        let slot = String(h).padStart(2, '0') + ':00';
+        return hours.includes(slot) ? slot : null;
+    }
+
+    function isTimeToken(str) {
+        return /^\d{1,2}:\d{2}(?::\d{2})?\s*(AM|PM)?$/i.test(str.trim());
+    }
+
+    // Robust Process Pasted Data
     function processPastedData() {
         const month = document.getElementById('importMonthSelect').value;
         const week = document.getElementById('importWeekSelect').value;
         const team = document.getElementById('importTeamSelect').value;
         const rawText = document.getElementById('pastedData').value.trim();
 
-        if(!rawText) return showToast("Please paste valid tabular data.");
+        if(!rawText) return showToast("Please paste table data before proceeding.");
 
-        const lines = rawText.split('\n');
+        const lines = rawText.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
         let importedDatesMap = {};
+        let parsedRows = 0;
         let earliestDate = null;
+        const fallbackDate = document.getElementById('viewDateSelect').value || "2026-11-09";
 
         lines.forEach(line => {
-            const cols = line.split('\t').map(c => c.trim());
-            if(cols.length >= 2 && !cols[0].toLowerCase().includes('date')) {
-                const parts = cols[0].split(' '); 
-                if(parts.length >= 2) {
-                    let rawDate = parts[0]; 
-                    let timePart = parts[1];
-                    
-                    let dObj = new Date(rawDate);
-                    if(isNaN(dObj.getTime())) dObj = new Date(rawDate.replace(/-/g, '/'));
-                    
-                    if(!isNaN(dObj.getTime())) {
-                        const yyyy = dObj.getFullYear();
-                        const mm = String(dObj.getMonth() + 1).padStart(2, '0');
-                        const dd = String(dObj.getDate()).padStart(2, '0');
-                        const formattedDate = `${yyyy}-${mm}-${dd}`;
+            const lower = line.toLowerCase();
+            if(lower.includes('date') || lower.includes('answered') || lower.includes('abandoned')) return;
 
-                        if(!importedDatesMap[formattedDate]) {
-                            importedDatesMap[formattedDate] = {};
-                            hours.forEach(h => importedDatesMap[formattedDate][h] = { answered: 0, csat: 0, queue: 0, hold: 0, routing: 0, total: 0 });
-                        }
+            let cols = [];
+            if(line.includes('\t')) cols = line.split('\t');
+            else if(line.includes(',')) cols = line.split(',');
+            else if(line.includes(';')) cols = line.split(';');
+            else if(line.includes('|')) cols = line.split('|');
+            else cols = line.split(/\s{2,}/);
 
-                        if (!earliestDate || formattedDate < earliestDate) earliestDate = formattedDate;
+            cols = cols.map(c => c.trim()).filter(c => c !== '');
+            if(cols.length < 2) {
+                let spaceCols = line.split(/\s+/);
+                if(spaceCols.length >= 2) cols = spaceCols;
+                else return;
+            }
 
-                        const matchedHour = hours.find(h => timePart.includes(h.substring(0, 2) + ':'));
-                        if(matchedHour) {
-                            const ans = parseInt(cols[1]) || 0;
-                            const csat = parseInt(cols[2]) || 0;
-                            const queue = parseInt(cols[3]) || 0;
-                            const hold = parseInt(cols[4]) || 0;
-                            const routing = parseInt(cols[5]) || 0;
-                            
-                            importedDatesMap[formattedDate][matchedHour].answered += ans;
-                            importedDatesMap[formattedDate][matchedHour].csat += csat;
-                            importedDatesMap[formattedDate][matchedHour].queue += queue;
-                            importedDatesMap[formattedDate][matchedHour].hold += hold;
-                            importedDatesMap[formattedDate][matchedHour].routing += routing;
-                            importedDatesMap[formattedDate][matchedHour].total += (ans + csat + queue + hold + routing);
-                        }
-                    }
-                }
+            let dateFound = null;
+            let hourFound = null;
+            let numStart = 1;
+
+            if(cols.length >= 3 && isTimeToken(cols[1])) {
+                dateFound = extractDateOnly(cols[0]);
+                hourFound = extractHourSlot(cols[1]);
+                numStart = 2;
+            } else {
+                dateFound = extractDateOnly(cols[0]);
+                hourFound = extractHourSlot(cols[0]);
+                numStart = 1;
+            }
+
+            if(!hourFound && isTimeToken(cols[0])) {
+                hourFound = extractHourSlot(cols[0]);
+                numStart = 1;
+            }
+
+            if(!dateFound) dateFound = fallbackDate;
+            if(!hourFound) return;
+
+            let metrics = [];
+            for(let i = numStart; i < cols.length; i++) {
+                let cleanVal = cols[i].replace(/[^0-9\-]/g, '');
+                if(cleanVal !== '') metrics.push(parseInt(cleanVal, 10) || 0);
+            }
+
+            let ans = metrics[0] || 0;
+            let csat = metrics[1] || 0;
+            let queue = metrics[2] || 0;
+            let hold = metrics[3] || 0;
+            let routing = metrics[4] || 0;
+
+            if(!importedDatesMap[dateFound]) {
+                importedDatesMap[dateFound] = {};
+                hours.forEach(h => importedDatesMap[dateFound][h] = { answered: 0, csat: 0, queue: 0, hold: 0, routing: 0, total: 0 });
+            }
+
+            if(!earliestDate || dateFound < earliestDate) earliestDate = dateFound;
+
+            if(importedDatesMap[dateFound][hourFound]) {
+                importedDatesMap[dateFound][hourFound].answered += ans;
+                importedDatesMap[dateFound][hourFound].csat += csat;
+                importedDatesMap[dateFound][hourFound].queue += queue;
+                importedDatesMap[dateFound][hourFound].hold += hold;
+                importedDatesMap[dateFound][hourFound].routing += routing;
+                importedDatesMap[dateFound][hourFound].total += (ans + csat + queue + hold + routing);
+                parsedRows++;
             }
         });
+
+        if(parsedRows === 0) {
+            return showToast("Could not parse records. Please check the pasted table format.");
+        }
 
         const key = `${month}_${week}_${team}`;
         volumeDatabase[key] = { ...(volumeDatabase[key] || {}), ...importedDatesMap };
         localStorage.setItem('volumeDatabase', JSON.stringify(volumeDatabase));
 
+        // Auto-synchronize View selectors
         document.getElementById('viewMonthSelect').value = month;
         document.getElementById('viewWeekSelect').value = week;
         document.getElementById('viewTeamSelect').value = team;
-        if(earliestDate) document.getElementById('viewDateSelect').value = earliestDate;
-        
-        loadSavedView();
+        if(earliestDate) {
+            document.getElementById('viewDateSelect').value = earliestDate;
+            currentActiveView.dateStr = earliestDate;
+        }
+
+        currentActiveView.month = month;
+        currentActiveView.week = week;
+        currentActiveView.team = team;
+
         closeModal('importModal');
         document.getElementById('pastedData').value = '';
-        showToast(`Data processed and saved for ${team}!`);
+        showToast(`Imported ${parsedRows} hourly records for ${team}!`);
+        renderDashboard();
     }
 
     // Render Dashboard

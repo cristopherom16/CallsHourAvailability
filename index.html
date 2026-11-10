@@ -444,7 +444,7 @@
             </div>
         </div>
 
-        <!-- 0 Abandonment Complete Table -->
+        <!-- Updated Staffing Table: Hour, Agents Active, Total Abandoned, Variance -->
         <div class="card">
             <div class="section-title">Staffing Required (0 Abandons)</div>
             <div class="table-complete-view">
@@ -452,8 +452,8 @@
                     <thead>
                         <tr>
                             <th>Hour</th>
-                            <th>Active</th>
-                            <th>Target</th>
+                            <th>Agents Active</th>
+                            <th>Total Abandoned</th>
                             <th>Variance</th>
                         </tr>
                     </thead>
@@ -1195,11 +1195,21 @@
             abanRouting.push(hourStat.routing);
             abanCsat.push(hourStat.csat);
 
+            // Capacity logic: ~7 calls per hour per agent
             const required = Math.ceil(hourStat.total / 7);
             const scheduled = scheduledAgents[idx];
             const variance = scheduled - required;
+            const agentsNeeded = Math.max(0, required - scheduled);
 
-            currentRenderedTableData.push({ hour: h, scheduled: scheduled, required: required, variance: variance, volume: hourStat.total });
+            currentRenderedTableData.push({ 
+                hour: h, 
+                scheduled: scheduled, 
+                abandoned: hourAban, 
+                required: required, 
+                variance: variance, 
+                agentsNeeded: agentsNeeded, 
+                volume: hourStat.total 
+            });
         });
 
         const grandTotal = totalAnswered + totalAbandoned;
@@ -1221,6 +1231,7 @@
         abanChart.data.datasets[3].data = abanCsat;
         abanChart.update();
 
+        // Render Table: Hour, Agents Active, Total Abandoned, Variance
         let tableHTML = '';
         if(!dailyVolData) {
             tableHTML = `<tr><td colspan="4" style="color: var(--navy-deep); font-weight: bold; padding: 25px;">No volume data recorded for ${contextLabel} on ${dateStr}. Paste data to view variance.</td></tr>`;
@@ -1230,9 +1241,25 @@
             document.getElementById('rec-text-3').innerText = "Awaiting data entry to compute cross-team balance.";
         } else {
             currentRenderedTableData.forEach(row => {
-                const varClass = row.variance < 0 ? 'deficit' : 'surplus';
-                const varPrefix = row.variance > 0 ? '+' : '';
-                tableHTML += `<tr><td><strong>${row.hour}</strong></td><td>${row.scheduled}</td><td>${row.required}</td><td class="${varClass}">${varPrefix}${row.variance}</td></tr>`;
+                let varDisplay = '';
+                let varClass = '';
+                if (row.agentsNeeded > 0) {
+                    varClass = 'deficit';
+                    varDisplay = `+${row.agentsNeeded} Needed`;
+                } else if (row.scheduled > row.required) {
+                    varClass = 'surplus';
+                    varDisplay = `0 (+${row.scheduled - row.required} Surplus)`;
+                } else {
+                    varClass = 'surplus';
+                    varDisplay = '0';
+                }
+
+                tableHTML += `<tr>
+                    <td><strong>${row.hour}</strong></td>
+                    <td>${row.scheduled}</td>
+                    <td><strong style="color: ${row.abandoned > 0 ? 'var(--alert-red)' : 'var(--navy-deep)'};">${row.abandoned}</strong></td>
+                    <td class="${varClass}">${varDisplay}</td>
+                </tr>`;
             });
             updateRecommendations(currentRenderedTableData, contextLabel);
         }
@@ -1367,8 +1394,14 @@
         const wb = XLSX.utils.book_new();
         const contextTitle = team === 'ALL' ? 'All Teams' : team;
 
-        const varianceHeaders = ["Hour", "Net Scheduled Agents", "Required for 0 Abandon", "Variance", "Volume"];
-        const varianceData = currentRenderedTableData.map(r => [r.hour, r.scheduled, r.required, r.variance, r.volume]);
+        const varianceHeaders = ["Hour", "Agents Active", "Total Abandoned", "Variance (Agents Needed)", "Call Volume"];
+        const varianceData = currentRenderedTableData.map(r => [
+            r.hour, 
+            r.scheduled, 
+            r.abandoned, 
+            r.agentsNeeded > 0 ? `${r.agentsNeeded} Needed` : (r.scheduled > r.required ? `+${r.scheduled - r.required} Surplus` : `0`),
+            r.volume
+        ]);
         const ws1 = XLSX.utils.aoa_to_sheet([["DAILY AVAILABILITY VS VOLUME REPORT"], [`Context: ${contextTitle} - ${dateStr}`], [], varianceHeaders, ...varianceData]);
         XLSX.utils.book_append_sheet(wb, ws1, `${dateStr} Staffing`);
 

@@ -11,6 +11,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
     <style>
         :root {
+            /* Theme Colors - Light Theme with Pale Egg Yolk Yellow */
             --amber-dominant: #FFBF00;
             --amber-light: #FFF2B2;       
             --amber-hover: #E6AC00;
@@ -20,6 +21,7 @@
             --alert-red: #D32F2F;
             --success-green: #2E7D32;
             
+            /* Dynamic Palette */
             --bg-color: #FFBF00;
             --card-bg: #FFF2B2;          
             --text-color: #0A192F;
@@ -45,12 +47,14 @@
             transition: background-color 0.3s ease;
         }
 
+        /* Container positioned exactly 10mm from floating buttons */
         .container {
             margin-left: calc(68px + 10mm);
             margin-right: calc(190px + 10mm);
             box-sizing: border-box;
         }
 
+        /* Header */
         .header {
             display: flex;
             justify-content: space-between;
@@ -95,6 +99,7 @@
             color: #FFF;
         }
 
+        /* Top Header Selectors */
         .header-selects {
             display: flex;
             gap: 10px;
@@ -158,14 +163,14 @@
         .nav-actions {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 10px;
             flex-wrap: wrap;
         }
 
         .btn {
             background-color: var(--amber-dominant);
             color: var(--navy-deep);
-            padding: 9px 15px;
+            padding: 9px 16px;
             font-size: 13px;
             font-weight: bold;
             border: none;
@@ -183,7 +188,7 @@
             border: 1px solid var(--amber-dominant);
         }
         .btn-secondary:hover {
-            background-color: rgba(255, 191, 0, 0.15);
+            background-color: rgba(255, 191, 0, 0.2);
         }
 
         /* KPI Scorecards */
@@ -216,7 +221,7 @@
             margin-top: 6px;
         }
 
-        /* Dashboard Sections */
+        /* Main Dashboard Sections */
         .section-title {
             font-size: 16px;
             font-weight: bold;
@@ -241,6 +246,7 @@
             align-items: start;
         }
 
+        /* Chart Canvas Containers */
         .chart-box { position: relative; height: 440px; width: 100%; }
         .chart-box-secondary { position: relative; height: 300px; width: 100%; }
 
@@ -253,6 +259,7 @@
         .deficit { color: var(--alert-red); font-weight: bold; }
         .surplus { color: var(--success-green); font-weight: bold; }
 
+        /* Actions in Tables */
         .action-btns {
             display: flex;
             justify-content: center;
@@ -360,13 +367,12 @@
 <body>
 
 <div id="toastContainer"></div>
-<input type="file" id="databaseFileInput" accept=".json" style="display: none;" onchange="handleDatabaseFileUpload(event)">
 
 <div class="container">
     <!-- Header -->
     <div class="header">
         <div>
-            <h1>AVAILABILITY VS CALLS VOLUME DASHBOARD <span id="cloudStatus" class="cloud-badge">Local Mode</span></h1>
+            <h1>AVAILABILITY VS CALLS VOLUME DASHBOARD <span id="cloudStatus" class="cloud-badge">Connecting...</span></h1>
             <div id="currentContext" class="dashboard-subtitle">Displaying: Select data</div>
         </div>
         <div class="nav-actions">
@@ -411,9 +417,7 @@
                 </select>
             </div>
             
-            <button class="btn btn-secondary" onclick="exportDatabaseJSON()" title="Download a JSON backup to share with your team">💾 Backup DB</button>
-            <button class="btn btn-secondary" onclick="document.getElementById('databaseFileInput').click()" title="Load a JSON backup shared by someone else">📂 Load DB</button>
-            <button class="btn btn-secondary" onclick="openModal('cloudModal')" title="Set up Realtime multi-computer sync">☁️ Cloud Sync</button>
+            <button class="btn btn-secondary" onclick="saveWeekToCloud()" title="Save all uploaded week data directly to Firebase">💾 Save Week</button>
             <button class="btn" onclick="checkPasswordAndOpenModal('scheduleModal')">👥 Manage Schedules</button>
             <button class="btn" onclick="openModal('importModal')">📥 Paste Weekly Data</button>
         </div>
@@ -563,32 +567,6 @@
     </div>
 </div>
 
-<!-- Cloud Sync Modal (Firebase) -->
-<div id="cloudModal" class="modal">
-    <div class="modal-content" style="max-width: 650px;">
-        <span class="close-btn" onclick="closeModal('cloudModal')">&times;</span>
-        <h2 class="section-title">☁️ Multi-Computer Real-Time Cloud Sync</h2>
-        <p style="font-size: 13px; line-height: 1.5;">
-            By connecting a free <strong>Firebase Realtime Database</strong>, every person on your team who opens this dashboard will see and upload data in real time across any computer without manually sending files.
-        </p>
-
-        <div class="form-control" style="margin-bottom: 15px;">
-            <label>Firebase Config JSON (from Firebase Console &gt; Project Settings &gt; General &gt; Web App)</label>
-            <textarea id="firebaseConfigInput" rows="6" placeholder='{
-  "apiKey": "AIzaSy...",
-  "authDomain": "your-app.firebaseapp.com",
-  "databaseURL": "https://your-app-default-rtdb.firebaseio.com",
-  "projectId": "your-app"
-}'></textarea>
-        </div>
-
-        <div class="action-row">
-            <button class="btn" style="background-color: transparent; border: 1px solid var(--navy-deep);" onclick="disconnectCloudSync()">Disconnect / Use Local Mode</button>
-            <button class="btn" onclick="saveCloudSyncConfig()">Connect & Sync Live</button>
-        </div>
-    </div>
-</div>
-
 <!-- Schedule Management Modal -->
 <div id="scheduleModal" class="modal">
     <div class="modal-content">
@@ -675,6 +653,20 @@
 </div>
 
 <script>
+    // --- FIREBASE CONFIGURATION (Direct Integration) ---
+    const firebaseConfig = {
+        apiKey: "AIzaSyAmB9PhTd_Dz68rTZQZlRS1mcfAy1SQxgo",
+        authDomain: "volumevsavailability.firebaseapp.com",
+        databaseURL: "https://volumevsavailability-default-rtdb.firebaseio.com",
+        projectId: "volumevsavailability",
+        storageBucket: "volumevsavailability.firebasestorage.app",
+        messagingSenderId: "536106438860",
+        appId: "1:536106438860:web:a7b62c957028813d9f3269",
+        measurementId: "G-YDZ8542ENX"
+    };
+
+    let firebaseDB = null;
+
     const allTeamsList = ['OBS', 'ELD', 'INS', 'LL+', 'TFX'];
     const hours = ['06:00', '07:00', '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'];
     const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -809,7 +801,6 @@
     let editingIndex = null;
     let editingTeam = null;
     let currentRenderedTableData = [];
-    let firebaseDB = null;
 
     // Toast Notifications
     function showToast(message) {
@@ -845,10 +836,6 @@
         if(id === 'scheduleModal') {
             resetEditMode();
             renderScheduleTable();
-        }
-        if(id === 'cloudModal') {
-            const cfg = safeGet('WFM_FIREBASE_CONFIG');
-            if(cfg) document.getElementById('firebaseConfigInput').value = JSON.stringify(cfg, null, 2);
         }
     }
 
@@ -1099,7 +1086,7 @@
             lines.forEach(line => {
                 const lower = line.toLowerCase();
                 if((lower.includes('date') || lower.includes('answered') || lower.includes('abandoned')) && !/\d{2,}/.test(line)) {
-                    return;
+                    return; // Skip non-numeric header
                 }
 
                 let tokens = [];
@@ -1204,7 +1191,7 @@
             // Save locally
             safeSet('WFM_MASTER_VOLUME_STORE', volumeStore);
 
-            // Sync to Firebase Cloud if connected
+            // Sync automatically to Firebase Realtime Database
             if(firebaseDB) {
                 firebaseDB.ref(`volumeStore/${team}`).set(volumeStore[team]);
             }
@@ -1221,12 +1208,30 @@
 
             closeModal('importModal');
             document.getElementById('pastedData').value = '';
-            showToast(`Saved! Loaded ${importedRows} hourly records for ${team}.`);
+            showToast(`Saved to Cloud & Loaded ${importedRows} hourly records for ${team}!`);
 
         } catch (err) {
             console.error(err);
             alert("Error parsing data: " + err.message);
         }
+    }
+
+    // Save Week Directly to Firebase Cloud
+    function saveWeekToCloud() {
+        if (!firebaseDB) {
+            showToast("Connecting to Firebase... please wait a moment.");
+            return;
+        }
+
+        firebaseDB.ref('volumeStore').set(volumeStore)
+            .then(() => firebaseDB.ref('teamRosters').set(teamRosters))
+            .then(() => {
+                showToast("All Weeks & Rosters saved to Firebase Cloud successfully!");
+            })
+            .catch((err) => {
+                console.error("Firebase save error:", err);
+                showToast("Error saving to Firebase: " + err.message);
+            });
     }
 
     // Render Dashboard
@@ -1524,63 +1529,11 @@
         showToast("Excel report exported successfully!");
     }
 
-    // Backup & Load JSON (Share with team without servers)
-    function exportDatabaseJSON() {
-        const payload = {
-            version: "2026.1",
-            exportDate: new Date().toISOString(),
-            teamRosters: teamRosters,
-            volumeStore: volumeStore
-        };
-        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `WFM_Dashboard_Backup_${new Date().toISOString().slice(0, 10)}.json`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        showToast("Database downloaded! You can share this file with other teammates.");
-    }
-
-    function handleDatabaseFileUpload(event) {
-        const file = event.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            try {
-                const data = JSON.parse(e.target.result);
-                if (data && data.volumeStore && data.teamRosters) {
-                    volumeStore = data.volumeStore;
-                    teamRosters = data.teamRosters;
-                    safeSet('WFM_MASTER_VOLUME_STORE', volumeStore);
-                    safeSet('teamRosters', teamRosters);
-                    if(firebaseDB) {
-                        firebaseDB.ref('volumeStore').set(volumeStore);
-                        firebaseDB.ref('teamRosters').set(teamRosters);
-                    }
-                    renderDashboard();
-                    showToast("Database restored successfully from backup!");
-                } else {
-                    alert("Invalid backup file structure.");
-                }
-            } catch(err) {
-                alert("Failed to parse backup file: " + err.message);
-            }
-        };
-        reader.readAsText(file);
-        event.target.value = "";
-    }
-
-    // Firebase Cloud Realtime Sync (Live multi-user across any computer)
-    function initFirebaseCloudSync() {
-        const cfg = safeGet('WFM_FIREBASE_CONFIG');
-        if (!cfg) return;
-
+    // Firebase Real-time Initialization
+    function initFirebase() {
         try {
             if (!firebase.apps.length) {
-                firebase.initializeApp(cfg);
+                firebase.initializeApp(firebaseConfig);
             }
             firebaseDB = firebase.database();
             
@@ -1588,7 +1541,7 @@
             badge.innerText = "☁️ Cloud Synced";
             badge.classList.add('connected');
 
-            // Listen to real-time volume updates from other users
+            // Listen to real-time changes in Volume
             firebaseDB.ref('volumeStore').on('value', (snapshot) => {
                 const val = snapshot.val();
                 if (val) {
@@ -1598,7 +1551,7 @@
                 }
             });
 
-            // Listen to real-time roster updates
+            // Listen to real-time changes in Rosters
             firebaseDB.ref('teamRosters').on('value', (snapshot) => {
                 const val = snapshot.val();
                 if (val) {
@@ -1609,34 +1562,13 @@
             });
         } catch(e) {
             console.error("Firebase connection error:", e);
-            document.getElementById('cloudStatus').innerText = "Cloud Error";
+            document.getElementById('cloudStatus').innerText = "Sync Error";
         }
-    }
-
-    function saveCloudSyncConfig() {
-        const raw = document.getElementById('firebaseConfigInput').value.trim();
-        if(!raw) return alert("Please paste your Firebase configuration JSON.");
-        try {
-            const parsed = JSON.parse(raw);
-            safeSet('WFM_FIREBASE_CONFIG', parsed);
-            closeModal('cloudModal');
-            showToast("Firebase Config saved! Reloading sync...");
-            setTimeout(() => location.reload(), 800);
-        } catch(err) {
-            alert("Invalid JSON format. Please verify your Firebase snippet.");
-        }
-    }
-
-    function disconnectCloudSync() {
-        localStorage.removeItem('WFM_FIREBASE_CONFIG');
-        closeModal('cloudModal');
-        showToast("Switched back to Local Storage mode.");
-        setTimeout(() => location.reload(), 600);
     }
 
     // Startup
     syncFromDate();
-    initFirebaseCloudSync();
+    initFirebase();
 </script>
 </body>
 </html>

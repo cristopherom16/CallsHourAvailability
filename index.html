@@ -334,7 +334,7 @@
             padding: 9px; border: 2px solid var(--navy-deep); border-radius: 4px;
             font-family: inherit; font-size: 13px; background-color: #FFF9D2; color: var(--text-color);
         }
-        .action-row { display: flex; justify-content: flex-end; gap: 10px; margin-top: 15px; }
+        .action-row { display: flex; justify-content: flex-end; gap: 10px; margin-top: 15px; align-items: center; }
     </style>
 </head>
 <body>
@@ -525,12 +525,16 @@
         </div>
 
         <div class="form-control" style="margin-bottom: 15px;">
-            <label for="pastedData">Paste Data from Excel (Date & Hour, Answered, Abandoned CSAT, Abandoned Queue, Abandoned Hold, Abandoned Routing)</label>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                <label for="pastedData" style="margin: 0;">Paste Data from Excel (Date & Hour, Answered, Abandoned CSAT, Abandoned Queue, Abandoned Hold, Abandoned Routing)</label>
+                <button type="button" onclick="loadSamplePaste()" style="background: none; border: none; color: var(--blue-accent); font-size: 11px; font-weight: bold; cursor: pointer; text-decoration: underline;">Fill with Sample Week</button>
+            </div>
             <textarea id="pastedData" rows="8" placeholder="2026-11-09 08:00	45	2	5	1	0"></textarea>
         </div>
 
         <div class="action-row">
-            <button class="btn" onclick="processPastedData()">Save & Render Dashboard</button>
+            <button type="button" class="btn" style="background-color: transparent; border: 1px solid var(--navy-deep);" onclick="closeModal('importModal')">Cancel</button>
+            <button type="button" class="btn" onclick="processPastedData()">Save & Render Dashboard</button>
         </div>
     </div>
 </div>
@@ -708,19 +712,31 @@
         ]
     };
 
-    // Auto-repair storage if corrupted or empty
-    let savedRosters = null;
-    try {
-        savedRosters = JSON.parse(localStorage.getItem('teamRosters'));
-    } catch(e) {}
+    // Safe LocalStorage Handlers
+    function safeGet(key) {
+        try {
+            return JSON.parse(localStorage.getItem(key));
+        } catch(e) {
+            return null;
+        }
+    }
 
+    function safeSet(key, value) {
+        try {
+            localStorage.setItem(key, JSON.stringify(value));
+        } catch(e) {
+            console.warn("Storage restricted or unavailable, session continuing in-memory.");
+        }
+    }
+
+    let savedRosters = safeGet('teamRosters');
     let teamRosters = (savedRosters && Object.keys(savedRosters).length > 0 && savedRosters.OBS && savedRosters.OBS.length > 0)
         ? savedRosters 
         : JSON.parse(JSON.stringify(initialRosters));
     
-    localStorage.setItem('teamRosters', JSON.stringify(teamRosters));
+    safeSet('teamRosters', teamRosters);
 
-    let volumeDatabase = JSON.parse(localStorage.getItem('volumeDatabase')) || {};
+    let volumeDatabase = safeGet('volumeDatabase') || {};
 
     const todayStr = "2026-11-09";
     document.getElementById('viewDateSelect').value = todayStr;
@@ -733,32 +749,37 @@
     // Toast Notification
     function showToast(message) {
         const container = document.getElementById('toastContainer');
+        if (!container) {
+            alert(message);
+            return;
+        }
         const toast = document.createElement('div');
         toast.className = 'toast';
         toast.innerText = message;
         container.appendChild(toast);
-        setTimeout(() => toast.classList.add('show'), 100);
+        setTimeout(() => toast.classList.add('show'), 50);
         setTimeout(() => {
             toast.classList.remove('show');
             setTimeout(() => toast.remove(), 400);
-        }, 3200);
+        }, 3500);
     }
 
     // Theme Logic
     function toggleTheme() {
         document.body.classList.toggle('dark-mode');
         const isDark = document.body.classList.contains('dark-mode');
-        localStorage.setItem('theme', isDark ? 'dark' : 'light');
+        safeSet('theme', isDark ? 'dark' : 'light');
         document.getElementById('themeToggleBtn').innerText = isDark ? '☀️' : '🌓';
     }
-    if(localStorage.getItem('theme') === 'dark') {
+    if(safeGet('theme') === 'dark') {
         document.body.classList.add('dark-mode');
         document.getElementById('themeToggleBtn').innerText = '☀️';
     }
 
     // Modal Handlers & Security
     function openModal(id) {
-        document.getElementById(id).style.display = "block";
+        const el = document.getElementById(id);
+        if (el) el.style.display = "block";
         if(id === 'scheduleModal') {
             resetEditMode();
             renderScheduleTable();
@@ -766,7 +787,8 @@
     }
 
     function closeModal(id) {
-        document.getElementById(id).style.display = "none";
+        const el = document.getElementById(id);
+        if (el) el.style.display = "none";
     }
 
     window.onclick = function(event) {
@@ -785,7 +807,7 @@
     function resetAllRostersToDefault() {
         if(confirm("Are you sure you want to restore the default schedules for all teams? Any manual changes will be reset.")) {
             teamRosters = JSON.parse(JSON.stringify(initialRosters));
-            localStorage.setItem('teamRosters', JSON.stringify(teamRosters));
+            safeSet('teamRosters', teamRosters);
             resetEditMode();
             renderScheduleTable();
             renderDashboard();
@@ -915,6 +937,7 @@
             const currentHourMins = parseTimeToMins(hStr);
             let activeCount = 0;
             roster.forEach(agent => {
+                if(!agent) return;
                 const cin = parseTimeToMins(agent.in);
                 const cout = parseTimeToMins(agent.out);
                 if(cin !== null && cout !== null && currentHourMins >= cin && currentHourMins < cout) {
@@ -928,143 +951,184 @@
         });
     }
 
-    // Parsing Helpers
-    function extractDateOnly(str) {
-        if (!str) return null;
-        let iso = str.match(/(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/);
-        if (iso) return `${iso[1]}-${String(iso[2]).padStart(2, '0')}-${String(iso[3]).padStart(2, '0')}`;
-        
-        let us = str.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
-        if (us) return `${us[3]}-${String(us[1]).padStart(2, '0')}-${String(us[2]).padStart(2, '0')}`;
-        return null;
+    // Helper for Demo Data
+    function loadSamplePaste() {
+        const sample = 
+`Date & Hour\tAnswered\tAbandoned in CSAT\tAbandoned in queue\tAbandoned on hold\tAbandoned in routing
+2026-11-09 06:00\t15\t0\t1\t0\t0
+2026-11-09 07:00\t45\t1\t3\t1\t0
+2026-11-09 08:00\t85\t2\t6\t2\t1
+2026-11-09 09:00\t110\t4\t12\t3\t1
+2026-11-09 10:00\t125\t5\t15\t4\t2
+2026-11-09 11:00\t115\t3\t9\t2\t0
+2026-11-09 12:00\t95\t2\t7\t1\t1
+2026-11-09 13:00\t105\t4\t11\t3\t2
+2026-11-09 14:00\t120\t5\t14\t3\t1
+2026-11-09 15:00\t90\t2\t6\t1\t0
+2026-11-09 16:00\t70\t1\t4\t1\t0
+2026-11-09 17:00\t50\t0\t2\t0\t0
+2026-11-09 18:00\t30\t0\t1\t0\t0
+2026-11-09 19:00\t15\t0\t0\t0\t0`;
+        document.getElementById('pastedData').value = sample;
     }
 
-    function extractHourSlot(str) {
-        if (!str) return null;
-        let match = str.match(/(\d{1,2}):(\d{2})(?::\d{2})?\s*(AM|PM)?/i);
-        if (!match) return null;
-        let h = parseInt(match[1], 10);
-        let ampm = match[3] ? match[3].toUpperCase() : null;
-        if (ampm === 'PM' && h < 12) h += 12;
-        if (ampm === 'AM' && h === 12) h = 0;
-        let slot = String(h).padStart(2, '0') + ':00';
-        return hours.includes(slot) ? slot : null;
-    }
-
-    function isTimeToken(str) {
-        return /^\d{1,2}:\d{2}(?::\d{2})?\s*(AM|PM)?$/i.test(str.trim());
-    }
-
-    // Robust Process Pasted Data
+    // Universal Robust Process Pasted Data
     function processPastedData() {
-        const month = document.getElementById('importMonthSelect').value;
-        const week = document.getElementById('importWeekSelect').value;
-        const team = document.getElementById('importTeamSelect').value;
-        const rawText = document.getElementById('pastedData').value.trim();
+        try {
+            const month = document.getElementById('importMonthSelect').value;
+            const week = document.getElementById('importWeekSelect').value;
+            const team = document.getElementById('importTeamSelect').value;
+            const rawText = document.getElementById('pastedData').value.trim();
 
-        if(!rawText) return showToast("Please paste table data before proceeding.");
-
-        const lines = rawText.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
-        let importedDatesMap = {};
-        let parsedRows = 0;
-        let earliestDate = null;
-        const fallbackDate = document.getElementById('viewDateSelect').value || "2026-11-09";
-
-        lines.forEach(line => {
-            const lower = line.toLowerCase();
-            if(lower.includes('date') || lower.includes('answered') || lower.includes('abandoned')) return;
-
-            let cols = [];
-            if(line.includes('\t')) cols = line.split('\t');
-            else if(line.includes(',')) cols = line.split(',');
-            else if(line.includes(';')) cols = line.split(';');
-            else if(line.includes('|')) cols = line.split('|');
-            else cols = line.split(/\s{2,}/);
-
-            cols = cols.map(c => c.trim()).filter(c => c !== '');
-            if(cols.length < 2) {
-                let spaceCols = line.split(/\s+/);
-                if(spaceCols.length >= 2) cols = spaceCols;
-                else return;
+            if(!rawText) {
+                showToast("Please paste table data before clicking save.");
+                return;
             }
 
-            let dateFound = null;
-            let hourFound = null;
-            let numStart = 1;
+            const monthNames = ["january","february","march","april","may","june","july","august","september","october","november","december"];
+            const targetMonthNum = monthNames.indexOf(month.toLowerCase()) + 1 || 11;
 
-            if(cols.length >= 3 && isTimeToken(cols[1])) {
-                dateFound = extractDateOnly(cols[0]);
-                hourFound = extractHourSlot(cols[1]);
-                numStart = 2;
-            } else {
-                dateFound = extractDateOnly(cols[0]);
-                hourFound = extractHourSlot(cols[0]);
-                numStart = 1;
+            const lines = rawText.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+            let importedDatesMap = {};
+            let parsedRows = 0;
+            let earliestDate = null;
+            const fallbackDate = document.getElementById('viewDateSelect').value || "2026-11-09";
+
+            lines.forEach(line => {
+                const lower = line.toLowerCase();
+                
+                // Skip header lines that have no numbers
+                if((lower.includes('date') || lower.includes('answered') || lower.includes('abandoned')) && !/\d{2,}/.test(line)) {
+                    return;
+                }
+
+                // Identify tokens by tabs, commas, semicolons, pipes, or spaces
+                let tokens = [];
+                if(line.includes('\t')) tokens = line.split('\t');
+                else if(line.includes(',')) tokens = line.split(',');
+                else if(line.includes(';')) tokens = line.split(';');
+                else if(line.includes('|')) tokens = line.split('|');
+                else tokens = line.split(/\s{2,}|\t/);
+
+                if(tokens.length < 2) tokens = line.split(/\s+/);
+                tokens = tokens.map(t => t.trim()).filter(t => t !== '');
+                if(tokens.length === 0) return;
+
+                // 1. Identify Date
+                let foundDate = null;
+                const mIso = line.match(/\b(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})\b/);
+                if(mIso) {
+                    foundDate = `${mIso[1]}-${String(mIso[2]).padStart(2, '0')}-${String(mIso[3]).padStart(2, '0')}`;
+                } else {
+                    const mSlash = line.match(/\b(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})\b/);
+                    if(mSlash) {
+                        let p1 = parseInt(mSlash[1]), p2 = parseInt(mSlash[2]), p3 = parseInt(mSlash[3]);
+                        if(p3 < 100) p3 += 2000;
+                        let m = p1, d = p2;
+                        if(p1 === targetMonthNum) { m = p1; d = p2; }
+                        else if(p2 === targetMonthNum) { m = p2; d = p1; }
+                        else if(p1 > 12) { d = p1; m = p2; }
+                        foundDate = `${p3}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                    }
+                }
+                if(!foundDate) foundDate = fallbackDate;
+
+                // 2. Identify Hour Slot
+                let foundHour = null;
+                const mTime = line.match(/\b(\d{1,2}):(\d{2})(?::\d{2})?\s*(AM|PM)?\b/i);
+                if(mTime) {
+                    let h = parseInt(mTime[1], 10);
+                    const ampm = mTime[3] ? mTime[3].toUpperCase() : null;
+                    if(ampm === 'PM' && h < 12) h += 12;
+                    if(ampm === 'AM' && h === 12) h = 0;
+                    const slot = `${String(h).padStart(2, '0')}:00`;
+                    if(hours.includes(slot)) foundHour = slot;
+                } else {
+                    // Check for standalone hour format like "08 AM" or single digit
+                    const mAh = line.match(/\b(\d{1,2})\s*(AM|PM)\b/i);
+                    if(mAh) {
+                        let h = parseInt(mAh[1], 10);
+                        if(mAh[2].toUpperCase() === 'PM' && h < 12) h += 12;
+                        if(mAh[2].toUpperCase() === 'AM' && h === 12) h = 0;
+                        const slot = `${String(h).padStart(2, '0')}:00`;
+                        if(hours.includes(slot)) foundHour = slot;
+                    } else if(tokens.length >= 2 && /^\d{1,2}$/.test(tokens[0])) {
+                        const h = parseInt(tokens[0], 10);
+                        const slot = `${String(h).padStart(2, '0')}:00`;
+                        if(hours.includes(slot)) foundHour = slot;
+                    }
+                }
+
+                if(!foundHour) return;
+
+                // 3. Extract Numerical metrics
+                let nums = [];
+                tokens.forEach(tok => {
+                    // Ignore date or timestamp tokens
+                    if(/[\/\-:]/.test(tok) && !/^\-?\d+$/.test(tok)) return;
+                    const clean = tok.replace(/[^0-9\-]/g, '');
+                    if(clean !== '' && (/^\-?\d+$/).test(clean)) {
+                        nums.push(parseInt(clean, 10));
+                    }
+                });
+
+                if(nums.length === 0) return;
+
+                const ans = nums[0] || 0;
+                const csat = nums[1] || 0;
+                const queue = nums[2] || 0;
+                const hold = nums[3] || 0;
+                const routing = nums[4] || 0;
+
+                if(!importedDatesMap[foundDate]) {
+                    importedDatesMap[foundDate] = {};
+                    hours.forEach(h => importedDatesMap[foundDate][h] = { answered: 0, csat: 0, queue: 0, hold: 0, routing: 0, total: 0 });
+                }
+
+                if(!earliestDate || foundDate < earliestDate) earliestDate = foundDate;
+
+                if(importedDatesMap[foundDate][foundHour]) {
+                    importedDatesMap[foundDate][foundHour].answered += ans;
+                    importedDatesMap[foundDate][foundHour].csat += csat;
+                    importedDatesMap[foundDate][foundHour].queue += queue;
+                    importedDatesMap[foundDate][foundHour].hold += hold;
+                    importedDatesMap[foundDate][foundHour].routing += routing;
+                    importedDatesMap[foundDate][foundHour].total += (ans + csat + queue + hold + routing);
+                    parsedRows++;
+                }
+            });
+
+            if(parsedRows === 0) {
+                alert("Could not recognize hourly call records in the pasted text.\n\nPlease ensure your data includes hours (e.g. 08:00) and numeric volumes.");
+                return;
             }
 
-            if(!hourFound && isTimeToken(cols[0])) {
-                hourFound = extractHourSlot(cols[0]);
-                numStart = 1;
+            const key = `${month}_${week}_${team}`;
+            volumeDatabase[key] = { ...(volumeDatabase[key] || {}), ...importedDatesMap };
+            safeSet('volumeDatabase', volumeDatabase);
+
+            // Auto-align view
+            document.getElementById('viewMonthSelect').value = month;
+            document.getElementById('viewWeekSelect').value = week;
+            document.getElementById('viewTeamSelect').value = team;
+            if(earliestDate) {
+                document.getElementById('viewDateSelect').value = earliestDate;
+                currentActiveView.dateStr = earliestDate;
             }
 
-            if(!dateFound) dateFound = fallbackDate;
-            if(!hourFound) return;
+            currentActiveView.month = month;
+            currentActiveView.week = week;
+            currentActiveView.team = team;
 
-            let metrics = [];
-            for(let i = numStart; i < cols.length; i++) {
-                let cleanVal = cols[i].replace(/[^0-9\-]/g, '');
-                if(cleanVal !== '') metrics.push(parseInt(cleanVal, 10) || 0);
-            }
+            closeModal('importModal');
+            document.getElementById('pastedData').value = '';
+            showToast(`Success! Loaded ${parsedRows} intervals for ${team}.`);
+            renderDashboard();
 
-            let ans = metrics[0] || 0;
-            let csat = metrics[1] || 0;
-            let queue = metrics[2] || 0;
-            let hold = metrics[3] || 0;
-            let routing = metrics[4] || 0;
-
-            if(!importedDatesMap[dateFound]) {
-                importedDatesMap[dateFound] = {};
-                hours.forEach(h => importedDatesMap[dateFound][h] = { answered: 0, csat: 0, queue: 0, hold: 0, routing: 0, total: 0 });
-            }
-
-            if(!earliestDate || dateFound < earliestDate) earliestDate = dateFound;
-
-            if(importedDatesMap[dateFound][hourFound]) {
-                importedDatesMap[dateFound][hourFound].answered += ans;
-                importedDatesMap[dateFound][hourFound].csat += csat;
-                importedDatesMap[dateFound][hourFound].queue += queue;
-                importedDatesMap[dateFound][hourFound].hold += hold;
-                importedDatesMap[dateFound][hourFound].routing += routing;
-                importedDatesMap[dateFound][hourFound].total += (ans + csat + queue + hold + routing);
-                parsedRows++;
-            }
-        });
-
-        if(parsedRows === 0) {
-            return showToast("Could not parse records. Please check the pasted table format.");
+        } catch (err) {
+            console.error(err);
+            alert("An error occurred while parsing data: " + err.message);
         }
-
-        const key = `${month}_${week}_${team}`;
-        volumeDatabase[key] = { ...(volumeDatabase[key] || {}), ...importedDatesMap };
-        localStorage.setItem('volumeDatabase', JSON.stringify(volumeDatabase));
-
-        // Auto-synchronize View selectors
-        document.getElementById('viewMonthSelect').value = month;
-        document.getElementById('viewWeekSelect').value = week;
-        document.getElementById('viewTeamSelect').value = team;
-        if(earliestDate) {
-            document.getElementById('viewDateSelect').value = earliestDate;
-            currentActiveView.dateStr = earliestDate;
-        }
-
-        currentActiveView.month = month;
-        currentActiveView.week = week;
-        currentActiveView.team = team;
-
-        closeModal('importModal');
-        document.getElementById('pastedData').value = '';
-        showToast(`Imported ${parsedRows} hourly records for ${team}!`);
-        renderDashboard();
     }
 
     // Render Dashboard
@@ -1072,11 +1136,13 @@
         const { month, week, dateStr, team } = currentActiveView;
         const contextLabel = team === 'ALL' ? 'All Teams' : team;
         
-        let dayName = "Unknown Day";
+        let dayName = "Selected Day";
         if(dateStr) {
             let parts = dateStr.split('-');
             let dObj = new Date(parts[0], parts[1] - 1, parts[2]);
-            dayName = dObj.toLocaleDateString('en-US', {weekday: 'long'});
+            if(!isNaN(dObj.getTime())) {
+                dayName = dObj.toLocaleDateString('en-US', {weekday: 'long'});
+            }
         }
         
         document.getElementById('currentContext').innerText = `Viewing: ${contextLabel} | ${dateStr} (${dayName})`;
@@ -1279,7 +1345,7 @@
             showToast(`New agent ${name} saved successfully!`);
         }
 
-        persistRosters();
+        safeSet('teamRosters', teamRosters);
         resetEditMode();
         renderDashboard();
     }
@@ -1287,16 +1353,12 @@
     function deleteAgent(team, index) {
         if(confirm("Are you sure you want to delete this agent?")) {
             teamRosters[team].splice(index, 1);
-            persistRosters();
+            safeSet('teamRosters', teamRosters);
             if(editingIndex === index) resetEditMode();
             renderScheduleTable();
             renderDashboard();
             showToast("Agent removed from roster.");
         }
-    }
-
-    function persistRosters() {
-        localStorage.setItem('teamRosters', JSON.stringify(teamRosters));
     }
 
     // Export to Excel

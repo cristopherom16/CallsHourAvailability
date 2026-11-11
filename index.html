@@ -60,31 +60,25 @@
             display: flex;
             flex-direction: column;
             align-items: center;
+            justify-content: center;
             text-align: center;
             background-color: var(--navy-deep);
             color: var(--amber-dominant);
-            padding: 24px 30px;
+            padding: 30px 30px;
             border-radius: 8px;
             margin-bottom: 20px;
             box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-            gap: 15px;
+            gap: 20px;
         }
         
         .header h1 {
             margin: 0;
-            font-size: 28px;
-            letter-spacing: 1.5px;
+            font-size: 38px; /* Increased Size */
+            letter-spacing: 2px;
             text-transform: uppercase;
             text-align: center;
-            font-weight: 800;
-        }
-
-        .dashboard-subtitle {
-            font-size: 14px;
-            color: var(--amber-light);
-            margin-top: 4px;
-            font-weight: 600;
-            text-align: center;
+            font-weight: 900;
+            width: 100%;
         }
 
         /* Top Header Selectors & Controls (Amber Background & Deep Navy Text/Icons) */
@@ -94,17 +88,17 @@
             align-items: center;
             justify-content: center;
             flex-wrap: wrap;
-            margin-top: 4px;
+            width: 100%;
         }
 
         .header-select {
-            background-color: var(--amber-dominant);
-            color: var(--navy-deep);
+            background-color: var(--amber-dominant) !important;
+            color: var(--navy-deep) !important;
             border: 2px solid var(--amber-dominant);
             padding: 8px 14px;
             border-radius: 4px;
             font-weight: bold;
-            font-size: 13px;
+            font-size: 14px;
             cursor: pointer;
             outline: none;
             appearance: none;
@@ -117,13 +111,14 @@
         }
 
         .header-select:hover {
-            background-color: var(--amber-hover);
+            background-color: var(--amber-hover) !important;
             border-color: var(--amber-hover);
         }
 
         .header-select option {
-            background-color: var(--navy-deep);
-            color: var(--amber-dominant);
+            background-color: var(--amber-dominant) !important;
+            color: var(--navy-deep) !important;
+            font-weight: bold;
         }
 
         .date-nav {
@@ -144,8 +139,8 @@
         }
 
         .btn-arrow {
-            background-color: var(--amber-dominant);
-            color: var(--navy-deep);
+            background-color: var(--amber-dominant) !important;
+            color: var(--navy-deep) !important;
             border: 2px solid var(--amber-dominant);
             border-radius: 4px;
             padding: 7px 12px;
@@ -155,15 +150,15 @@
             transition: all 0.2s ease;
         }
         .btn-arrow:hover { 
-            background-color: var(--amber-hover); 
+            background-color: var(--amber-hover) !important; 
             border-color: var(--amber-hover);
         }
 
         .btn-header-amber {
-            background-color: var(--amber-dominant);
-            color: var(--navy-deep);
+            background-color: var(--amber-dominant) !important;
+            color: var(--navy-deep) !important;
             padding: 8px 16px;
-            font-size: 13px;
+            font-size: 14px;
             font-weight: bold;
             border: 2px solid var(--amber-dominant);
             border-radius: 4px;
@@ -174,7 +169,7 @@
             transition: background 0.2s, transform 0.1s;
         }
         .btn-header-amber:hover { 
-            background-color: var(--amber-hover); 
+            background-color: var(--amber-hover) !important; 
             border-color: var(--amber-hover);
             transform: translateY(-1px);
         }
@@ -318,7 +313,7 @@
         }
         .btn-theme:hover { background-color: #112240; transform: scale(1.05); }
 
-        /* Floating Stacked Action Buttons (Blue Background & Amber Gridlines) */
+        /* Floating Stacked Action Buttons */
         .floating-actions-container {
             position: fixed;
             bottom: 20px;
@@ -409,10 +404,7 @@
 <div class="container">
     <!-- Header -->
     <div class="header">
-        <div>
-            <h1>AVAILABILITY VS CALLS VOLUME DASHBOARD</h1>
-            <div id="currentContext" class="dashboard-subtitle">Displaying: Select data</div>
-        </div>
+        <h1>AVAILABILITY VS CALLS VOLUME DASHBOARD</h1>
         
         <!-- View Navigators with Dynamic Date Picker and Save Week -->
         <div class="header-selects">
@@ -1512,19 +1504,7 @@
     function renderDashboard() {
         const team = document.getElementById('viewTeamSelect').value;
         const dateStr = document.getElementById('viewDateSelect').value;
-        const contextLabel = team === 'ALL' ? 'All Teams' : team;
         
-        let dayName = "Selected Day";
-        if(dateStr) {
-            let [y, m, d] = dateStr.split('-').map(Number);
-            let dObj = new Date(y, m - 1, d);
-            if(!isNaN(dObj.getTime())) {
-                dayName = dObj.toLocaleDateString('en-US', {weekday: 'long'});
-            }
-        }
-        
-        document.getElementById('currentContext').innerText = `Viewing: ${contextLabel} | ${dateStr} (${dayName})`;
-
         let dailyVolData = null;
 
         if(team === 'ALL') {
@@ -1612,7 +1592,7 @@
         // Render Table: Hour | Agents Active | Total Abandoned | Variance
         let tableHTML = '';
         if(!dailyVolData) {
-            tableHTML = `<tr><td colspan="4" style="color: var(--navy-deep); font-weight: bold; padding: 25px;">No volume data recorded for ${contextLabel} on ${dateStr}. Paste data to view variance.</td></tr>`;
+            tableHTML = `<tr><td colspan="4" style="color: var(--navy-deep); font-weight: bold; padding: 25px;">No volume data recorded for this context on ${dateStr}. Paste data to view variance.</td></tr>`;
             document.getElementById('rec-1').classList.remove('active'); 
             document.getElementById('rec-2').classList.remove('active'); 
             document.getElementById('rec-3').classList.remove('active');
@@ -1642,7 +1622,7 @@
                     <td class="${varClass}">${varDisplay}</td>
                 </tr>`;
             });
-            updateRecommendations(currentRenderedTableData, contextLabel);
+            updateRecommendations(currentRenderedTableData, (team === 'ALL' ? 'All Teams' : team));
         }
         document.getElementById('staffingTableBody').innerHTML = tableHTML;
 

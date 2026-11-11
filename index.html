@@ -11,7 +11,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
     <style>
         :root {
-            /* Theme Colors - Light Theme with Pale Egg Yolk Yellow */
+            /* Theme Colors - Pale Egg Yolk Yellow and Deep Navy */
             --amber-dominant: #FFBF00;
             --amber-light: #FFF2B2;       
             --amber-hover: #E6AC00;
@@ -29,12 +29,13 @@
             --table-row-alt: rgba(255, 191, 0, 0.2);
         }
 
+        /* Dark Theme: Only the outer background switches to Deep Navy; cards, tables, and charts retain their Egg Yolk Yellow */
         body.dark-mode {
-            --bg-color: #07111E;
-            --card-bg: #112240;          
-            --text-color: #E2E8F0;
-            --modal-bg: #112240;
-            --table-row-alt: rgba(255, 191, 0, 0.08);
+            --bg-color: #0A192F;
+            --card-bg: #FFF2B2;          
+            --text-color: #0A192F;
+            --modal-bg: #FFF2B2;
+            --table-row-alt: rgba(255, 191, 0, 0.25);
         }
 
         body {
@@ -44,7 +45,7 @@
             margin: 0;
             padding-top: 20px;
             padding-bottom: 90px;
-            transition: background-color 0.3s ease, color 0.3s ease;
+            transition: background-color 0.3s ease;
         }
 
         /* Container positioned exactly 10mm from floating controls */
@@ -209,7 +210,6 @@
             padding: 18px 20px;
             border-radius: 8px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.15);
-            transition: background-color 0.3s ease;
         }
 
         .kpi-title {
@@ -242,7 +242,6 @@
             border-radius: 8px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.15);
             margin-bottom: 20px;
-            transition: background-color 0.3s ease;
         }
 
         .dashboard-grid {
@@ -288,7 +287,7 @@
             align-items: flex-start;
             gap: 10px;
             opacity: 0.6;
-            transition: opacity 0.3s, background-color 0.3s ease;
+            transition: opacity 0.3s;
         }
         .rec-card.active { opacity: 1; }
         .rec-icon { font-size: 22px; }
@@ -315,7 +314,7 @@
             border: 2px solid var(--amber-dominant);
             cursor: pointer;
             padding: 0;
-            transition: transform 0.2s;
+            transition: transform 0.2s, background-color 0.2s;
         }
         .btn-theme:hover { background-color: #112240; transform: scale(1.05); }
 
@@ -401,60 +400,6 @@
             font-family: inherit; font-size: 13px; background-color: #FFF9D2; color: var(--text-color);
         }
         .action-row { display: flex; justify-content: flex-end; gap: 10px; margin-top: 15px; align-items: center; }
-
-        /* --- DARK MODE SPECIALIZED OVERRIDES --- */
-        body.dark-mode .section-title {
-            color: var(--amber-dominant);
-            border-bottom-color: var(--amber-dominant);
-        }
-
-        body.dark-mode .kpi-card {
-            border-left-color: var(--amber-dominant);
-        }
-
-        body.dark-mode .kpi-title {
-            color: var(--amber-light);
-        }
-
-        body.dark-mode table th {
-            background-color: #07111E;
-            color: var(--amber-dominant);
-            border-color: rgba(255, 191, 0, 0.35);
-        }
-
-        body.dark-mode table td {
-            color: var(--text-color);
-            border-color: rgba(255, 191, 0, 0.2);
-        }
-
-        body.dark-mode .rec-card {
-            background-color: #172A45;
-            color: #E2E8F0;
-            border-color: var(--amber-dominant);
-        }
-
-        body.dark-mode label {
-            color: var(--amber-dominant);
-        }
-
-        body.dark-mode select:not(.header-select),
-        body.dark-mode textarea,
-        body.dark-mode input[type="text"],
-        body.dark-mode input[type="time"],
-        body.dark-mode input[type="date"]:not(.header-select) {
-            background-color: #0A192F;
-            color: #FFF;
-            border-color: var(--amber-dominant);
-        }
-
-        body.dark-mode .modal-content {
-            border-color: var(--amber-dominant);
-            box-shadow: 0 8px 30px rgba(0,0,0,0.85);
-        }
-
-        body.dark-mode #perfTeamSummary {
-            color: var(--amber-dominant) !important;
-        }
     </style>
 </head>
 <body>
@@ -716,7 +661,7 @@
                     <option value="OBS">Onboarding Support (OBS)</option>
                     <option value="ELD">ELD Support</option>
                     <option value="INS">INS Support</option>
-                    <option value="LL+">LL+ Support</option>
+                    <option value="LL+">LL+</option>
                     <option value="TFX">TFX Support</option>
                 </select>
             </div>
@@ -978,42 +923,13 @@
         }, 3500);
     }
 
-    // Full Dynamic Theme Toggle (Updates DOM, Charts, and LocalStorage)
-    function updateChartTheme(isDark) {
-        const textColor = isDark ? '#E2E8F0' : '#0A192F';
-        const gridColor = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
-
-        if (window.mainChart && mainChart.options) {
-            mainChart.options.scales.y.ticks.color = textColor;
-            mainChart.options.scales.y.title.color = textColor;
-            mainChart.options.scales.y.grid.color = gridColor;
-
-            mainChart.options.scales.y1.ticks.color = textColor;
-            mainChart.options.scales.y1.title.color = textColor;
-
-            mainChart.options.scales.x.ticks.color = textColor;
-            mainChart.options.scales.x.grid.color = gridColor;
-            mainChart.update();
-        }
-
-        if (window.abanChart && abanChart.options) {
-            abanChart.options.scales.y.ticks.color = textColor;
-            abanChart.options.scales.y.title.color = textColor;
-            abanChart.options.scales.y.grid.color = gridColor;
-
-            abanChart.options.scales.x.ticks.color = textColor;
-            abanChart.options.scales.x.grid.color = gridColor;
-            abanChart.update();
-        }
-    }
-
+    // Theme Toggle Handler
     function toggleTheme() {
         document.body.classList.toggle('dark-mode');
         const isDark = document.body.classList.contains('dark-mode');
         safeSet('theme', isDark ? 'dark' : 'light');
         const btn = document.getElementById('themeToggleBtn');
         if (btn) btn.innerText = isDark ? '☀️' : '🌓';
-        updateChartTheme(isDark);
     }
 
     function applyInitialTheme() {
@@ -1130,7 +1046,7 @@
         });
     }
 
-    // Chart Initializations
+    // Chart Initializations (Consistent navy/amber colors maintained on pale yellow card background)
     const mainCtx = document.getElementById('mainChart').getContext('2d');
     const mainChart = new Chart(mainCtx, {
         type: 'bar',
@@ -1430,7 +1346,7 @@
             });
     }
 
-    // Deterministic pseudo-hash for reproducible, consistent daily agent metrics
+    // Deterministic pseudo-hash for reproducible daily metrics
     function pseudoHash(str) {
         let hash = 0;
         for (let i = 0; i < str.length; i++) {

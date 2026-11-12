@@ -476,6 +476,7 @@
                 <option value="INS">INS</option>
                 <option value="LL+">LL+</option>
                 <option value="TFX">TFX</option>
+                <option value="Weekend Support">Weekend Support</option>
             </select>
 
             <button class="btn-header-amber" onclick="saveDayToCloud()" title="Save uploaded day data directly to Firebase">💾 Save Day</button>
@@ -624,6 +625,7 @@
                     <option value="INS">INS Support</option>
                     <option value="LL+">LL+</option>
                     <option value="TFX">TFX Support</option>
+                    <option value="Weekend Support">Weekend Support</option>
                 </select>
             </div>
             <div class="form-control" style="min-width: 280px;">
@@ -696,6 +698,7 @@
                     <option value="INS">INS Support</option>
                     <option value="LL+">LL+</option>
                     <option value="TFX">TFX Support</option>
+                    <option value="Weekend Support">Weekend Support</option>
                 </select>
             </div>
         </div>
@@ -778,7 +781,7 @@
 
     let firebaseDB = null;
 
-    const allTeamsList = ['OBS', 'ELD', 'INS', 'LL+', 'TFX'];
+    const allTeamsList = ['OBS', 'ELD', 'INS', 'LL+', 'TFX', 'Weekend Support'];
     const hours = ['06:00', '07:00', '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'];
     const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
@@ -866,7 +869,8 @@
             {name: "Fernando Ramirez", task: "TFX", branch: "MX", in: "06:00", b1: "09:30-09:45", lunch: "11:30-12:30", b2: "13:30-13:45", out: "15:00"},
             {name: "Mariana Velasquez", task: "TFX", branch: "MX", in: "08:00", b1: "10:00-10:15", lunch: "13:00-14:00", b2: "15:30-15:45", out: "17:00"},
             {name: "Maria Saucedo", task: "TFX", branch: "MX", in: "08:00", b1: "12:30-12:45", lunch: "14:00-15:00", b2: "15:45-16:00", out: "17:00"}
-        ]
+        ],
+        "Weekend Support": []
     };
 
     // Safe Local Storage Handlers
@@ -892,13 +896,14 @@
     let teamRosters = (savedRosters && savedRosters.OBS && savedRosters.OBS.length > 0)
         ? savedRosters 
         : JSON.parse(JSON.stringify(initialRosters));
+    allTeamsList.forEach(t => { if(!teamRosters[t]) teamRosters[t] = []; });
     safeSet('teamRosters', teamRosters);
 
     // Resilient Volume Storage Loader
     function loadStoredVolume() {
         let store = safeGet('WFM_MASTER_VOLUME_STORE') || safeGet('volumeStore') || safeGet('WFM_VOLUME_BACKUP');
         if(!store || typeof store !== 'object') {
-            store = { OBS: {}, ELD: {}, INS: {}, "LL+": {}, TFX: {} };
+            store = { OBS: {}, ELD: {}, INS: {}, "LL+": {}, TFX: {}, "Weekend Support": {} };
         }
         allTeamsList.forEach(t => { if(!store[t]) store[t] = {}; });
         return store;
@@ -932,7 +937,7 @@
     }
 
     const savedState = safeGet('WFM_LAST_STATE');
-    const initialTeam = (savedState && savedState.team) ? savedState.team : "OBS";
+    const initialTeam = (savedState && savedState.team && allTeamsList.includes(savedState.team) || (savedState && savedState.team === 'ALL')) ? savedState.team : "OBS";
     document.getElementById('viewTeamSelect').value = initialTeam;
     document.getElementById('viewDateSelect').value = findBestInitialDate(initialTeam);
 
@@ -1960,6 +1965,7 @@
                 const val = snapshot.val();
                 if (val && typeof val === 'object' && Object.keys(val).length > 0) {
                     teamRosters = val;
+                    allTeamsList.forEach(t => { if(!teamRosters[t]) teamRosters[t] = []; });
                     safeSet('teamRosters', teamRosters);
                     renderDashboard();
                 }

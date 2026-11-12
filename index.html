@@ -73,7 +73,7 @@
         
         .header h1 {
             margin: 0;
-            font-size: 38px; /* Increased Size */
+            font-size: 38px;
             letter-spacing: 2px;
             text-transform: uppercase;
             text-align: center;
@@ -395,6 +395,38 @@
             font-family: inherit; font-size: 13px; background-color: #FFF9D2; color: var(--text-color);
         }
         .action-row { display: flex; justify-content: flex-end; gap: 10px; margin-top: 15px; align-items: center; }
+
+        /* Modal Dynamic Controls */
+        .modal-control-bar {
+            display: flex;
+            gap: 15px;
+            align-items: flex-end;
+            background-color: rgba(10, 25, 47, 0.08);
+            padding: 14px;
+            border-radius: 6px;
+            border: 2px solid var(--navy-deep);
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+        .modal-date-nav {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .modal-date-nav .btn-modal-arrow {
+            background-color: var(--navy-deep);
+            color: var(--amber-dominant);
+            border: 2px solid var(--navy-deep);
+            border-radius: 4px;
+            padding: 8px 12px;
+            font-weight: bold;
+            font-size: 13px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .modal-date-nav .btn-modal-arrow:hover {
+            background-color: var(--navy-card);
+        }
     </style>
 </head>
 <body>
@@ -406,7 +438,7 @@
     <div class="header">
         <h1>AVAILABILITY VS CALLS VOLUME DASHBOARD</h1>
         
-        <!-- View Navigators with Dynamic Date Picker and Save Week -->
+        <!-- View Navigators with Dynamic Date Picker and Save Day -->
         <div class="header-selects">
             <select id="viewMonthSelect" class="header-select" onchange="syncFromMonthWeek()">
                 <option value="January">January</option>
@@ -446,7 +478,7 @@
                 <option value="TFX">TFX</option>
             </select>
 
-            <button class="btn-header-amber" onclick="saveWeekToCloud()" title="Save all uploaded week data directly to Firebase">💾 Save Week</button>
+            <button class="btn-header-amber" onclick="saveDayToCloud()" title="Save uploaded day data directly to Firebase">💾 Save Day</button>
         </div>
     </div>
 
@@ -563,10 +595,10 @@
 <!-- Floating Theme Toggle (Bottom-Left) -->
 <button id="themeToggleBtn" class="floating-btn btn-theme" onclick="toggleTheme()" title="Toggle Theme">🌓</button>
 
-<!-- Floating Action Buttons (Stacked Bottom-Right with Blue BG & Amber Gridline) -->
+<!-- Floating Action Buttons (Stacked Bottom-Right) -->
 <div class="floating-actions-container">
-    <button class="floating-action-btn" onclick="openModal('importModal')" title="Paste Weekly Volume Data">
-        📥 Paste Weekly Data
+    <button class="floating-action-btn" onclick="openImportModal()" title="Paste & View Daily Volume Data">
+        📥 Paste Daily Data
     </button>
     <button class="floating-action-btn" onclick="checkPasswordAndOpenModal('scheduleModal')" title="Manage Schedules and Rosters">
         👥 Manage Schedules
@@ -576,43 +608,17 @@
     </button>
 </div>
 
-<!-- Data Import Modal -->
+<!-- Daily Data Import & History Viewer Modal -->
 <div id="importModal" class="modal">
-    <div class="modal-content">
+    <div class="modal-content" style="max-width: 880px;">
         <span class="close-btn" onclick="closeModal('importModal')">&times;</span>
-        <h2 class="section-title">Import Weekly Volume Data</h2>
+        <h2 class="section-title">Import & View Daily Volume Data</h2>
         
-        <div class="form-group">
-            <div class="form-control">
-                <label for="importMonthSelect">Month</label>
-                <select id="importMonthSelect">
-                    <option value="January">January</option>
-                    <option value="February">February</option>
-                    <option value="March">March</option>
-                    <option value="April">April</option>
-                    <option value="May">May</option>
-                    <option value="June">June</option>
-                    <option value="July">July</option>
-                    <option value="August">August</option>
-                    <option value="September">September</option>
-                    <option value="October">October</option>
-                    <option value="November" selected>November</option>
-                    <option value="December">December</option>
-                </select>
-            </div>
-            <div class="form-control">
-                <label for="importWeekSelect">Week</label>
-                <select id="importWeekSelect">
-                    <option value="Week 1">Week 1</option>
-                    <option value="Week 2" selected>Week 2</option>
-                    <option value="Week 3">Week 3</option>
-                    <option value="Week 4">Week 4</option>
-                    <option value="Week 5">Week 5</option>
-                </select>
-            </div>
-            <div class="form-control">
-                <label for="importTeamSelect">Team to Assign</label>
-                <select id="importTeamSelect">
+        <!-- Dynamic Team & Date Selectors -->
+        <div class="modal-control-bar">
+            <div class="form-control" style="min-width: 220px;">
+                <label for="importTeamSelect">Select Team to Upload / View</label>
+                <select id="importTeamSelect" onchange="updateImportPreview()" style="font-weight: bold;">
                     <option value="OBS">Onboarding Support (OBS)</option>
                     <option value="ELD">ELD Support</option>
                     <option value="INS">INS Support</option>
@@ -620,19 +626,54 @@
                     <option value="TFX">TFX Support</option>
                 </select>
             </div>
+            <div class="form-control" style="min-width: 280px;">
+                <label for="importDateSelect">Select Date (Navigate Back & Forward)</label>
+                <div class="modal-date-nav">
+                    <button type="button" class="btn-modal-arrow" onclick="changeImportDate(-1)" title="Previous Day">◀</button>
+                    <input type="date" id="importDateSelect" onchange="updateImportPreview()" style="font-weight: bold; flex: 1;">
+                    <button type="button" class="btn-modal-arrow" onclick="changeImportDate(1)" title="Next Day">▶</button>
+                </div>
+            </div>
         </div>
 
+        <!-- Previously Pasted Table Preview -->
+        <div style="margin-bottom: 18px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                <label style="margin: 0;">Previously Saved Data for Selected Team & Date:</label>
+                <button type="button" id="clearDayBtn" onclick="clearImportDayData()" style="display: none; background-color: var(--alert-red); color: white; border: none; border-radius: 4px; padding: 4px 10px; font-size: 11px; font-weight: bold; cursor: pointer;">🗑️ Clear This Day</button>
+            </div>
+            <div class="table-complete-view" style="max-height: 210px; overflow-y: auto; border: 2px solid var(--navy-deep); border-radius: 4px;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Hour</th>
+                            <th>Answered</th>
+                            <th>Aban. CSAT</th>
+                            <th>Aban. Queue</th>
+                            <th>Aban. Hold</th>
+                            <th>Aban. Routing</th>
+                            <th>Total Calls</th>
+                        </tr>
+                    </thead>
+                    <tbody id="importPreviewTableBody">
+                        <tr><td colspan="7" style="padding: 18px; font-weight: bold;">Select a team and date to view saved records.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Paste New Daily Data Area -->
         <div class="form-control" style="margin-bottom: 15px;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
-                <label for="pastedData" style="margin: 0;">Paste Data from Excel (Date & Hour, Answered, Abandoned CSAT, Abandoned Queue, Abandoned Hold, Abandoned Routing)</label>
-                <button type="button" onclick="loadSamplePaste()" style="background: none; border: none; color: var(--blue-accent); font-size: 11px; font-weight: bold; cursor: pointer; text-decoration: underline;">Fill with Sample Week</button>
+                <label for="pastedData" style="margin: 0;">Paste Daily Data from Excel (Hour, Answered, Abandoned CSAT, Abandoned Queue, Abandoned Hold, Abandoned Routing)</label>
+                <button type="button" onclick="loadSamplePaste()" style="background: none; border: none; color: var(--blue-accent); font-size: 11px; font-weight: bold; cursor: pointer; text-decoration: underline;">Fill with Sample Day</button>
             </div>
-            <textarea id="pastedData" rows="8" placeholder="2026-11-09 08:00	45	2	5	1	0"></textarea>
+            <textarea id="pastedData" rows="7" placeholder="08:00	45	2	5	1	0"></textarea>
         </div>
 
         <div class="action-row">
             <button type="button" class="btn" style="background-color: transparent; border: 1px solid var(--navy-deep);" onclick="closeModal('importModal')">Cancel</button>
-            <button type="button" class="btn" onclick="processPastedData()">Save & Render Dashboard</button>
+            <button type="button" class="btn" onclick="processPastedData()">Save Day & Render Dashboard</button>
         </div>
     </div>
 </div>
@@ -853,7 +894,7 @@
         : JSON.parse(JSON.stringify(initialRosters));
     safeSet('teamRosters', teamRosters);
 
-    // Resilient Volume Storage Loader (Checks primary & backup storage to prevent accidental loss)
+    // Resilient Volume Storage Loader
     function loadStoredVolume() {
         let store = safeGet('WFM_MASTER_VOLUME_STORE') || safeGet('volumeStore') || safeGet('WFM_VOLUME_BACKUP');
         if(!store || typeof store !== 'object') {
@@ -1038,7 +1079,7 @@
         });
     }
 
-    // Chart Initializations (Consistent navy/amber colors maintained on pale yellow card background)
+    // Chart Initializations
     const mainCtx = document.getElementById('mainChart').getContext('2d');
     const mainChart = new Chart(mainCtx, {
         type: 'bar',
@@ -1147,49 +1188,152 @@
         });
     }
 
+    // --- DAILY IMPORT MODAL & DYNAMIC HISTORY VIEWER ---
+    function openImportModal() {
+        const mainDate = document.getElementById('viewDateSelect').value || "2026-11-09";
+        let mainTeam = document.getElementById('viewTeamSelect').value;
+        if (mainTeam === 'ALL') mainTeam = 'OBS';
+
+        document.getElementById('importDateSelect').value = mainDate;
+        document.getElementById('importTeamSelect').value = mainTeam;
+        document.getElementById('pastedData').value = '';
+
+        updateImportPreview();
+        openModal('importModal');
+    }
+
+    function changeImportDate(offset) {
+        const dateInput = document.getElementById('importDateSelect');
+        if (!dateInput.value) return;
+
+        let [y, m, d] = dateInput.value.split('-').map(Number);
+        let cur = new Date(y, m - 1, d);
+        cur.setDate(cur.getDate() + offset);
+
+        const yyyy = cur.getFullYear();
+        const mm = String(cur.getMonth() + 1).padStart(2, '0');
+        const dd = String(cur.getDate()).padStart(2, '0');
+
+        dateInput.value = `${yyyy}-${mm}-${dd}`;
+        updateImportPreview();
+    }
+
+    function updateImportPreview() {
+        const team = document.getElementById('importTeamSelect').value;
+        const dateStr = document.getElementById('importDateSelect').value;
+        const tbody = document.getElementById('importPreviewTableBody');
+        const clearBtn = document.getElementById('clearDayBtn');
+
+        if (!team || !dateStr || !volumeStore[team] || !volumeStore[team][dateStr]) {
+            tbody.innerHTML = `<tr><td colspan="7" style="color: var(--alert-red); font-weight: bold; padding: 18px;">No data saved yet for ${team} on ${dateStr || 'selected date'}. Ready to paste!</td></tr>`;
+            if (clearBtn) clearBtn.style.display = 'none';
+            return;
+        }
+
+        const dayData = volumeStore[team][dateStr];
+        let html = '';
+        let sumAns = 0, sumCsat = 0, sumQueue = 0, sumHold = 0, sumRouting = 0, sumTotal = 0;
+
+        hours.forEach(h => {
+            if (dayData[h] && dayData[h].total > 0) {
+                sumAns += dayData[h].answered;
+                sumCsat += dayData[h].csat;
+                sumQueue += dayData[h].queue;
+                sumHold += dayData[h].hold;
+                sumRouting += dayData[h].routing;
+                sumTotal += dayData[h].total;
+
+                html += `<tr>
+                    <td><strong>${h}</strong></td>
+                    <td>${dayData[h].answered}</td>
+                    <td>${dayData[h].csat}</td>
+                    <td>${dayData[h].queue}</td>
+                    <td>${dayData[h].hold}</td>
+                    <td>${dayData[h].routing}</td>
+                    <td><strong>${dayData[h].total}</strong></td>
+                </tr>`;
+            }
+        });
+
+        if (html === '') {
+            tbody.innerHTML = `<tr><td colspan="7" style="color: var(--alert-red); font-weight: bold; padding: 18px;">No data saved yet for ${team} on ${dateStr}. Ready to paste!</td></tr>`;
+            if (clearBtn) clearBtn.style.display = 'none';
+        } else {
+            html += `<tr style="background-color: var(--table-row-alt); font-weight: bold; border-top: 2px solid var(--navy-deep);">
+                <td>TOTAL</td>
+                <td>${sumAns}</td>
+                <td>${sumCsat}</td>
+                <td>${sumQueue}</td>
+                <td>${sumHold}</td>
+                <td>${sumRouting}</td>
+                <td>${sumTotal}</td>
+            </tr>`;
+            tbody.innerHTML = html;
+            if (clearBtn) clearBtn.style.display = 'inline-block';
+        }
+    }
+
+    function clearImportDayData() {
+        const team = document.getElementById('importTeamSelect').value;
+        const dateStr = document.getElementById('importDateSelect').value;
+        if (!team || !dateStr || !volumeStore[team] || !volumeStore[team][dateStr]) return;
+
+        if (confirm(`Clear all saved hourly volume records for ${team} on ${dateStr}?`)) {
+            delete volumeStore[team][dateStr];
+            persistVolumeStore();
+            if (firebaseDB) {
+                firebaseDB.ref(`volumeStore/${team}/${dateStr}`).remove();
+            }
+            updateImportPreview();
+            renderDashboard();
+            showToast(`Cleared data for ${team} on ${dateStr}.`);
+        }
+    }
+
     function loadSamplePaste() {
         const sample = 
-`Date & Hour\tAnswered\tAbandoned in CSAT\tAbandoned in queue\tAbandoned on hold\tAbandoned in routing
-2026-11-09 06:00\t15\t0\t1\t0\t0
-2026-11-09 07:00\t45\t1\t3\t1\t0
-2026-11-09 08:00\t85\t2\t6\t2\t1
-2026-11-09 09:00\t110\t4\t12\t3\t1
-2026-11-09 10:00\t125\t5\t15\t4\t2
-2026-11-09 11:00\t115\t3\t9\t2\t0
-2026-11-09 12:00\t95\t2\t7\t1\t1
-2026-11-09 13:00\t105\t4\t11\t3\t2
-2026-11-09 14:00\t120\t5\t14\t3\t1
-2026-11-09 15:00\t90\t2\t6\t1\t0
-2026-11-09 16:00\t70\t1\t4\t1\t0
-2026-11-09 17:00\t50\t0\t2\t0\t0
-2026-11-09 18:00\t30\t0\t1\t0\t0
-2026-11-09 19:00\t15\t0\t0\t0\t0`;
+`Hour\tAnswered\tAbandoned in CSAT\tAbandoned in queue\tAbandoned on hold\tAbandoned in routing
+06:00\t15\t0\t1\t0\t0
+07:00\t45\t1\t3\t1\t0
+08:00\t85\t2\t6\t2\t1
+09:00\t110\t4\t12\t3\t1
+10:00\t125\t5\t15\t4\t2
+11:00\t115\t3\t9\t2\t0
+12:00\t95\t2\t7\t1\t1
+13:00\t105\t4\t11\t3\t2
+14:00\t120\t5\t14\t3\t1
+15:00\t90\t2\t6\t1\t0
+16:00\t70\t1\t4\t1\t0
+17:00\t50\t0\t2\t0\t0
+18:00\t30\t0\t1\t0\t0
+19:00\t15\t0\t0\t0\t0`;
         document.getElementById('pastedData').value = sample;
     }
 
-    // Process & Save Pasted Data
+    // Process & Save Pasted Daily Data
     function processPastedData() {
         try {
-            const selectedMonth = document.getElementById('importMonthSelect').value;
-            const targetMonthNum = monthNames.indexOf(selectedMonth) + 1 || 11;
             const team = document.getElementById('importTeamSelect').value;
+            const targetDate = document.getElementById('importDateSelect').value;
             const rawText = document.getElementById('pastedData').value.trim();
 
             if(!rawText) {
                 showToast("Please paste table data first.");
                 return;
             }
+            if(!targetDate) {
+                showToast("Please select a valid date.");
+                return;
+            }
 
             const lines = rawText.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
             let importedRows = 0;
-            let earliestDateFound = null;
-            const defaultDate = document.getElementById('viewDateSelect').value || "2026-11-09";
 
             if(!volumeStore[team]) volumeStore[team] = {};
 
             lines.forEach(line => {
                 const lower = line.toLowerCase();
-                if((lower.includes('date') || lower.includes('answered') || lower.includes('abandoned')) && !/\d{2,}/.test(line)) {
+                if((lower.includes('date') || lower.includes('hour') || lower.includes('answered') || lower.includes('abandoned')) && !/\d{2,}/.test(line)) {
                     return; // Skip non-numeric header
                 }
 
@@ -1204,26 +1348,7 @@
                 tokens = tokens.map(t => t.trim()).filter(t => t !== '');
                 if(tokens.length === 0) return;
 
-                // 1. Extract Date
-                let foundDate = null;
-                const mIso = line.match(/\b(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})\b/);
-                if(mIso) {
-                    foundDate = `${mIso[1]}-${String(mIso[2]).padStart(2, '0')}-${String(mIso[3]).padStart(2, '0')}`;
-                } else {
-                    const mSlash = line.match(/\b(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})\b/);
-                    if(mSlash) {
-                        let p1 = parseInt(mSlash[1], 10), p2 = parseInt(mSlash[2], 10), p3 = parseInt(mSlash[3], 10);
-                        if(p3 < 100) p3 += 2000;
-                        let m = p1, d = p2;
-                        if(p2 === targetMonthNum) { d = p1; m = p2; }
-                        else if(p1 === targetMonthNum) { m = p1; d = p2; }
-                        else if(p1 > 12) { d = p1; m = p2; }
-                        foundDate = `${p3}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-                    }
-                }
-                if(!foundDate) foundDate = defaultDate;
-
-                // 2. Extract Hour
+                // 1. Extract Hour
                 let foundHour = null;
                 const mTime = line.match(/\b(\d{1,2}):(\d{2})(?::\d{2})?\s*(AM|PM)?\b/i);
                 if(mTime) {
@@ -1250,7 +1375,7 @@
 
                 if(!foundHour) return;
 
-                // 3. Extract Metrics
+                // 2. Extract Metrics
                 let nums = [];
                 tokens.forEach(tok => {
                     if(/[\/\-:]/.test(tok) && !/^\-?\d+$/.test(tok)) return;
@@ -1268,16 +1393,14 @@
                 const hold = nums[3] || 0;
                 const routing = nums[4] || 0;
 
-                if(!volumeStore[team][foundDate]) {
-                    volumeStore[team][foundDate] = {};
+                if(!volumeStore[team][targetDate]) {
+                    volumeStore[team][targetDate] = {};
                     hours.forEach(h => {
-                        volumeStore[team][foundDate][h] = { answered: 0, csat: 0, queue: 0, hold: 0, routing: 0, total: 0 };
+                        volumeStore[team][targetDate][h] = { answered: 0, csat: 0, queue: 0, hold: 0, routing: 0, total: 0 };
                     });
                 }
 
-                if(!earliestDateFound || foundDate < earliestDateFound) earliestDateFound = foundDate;
-
-                const slot = volumeStore[team][foundDate][foundHour];
+                const slot = volumeStore[team][targetDate][foundHour];
                 slot.answered += ans;
                 slot.csat += csat;
                 slot.queue += queue;
@@ -1300,19 +1423,14 @@
                 firebaseDB.ref(`volumeStore/${team}`).set(volumeStore[team]);
             }
 
-            // Auto-align view
+            // Auto-align main dashboard view
             document.getElementById('viewTeamSelect').value = team;
-            if(earliestDateFound) {
-                document.getElementById('viewDateSelect').value = earliestDateFound;
-                syncFromDate();
-            } else {
-                saveState();
-                renderDashboard();
-            }
+            document.getElementById('viewDateSelect').value = targetDate;
+            syncFromDate();
 
             closeModal('importModal');
             document.getElementById('pastedData').value = '';
-            showToast(`Saved & Loaded ${importedRows} hourly records for ${team}!`);
+            showToast(`Saved & Loaded ${importedRows} hourly records for ${team} on ${targetDate}!`);
 
         } catch (err) {
             console.error(err);
@@ -1320,17 +1438,19 @@
         }
     }
 
-    // Save Week Directly to Firebase Cloud
-    function saveWeekToCloud() {
+    // Save Day Directly to Firebase Cloud
+    function saveDayToCloud() {
         if (!firebaseDB) {
             showToast("Connecting to Firebase... please wait a moment.");
             return;
         }
 
+        const dateStr = document.getElementById('viewDateSelect').value;
+
         firebaseDB.ref('volumeStore').set(volumeStore)
             .then(() => firebaseDB.ref('teamRosters').set(teamRosters))
             .then(() => {
-                showToast("All Weeks & Rosters saved to Firebase Cloud successfully!");
+                showToast(`Day (${dateStr}) & Rosters saved to Firebase Cloud successfully!`);
             })
             .catch((err) => {
                 console.error("Firebase save error:", err);
@@ -1363,7 +1483,7 @@
         return Math.max(4, +(mins / 60).toFixed(1));
     }
 
-    // Render Teammate Performance (Guaranteed >= 7 calls/hr benchmark, no Adherence or CSAT)
+    // Render Teammate Performance
     function renderTeammatePerformance(team, dateStr, dailyVolData) {
         const tableBody = document.getElementById('teammatePerfTableBody');
         const dateLabel = document.getElementById('perfDateLabel');
@@ -1564,8 +1684,8 @@
                 scheduled: activeAgents, 
                 abandoned: hourAban, 
                 required: requiredAgents, 
-                agentsMissing: agentsMissing,
-                surplusAgents: surplusAgents,
+                agentsMissing: agentsMissing, 
+                surplusAgents: surplusAgents, 
                 volume: hourStat.total 
             });
         });
@@ -1773,7 +1893,7 @@
         const ws1 = XLSX.utils.aoa_to_sheet([["DAILY AVAILABILITY VS VOLUME REPORT"], [`Context: ${contextTitle} - ${dateStr}`], [], varianceHeaders, ...varianceData]);
         XLSX.utils.book_append_sheet(wb, ws1, "Staffing Analysis");
 
-        // Sheet 2: Teammate Performance (Without Adherence & CSAT)
+        // Sheet 2: Teammate Performance
         const perfHeaders = ["Teammate Name", "Team", "Branch", "Shift Window", "Scheduled Hours", "Calls Handled", "Avg Handle Time (AHT)", "Status"];
         const perfData = currentTeammatePerfData.map(p => [
             p.name,
@@ -1803,7 +1923,7 @@
         showToast("Excel report exported successfully!");
     }
 
-    // Firebase Real-time Initialization with Safe Merging (Never wipes out local imports)
+    // Firebase Real-time Initialization with Safe Merging
     function initFirebase() {
         try {
             if (!firebase.apps.length) {
@@ -1828,6 +1948,9 @@
                     if (updated) {
                         persistVolumeStore();
                         renderDashboard();
+                        if (document.getElementById('importModal').style.display === 'block') {
+                            updateImportPreview();
+                        }
                     }
                 }
             });

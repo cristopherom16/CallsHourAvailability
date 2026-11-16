@@ -1164,11 +1164,28 @@
         return targetMins >= start && targetMins < end;
     }
 
-    function calculateNetAgentsPerHour(team) {
+    // Deterministic pseudo-hash for reproducible daily metrics & absences
+    function pseudoHash(str) {
+        let hash = 0;
+        for (let i = 0; i < str.length; i++) {
+            hash = ((hash << 5) - hash) + str.charCodeAt(i);
+            hash |= 0;
+        }
+        return Math.abs(hash);
+    }
+
+    // Check if agent is absent (simulate 15% probability based on date/name combination)
+    function isAgentAbsent(dateStr, agentName, teamName) {
+        if(!dateStr || !agentName) return false;
+        const seed = pseudoHash(dateStr + agentName + teamName);
+        return (seed % 100) < 15; // 15% of the time, the agent will be off/absent on this specific date
+    }
+
+    function calculateNetAgentsPerHour(team, dateStr) {
         if(team === 'ALL') {
             const aggregated = new Array(hours.length).fill(0);
             allTeamsList.forEach(t => {
-                const sub = calculateNetAgentsPerHour(t);
+                const sub = calculateNetAgentsPerHour(t, dateStr);
                 sub.forEach((val, i) => aggregated[i] += val);
             });
             return aggregated;
@@ -1180,6 +1197,9 @@
             let activeCount = 0;
             roster.forEach(agent => {
                 if(!agent) return;
+                // --- NEW: Excluir agentes que faltaron/están libres este día ---
+                if (isAgentAbsent(dateStr, agent.name, team)) return;
+
                 const cin = parseTimeToMins(agent.in);
                 const cout = parseTimeToMins(agent.out);
                 if(cin !== null && cout !== null && currentHourMins >= cin && currentHourMins < cout) {
@@ -1463,16 +1483,6 @@
             });
     }
 
-    // Deterministic pseudo-hash for reproducible daily metrics
-    function pseudoHash(str) {
-        let hash = 0;
-        for (let i = 0; i < str.length; i++) {
-            hash = ((hash << 5) - hash) + str.charCodeAt(i);
-            hash |= 0;
-        }
-        return Math.abs(hash);
-    }
-
     function getAgentNetHours(agent) {
         if (!agent || !agent.in || !agent.out) return 8;
         const cin = parseTimeToMins(agent.in);
@@ -1507,24 +1517,28 @@
         }
 
         // Gather applicable teammates
-        let agentsList = [];
+        let allPossibleAgents = [];
         if (team === 'ALL') {
             allTeamsList.forEach(t => {
                 (teamRosters[t] || []).forEach(agent => {
-                    agentsList.push({ ...agent, teamName: t });
+                    allPossibleAgents.push({ ...agent, teamName: t });
                 });
             });
         } else {
             (teamRosters[team] || []).forEach(agent => {
-                agentsList.push({ ...agent, teamName: team });
+                allPossibleAgents.push({ ...agent, teamName: team });
             });
         }
 
+        // Filtrar activos y ausentes según la semilla del día
+        const activeAgents = allPossibleAgents.filter(a => !isAgentAbsent(dateStr, a.name, a.teamName));
+        const absentAgents = allPossibleAgents.filter(a => isAgentAbsent(dateStr, a.name, a.teamName));
+
         if (countLabel) {
-            countLabel.innerText = `Active Teammates: ${agentsList.length}`;
+            countLabel.innerText = `Active Teammates: ${activeAgents.length} (Absent: ${absentAgents.length})`;
         }
 
-        if (agentsList.length === 0) {
+        if (allPossibleAgents.length === 0) {
             tableBody.innerHTML = `<tr><td colspan="8" style="padding: 20px; font-weight: bold;">No active teammates found for this selection.</td></tr>`;
             currentTeammatePerfData = [];
             return;
@@ -1542,15 +1556,17 @@
         let totalHandled = 0;
         let sumAHTSec = 0;
 
-        const rowsHTML = agentsList.map(agent => {
+        // Render Active Agents First
+        const activeRowsHTML = activeAgents.map(agent => {
             const shiftDurationHours = getAgentNetHours(agent);
             const seed = pseudoHash(dateStr + agent.name + agent.teamName);
 
-            // Compute Daily Calls Handled (Enforces at least 7 calls/hr minimum)
+            // Compute Daily Calls Handled (Distribute real volume among ACTIVE agents)
             const minExpectedCalls = Math.round(shiftDurationHours * AVG_CALLS_PER_AGENT);
             let handled = 0;
-            if (totalDayAnswered > 0) {
-                const basePortion = (totalDayAnswered / agentsList.length);
+            
+            if (totalDayAnswered > 0 && activeAgents.length > 0) {
+                const basePortion = (totalDayAnswered / activeAgents.length);
                 const variance = ((seed % 25) - 5) / 100;
                 handled = Math.max(minExpectedCalls, Math.round(basePortion * (1 + variance)));
             } else {
@@ -1605,9 +1621,33 @@
             `;
         }).join('');
 
+        // Render Absent Agents 
+        const absentRowsHTML = absentAgents.map(agent => {
+            currentTeammatePerfData.push({
+                name: agent.name, team: agent.teamName, branch: agent.branch,
+                shift: `${agent.in} - ${agent.out}`, hours: `0 hrs`, handled: 0, aht: '-', status: 'Absent / Off'
+            });
+
+            return `
+                <tr style="opacity: 0.55; background-color: var(--table-row-alt);">
+                    <td style="text-align: left; font-weight: bold; text-decoration: line-through;">${agent.name}</td>
+                    <td><span style="font-size: 11px; font-weight: bold; padding: 2px 6px; background: rgba(10,25,47,0.1); border-radius: 4px;">${agent.teamName}</span></td>
+                    <td>${agent.branch}</td>
+                    <td>${agent.in} - ${agent.out}</td>
+                    <td>0 hrs</td>
+                    <td><strong>0</strong></td>
+                    <td>-</td>
+                    <td><span style="background-color: rgba(10, 25, 47, 0.1); color: var(--navy-deep); border: 1px solid var(--navy-deep); padding: 3px 8px; border-radius: 12px; font-weight: bold; font-size: 11px;">⛔ Absent / Off</span></td>
+                </tr>
+            `;
+        }).join('');
+
         // Summary Row
-        const avgAHTTotalSec = Math.round(sumAHTSec / agentsList.length);
-        const avgAHTDisplay = `${Math.floor(avgAHTTotalSec / 60)}m ${String(avgAHTTotalSec % 60).padStart(2, '0')}s`;
+        let avgAHTDisplay = '-';
+        if (activeAgents.length > 0) {
+            const avgAHTTotalSec = Math.round(sumAHTSec / activeAgents.length);
+            avgAHTDisplay = `${Math.floor(avgAHTTotalSec / 60)}m ${String(avgAHTTotalSec % 60).padStart(2, '0')}s`;
+        }
 
         const summaryRowHTML = `
             <tr style="background-color: var(--table-row-alt); font-weight: bold; border-top: 2px solid var(--navy-deep);">
@@ -1622,7 +1662,7 @@
             </tr>
         `;
 
-        tableBody.innerHTML = rowsHTML + summaryRowHTML;
+        tableBody.innerHTML = activeRowsHTML + absentRowsHTML + summaryRowHTML;
     }
 
     // Render Dashboard
@@ -1658,7 +1698,8 @@
             }
         }
 
-        const scheduledAgents = calculateNetAgentsPerHour(team);
+        // --- Pass dateStr explicitly so Availability chart knows who is absent ---
+        const scheduledAgents = calculateNetAgentsPerHour(team, dateStr);
 
         let totalAnswered = 0, totalAbandoned = 0;
         let totalVolumeArray = [], abanQueue = [], abanHold = [], abanRouting = [], abanCsat = [];

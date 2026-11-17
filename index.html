@@ -1814,7 +1814,7 @@
                 const stat = dayStats[normalizeAgentName(agent.name)];
                 handled = stat ? stat.calls : 0;
                 // Automatically calculate AHT from shift hours & inbound calls, strictly capped at 10 minutes (600s)
-                const rawAhtSec = handled > 0 ? Math.round((shiftDurationHours * 3600 * 0.75) / handled) : 0;
+                const rawAhtSec = handled > 0 ? Math.round((shiftDurationHours * 3600) / handled) : 0;
                 ahtSec = Math.min(600, rawAhtSec);
             } else {
                 if (totalDayAnswered > 0 && activeAgents.length > 0) {
@@ -1825,7 +1825,7 @@
                     const callsPerHour = 7.0 + ((seed % 25) / 10);
                     handled = Math.round(shiftDurationHours * callsPerHour);
                 }
-                ahtSec = Math.min(600, 280 + (seed % 140));
+                ahtSec = Math.min(600, 520 + (seed % 81));
             }
 
             totalHandled += handled;
@@ -1838,7 +1838,7 @@
             // Performance Rating based on target benchmark (>= 7 calls/hr)
             let statusBadge = '';
             let statusText = '';
-            if (handled >= Math.round(shiftDurationHours * 8.2) && ahtSec <= 350) {
+            if (handled >= Math.round(shiftDurationHours * 8.2) && ahtSec <= 600) {
                 statusBadge = `<span style="background-color: rgba(0, 123, 255, 0.15); color: var(--blue-accent); border: 1px solid var(--blue-accent); padding: 3px 8px; border-radius: 12px; font-weight: bold; font-size: 11px;">★ Top Performer</span>`;
                 statusText = 'Top Performer';
             } else if (handled >= minExpectedCalls) {

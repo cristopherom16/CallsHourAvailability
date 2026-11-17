@@ -438,7 +438,7 @@
     <div class="header">
         <h1>AVAILABILITY VS CALLS VOLUME DASHBOARD</h1>
         
-        <!-- View Navigators with Dynamic Date Picker and Save Day -->
+        <!-- View Navigators with Dynamic Date Picker -->
         <div class="header-selects">
             <select id="viewMonthSelect" class="header-select" onchange="syncFromMonthWeek()">
                 <option value="January">January</option>
@@ -478,8 +478,6 @@
                 <option value="TFX">TFX</option>
                 <option value="Weekend Support">Weekend Support</option>
             </select>
-
-            <button class="btn-header-amber" onclick="saveDayToCloud()" title="Save uploaded day data directly to Firebase">💾 Save Day</button>
         </div>
     </div>
 
@@ -553,6 +551,14 @@
         </div>
     </div>
 
+    <!-- Secondary Chart: Abandonment Specific Breakdown -->
+    <div class="card">
+        <div class="section-title">Hourly Abandoned Calls Breakdown (Queue, Hold, Routing, CSAT)</div>
+        <div class="chart-box-secondary">
+            <canvas id="abandonedChart"></canvas>
+        </div>
+    </div>
+
     <!-- Teammate Performance Table (Dynamically Changes by Day) -->
     <div class="card">
         <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--navy-deep); padding-bottom: 6px; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
@@ -583,14 +589,6 @@
             </table>
         </div>
     </div>
-
-    <!-- Secondary Chart: Abandonment Specific Breakdown -->
-    <div class="card">
-        <div class="section-title">Hourly Abandoned Calls Breakdown (Queue, Hold, Routing, CSAT)</div>
-        <div class="chart-box-secondary">
-            <canvas id="abandonedChart"></canvas>
-        </div>
-    </div>
 </div>
 
 <!-- Floating Theme Toggle (Bottom-Left) -->
@@ -598,14 +596,14 @@
 
 <!-- Floating Action Buttons (Stacked Bottom-Right) -->
 <div class="floating-actions-container">
-    <button class="floating-action-btn" onclick="openAgentImportModal()" title="Paste Teammate Inbound Calls">
-        🧑‍💻 Paste Agent Stats
-    </button>
     <button class="floating-action-btn" onclick="openImportModal()" title="Paste & View Daily Volume Data">
         📥 Paste Daily Data
     </button>
     <button class="floating-action-btn" onclick="checkPasswordAndOpenModal('scheduleModal')" title="Manage Schedules and Rosters">
         👥 Manage Schedules
+    </button>
+    <button class="floating-action-btn" onclick="openAgentImportModal()" title="Paste Teammate Inbound Calls">
+        🧑‍💻 Paste Agent Stats
     </button>
     <button class="floating-action-btn" onclick="exportToExcel()" title="Download Excel Dashboard Report">
         📊 Download Excel

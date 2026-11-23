@@ -559,6 +559,14 @@
         </div>
     </div>
 
+    <!-- Daily Outbound Calls by Agent Chart -->
+    <div class="card">
+        <div class="section-title">Daily Outbound Calls by Agent</div>
+        <div class="chart-box-secondary">
+            <canvas id="outboundChart"></canvas>
+        </div>
+    </div>
+
     <!-- Teammate Performance Table (Dynamically Changes by Day) -->
     <div class="card">
         <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--navy-deep); padding-bottom: 6px; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
@@ -1055,7 +1063,7 @@
     function toggleTheme() {
         document.body.classList.toggle('dark-mode');
         const isDark = document.body.classList.contains('dark-mode');
-        safeSet('theme', isDark ? 'light' : 'dark'); // corrected to save 'dark' or 'light' correctly
+        safeSet('theme', isDark ? 'dark' : 'light');
         const btn = document.getElementById('themeToggleBtn');
         if (btn) btn.innerText = isDark ? '☀️' : '🌓';
     }
@@ -1234,6 +1242,32 @@
             scales: {
                 x: { stacked: true },
                 y: { stacked: true, title: { display: true, text: 'Abandoned Calls' }, ticks: { stepSize: 1 }, beginAtZero: true }
+            }
+        }
+    });
+
+    // Outbound Calls Chart Initialization
+    const outCtx = document.getElementById('outboundChart').getContext('2d');
+    const outboundChart = new Chart(outCtx, {
+        type: 'bar',
+        data: {
+            labels: [],
+            datasets: [{
+                label: 'Outbound Calls',
+                data: [],
+                backgroundColor: '#2E7D32',
+                borderRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                x: { ticks: { maxRotation: 45, minRotation: 45 } },
+                y: { title: { display: true, text: 'Outbound Calls' }, ticks: { stepSize: 1 }, beginAtZero: true }
             }
         }
     });
@@ -1778,6 +1812,9 @@
         if (allPossibleAgents.length === 0) {
             tableBody.innerHTML = `<tr><td colspan="10" style="padding: 20px; font-weight: bold;">No active teammates found for this selection.</td></tr>`;
             currentTeammatePerfData = [];
+            outboundChart.data.labels = [];
+            outboundChart.data.datasets[0].data = [];
+            outboundChart.update();
             return;
         }
 
@@ -1794,6 +1831,10 @@
         let sumOutbound = 0;
         let totalHandled = 0;
         let sumAHTSec = 0;
+
+        // Arrays for the Outbound Calls Chart
+        let chartLabels = [];
+        let chartDataOutbound = [];
 
         // Render Active Agents First
         const activeRowsHTML = activeAgents.map(agent => {
@@ -1832,6 +1873,10 @@
             sumOutbound += outbound;
             totalHandled += handled;
             sumAHTSec += ahtSec;
+
+            // Push data to Chart
+            chartLabels.push(agent.name);
+            chartDataOutbound.push(outbound);
 
             const ahtMin = Math.floor(ahtSec / 60);
             const ahtRemSec = String(ahtSec % 60).padStart(2, '0');
@@ -1908,6 +1953,11 @@
                 </tr>
             `;
         }).join('');
+
+        // Update Outbound Chart
+        outboundChart.data.labels = chartLabels;
+        outboundChart.data.datasets[0].data = chartDataOutbound;
+        outboundChart.update();
 
         // Summary Row
         let avgAHTDisplay = '-';
